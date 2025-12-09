@@ -8,13 +8,14 @@ A modular system for predicting solar energy production based on weather data, h
 project-root/
 │
 ├── backend/
-│   ├── data_ingestion/
-│   ├── data_processing/
-│   ├── models/
-│   ├── forecasting/
-│   ├── anomaly_detection/
-│   ├── storage/
-│   └── services/
+|   main.py
+|   services/
+|       weather_service.py
+|       simulation_service.py
+|       forecasting_service.py
+|   models/
+|       request_models.py
+|       response_models.py
 │
 ├── frontend/
 │   └── streamlit_app/
