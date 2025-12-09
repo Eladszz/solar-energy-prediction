@@ -5,56 +5,64 @@ A modular system for predicting solar energy production based on weather data, h
 
 ## System Architecture
 ```
-project-root/
+solar-energy-prediction/
 │
-├── backend/
-|   main.py
-|   services/
-|       weather_service.py
-|       simulation_service.py
-|       forecasting_service.py
-|   models/
-|       request_models.py
-|       response_models.py
+├── solar_backend/
+│   └── app/
+│       ├── main.py
+│       ├── config.py
+│       ├── routers/
+│       │   ├── forecast_router.py
+│       │   ├── simulate_router.py
+│       │   └── health_router.py
+│       ├── services/
+│       │   ├── weather_service.py
+│       │   ├── simulation_service.py
+│       │   └── forecasting_service.py
+│       ├── models/
+│       │   ├── common.py
+│       │   ├── forecast_models.py
+│       │   └── simulate_models.py
+│       └── utils/
+│           └── http_client.py
 │
-├── frontend/
-│   └── streamlit_app/
-│
-├── config/
-├── docs/
-├── tests/
+├── requirements.txt
 └── README.md
 ```
 
-## Backend Components
-### Data Ingestion
-- Weather API fetch (OpenWeather/Solcast/PVGIS)
-- CSV import
-- DB integration
+## Backend Components (FastAPI)
 
-### Data Processing & EDA
-- Data cleaning
-- Feature engineering
-- Exploratory data analysis
+### API Endpoints
+- **Health Check** (`/health`): Service status verification
+- **Forecast** (`/forecast`): Yearly solar energy production forecasting using Prophet
+- **Simulate** (`/simulate`): Solar panel simulation based on location and parameters
 
-### Forecasting Models
-- Prophet
-- LSTM
-- XGBoost
-Unified interface example:
-```python
-model = ModelFactory.get("prophet")
-forecast = model.predict(data)
+### Services
+- **Weather Service**: Fetch weather data from external APIs
+- **Forecasting Service**: Prophet-based yearly forecasting from hourly production data
+- **Simulation Service**: Calculate solar energy production based on panel specifications
+
+### Models
+- Request/Response models using Pydantic
+- Forecast models for Prophet integration
+- Simulation models for solar panel calculations
+
+## Running the Application
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-### Anomaly Detection
-- Identifying deviations in expected production
+2. Start the server:
+```bash
+cd solar_backend
+uvicorn app.main:app --reload
+```
 
-### Storage Layer
-- SQL DB for users/auth
-- NoSQL DB for logs, predictions, runtime data
+The API will be available at `http://127.0.0.1:8000`
 
-## Frontend (Streamlit)
+## Frontend (Streamlit) - Planned
 - Location selection
 - Model selection
 - Forecast visualization
@@ -82,11 +90,13 @@ Weather API → ETL → Feature Engineering → Forecasting → Anomaly Detectio
 - Final: Presentation + Prototype
 
 ## Tech Stack
-- Python, Pandas, Numpy
-- Scikit-learn, Prophet, TensorFlow/PyTorch
-- Plotly, Streamlit
-- PostgreSQL / NoSQL
-- Weather APIs
+- **Backend**: FastAPI, Uvicorn
+- **Data Processing**: Pandas, NumPy
+- **Forecasting**: Prophet
+- **API Integration**: Requests, Pydantic
+- **Frontend**: Streamlit (planned)
+- **Database**: PostgreSQL / NoSQL (planned)
+- **Weather APIs**: OpenWeather/Solcast/PVGIS (planned)
 
 ## Security
 - All API keys stored in `.env` only
