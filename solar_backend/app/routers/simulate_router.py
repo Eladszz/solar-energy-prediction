@@ -2,18 +2,27 @@ from fastapi import APIRouter
 from app.models.simulate_models import SimulationRequest
 from app.services.weather_service import get_weather_forecast
 from app.services.simulation_service import simulate_production_enhanced
+from app.services.loss_service import compute_system_loss_factor
 
 router = APIRouter()
 
 @router.post("/")
 def simulate(req: SimulationRequest):
 
+    system_loss_factor = compute_system_loss_factor(
+        cleanliness=req.cleanliness,
+        shading=req.shading
+    )
+
     weather = get_weather_forecast(req.latitude, req.longitude, days=1)
+    print(weather)
+    if weather is None:
+        raise ValueError("Failed to retrieve weather forecast")
 
     irradiance = weather["hourly"]["shortwave_radiation"]
     temps = weather["hourly"]["temperature_2m"]
 
-    production = simulate_production_enhanced(
+    ac_power_kw = simulate_production_enhanced(
         irradiance_list=irradiance,
         temp_list=temps,
         latitude=req.latitude,
@@ -21,11 +30,19 @@ def simulate(req: SimulationRequest):
         panel_area=req.panel_area,
         efficiency=req.panel_efficiency,
         gamma=req.gamma,
-        noct=req.noct
+        noct=req.noct,
+        system_loss_factor=system_loss_factor,
+        ac_capacity_kw=req.ac_capacity_kw
     )
 
+    print("HOURLY IRR:", weather["hourly"]["shortwave_radiation"])
+    print("HOURLY TEMP:", weather["hourly"]["temperature_2m"])
+    print("TIME:", weather["hourly"]["time"])
+
+
     return {
-        "location": (req.latitude, req.longitude),
-        "avg_hourly_kw": round(sum(production) / len(production), 4),
-        "hourly_production_kw": production
+        "location": [req.latitude, req.longitude],
+        "system_loss_factor": system_loss_factor,
+        "hourly_ac_kw": ac_power_kw,
+        "avg_kw": sum(ac_power_kw) / len(ac_power_kw)
     }
