@@ -2,6 +2,16 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
+from geopy.geocoders import Nominatim
+import folium
+from streamlit_folium import st_folium
+import pycountry
+
+if "lat" not in st.session_state:
+    st.session_state.lat = None
+    st.session_state.lon = None
+    st.session_state.address = None
+
 
 BACKEND_URL = "http://127.0.0.1:8000"
 
@@ -20,9 +30,61 @@ st.markdown(
 # Sidebar – Inputs
 # --------------------
 st.sidebar.header("System Parameters")
+st.sidebar.header("📍 Address")
 
-latitude = st.sidebar.number_input("Latitude", value=32.08, format="%.4f")
-longitude = st.sidebar.number_input("Longitude", value=34.78, format="%.4f")
+countries = sorted([c.name for c in pycountry.countries])
+
+country = st.sidebar.selectbox(
+    "Select Country",
+    countries,
+    index=countries.index("Israel") if "Israel" in countries else 0,
+    key="country_select"
+)
+city = st.sidebar.text_input("City", value="Tel Aviv")
+
+c1, c2 = st.sidebar.columns([3, 1])
+with c1:
+    street = st.text_input("Street", value="Dizengoff")
+with c2:
+    number = st.text_input("Number", value="100")
+
+address = f"{street} {number}, {city}, {country}"
+
+geocode_btn = st.sidebar.button("📍 Locate Address")
+lat = lon = None
+
+if geocode_btn and address:
+    geolocator = Nominatim(user_agent="solar_app")
+    location = geolocator.geocode(address)
+
+    if location:
+        st.session_state.lat = location.latitude
+        st.session_state.lon = location.longitude
+        st.session_state.address = address
+        st.success(
+            f"Location found: {st.session_state.lat:.4f}, {st.session_state.lon:.4f}"
+        )
+    else:
+        st.error("Address not found")
+
+
+if st.session_state.lat is not None and st.session_state.lon is not None:
+    m = folium.Map(
+        location=[st.session_state.lat, st.session_state.lon],
+        zoom_start=17
+    )
+
+    folium.Marker(
+        [st.session_state.lat, st.session_state.lon],
+        popup=st.session_state.address,
+        icon=folium.Icon(icon="home")
+    ).add_to(m)
+
+    st_folium(m, width=700, height=400)
+else:
+    st.info("📍 Enter an address and click 'Locate Address' to display the map.")
+
+
 
 panel_area = st.sidebar.number_input("System Area (m²)", value=80.0)
 panel_efficiency = st.sidebar.slider("Panel Efficiency", 0.10, 0.30, 0.20)
@@ -30,11 +92,13 @@ panel_efficiency = st.sidebar.slider("Panel Efficiency", 0.10, 0.30, 0.20)
 tilt = st.sidebar.slider("Tilt Angle (°)", 0, 60, 30)
 
 cleanliness = st.sidebar.selectbox(
-    "Panel Cleanliness", ["clean", "normal", "dusty"]
+    "Panel Cleanliness", ["clean", "normal", "dusty"],
+    key="cleanliness_select"
 )
 
 shading = st.sidebar.selectbox(
-    "Shading Level", ["none", "low", "medium", "high"]
+    "Shading Level", ["none", "low", "medium", "high"],
+    key="shading_select"
 )
 
 ac_capacity_kw = st.sidebar.number_input(
@@ -53,8 +117,8 @@ run_yearly = col2.button("📅 Run Yearly Forecast")
 
 def run_simulation():
     payload = {
-        "latitude": latitude,
-        "longitude": longitude,
+        "latitude": st.session_state.lat,
+        "longitude": st.session_state.lon,
         "panel_area": panel_area,
         "panel_efficiency": panel_efficiency,
         "tilt": tilt,
@@ -94,8 +158,8 @@ if run_daily:
 
 def run_yearly_forecast():
     payload = {
-        "latitude": latitude,
-        "longitude": longitude,
+        "latitude": st.session_state.lat,
+        "longitude": st.session_state.lon,
         "panel_area": panel_area,
         "panel_efficiency": panel_efficiency,
         "tilt": tilt,

@@ -3,7 +3,7 @@ from app.routers import health_router, simulate_router, yearly_forecast_router
 
 app = FastAPI(
     title="Solar Energy Forecasting API",
-    version="0.1.0",
+    version="0.2.0",
     description="Backend for the Solar Production Prediction Final Project",
     docs_url="/swagger",
     redoc_url="/redoc",

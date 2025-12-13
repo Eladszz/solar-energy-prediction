@@ -3,3 +3,6 @@ requests
 pandas
 numpy
 plotly
+geopy
+folium
+streamlit-foliumד
