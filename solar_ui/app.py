@@ -72,15 +72,25 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
     m = folium.Map(
         location=[st.session_state.lat, st.session_state.lon],
         zoom_start=17
-    )
-
+        )
     folium.Marker(
         [st.session_state.lat, st.session_state.lon],
         popup=st.session_state.address,
+        draggable=True,
         icon=folium.Icon(icon="home")
-    ).add_to(m)
+        ).add_to(m)
+    map_data = st_folium(m, width=700, height=400)
 
-    st_folium(m, width=700, height=400)
+    if map_data and map_data.get("last_clicked"):
+        st.session_state.lat = map_data["last_clicked"]["lat"]
+        st.session_state.lon = map_data["last_clicked"]["lng"]
+
+    st.caption(
+        f"📌 Selected location: "
+        f"{st.session_state.lat:.6f}, {st.session_state.lon:.6f}"
+        )
+
+
 else:
     st.info("📍 Enter an address and click 'Locate Address' to display the map.")
 
@@ -111,8 +121,21 @@ ac_capacity_kw = st.sidebar.number_input(
 # --------------------
 col1, col2 = st.columns(2)
 
-run_daily = col1.button("🔄 Run Daily Simulation")
-run_yearly = col2.button("📅 Run Yearly Forecast")
+location_ready = (
+    st.session_state.lat is not None
+    and st.session_state.lon is not None
+)
+
+run_daily = col1.button(
+    "🔄 Run Daily Simulation",
+    disabled=not location_ready
+)
+
+run_yearly = col2.button(
+    "📅 Run Yearly Forecast",
+    disabled=not location_ready
+)
+
 
 
 def run_simulation():
