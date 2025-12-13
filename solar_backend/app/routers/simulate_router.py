@@ -15,7 +15,6 @@ def simulate(req: SimulationRequest):
     )
 
     weather = get_weather_forecast(req.latitude, req.longitude, days=1)
-    print(weather)
     if weather is None:
         raise ValueError("Failed to retrieve weather forecast")
 
@@ -34,11 +33,6 @@ def simulate(req: SimulationRequest):
         system_loss_factor=system_loss_factor,
         ac_capacity_kw=req.ac_capacity_kw
     )
-
-    print("HOURLY IRR:", weather["hourly"]["shortwave_radiation"])
-    print("HOURLY TEMP:", weather["hourly"]["temperature_2m"])
-    print("TIME:", weather["hourly"]["time"])
-
 
     return {
         "location": [req.latitude, req.longitude],

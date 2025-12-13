@@ -1,19 +1,21 @@
 from pydantic import BaseModel
 
-class SimulationRequest(BaseModel):
+class BasePVRequest(BaseModel):
     latitude: float
     longitude: float
-    tilt: float = 30
-    panel_area: float = 1.6
+    tilt: float = 30.0
+    panel_area: float = 80.0
     panel_efficiency: float = 0.20
-
-    # losses (simple for user)
-    cleanliness: str = "normal"   # clean / normal / dusty
-    shading: str = "low"          # none / low / medium / high
-
-    # inverter
+    cleanliness: str = "normal"
+    shading: str = "low"
     ac_capacity_kw: float | None = None
-
-    # thermal
     gamma: float = 0.004
-    noct: float = 45
+    noct: float = 45.0
+
+
+class SimulationRequest(BasePVRequest):
+    pass
+
+
+class YearlyForecastRequest(BasePVRequest):
+    year: int | None = None

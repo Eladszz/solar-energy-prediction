@@ -90,16 +90,6 @@ def simulate_production_enhanced(
     """
     results_ac_kw = []
 
-    print("DEBUG PARAMS:",
-        "lat=", latitude,
-        "tilt=", tilt,
-        "area=", panel_area,
-        "eff=", efficiency,
-        "gamma=", gamma,
-        "noct=", noct,
-        "loss_factor=", system_loss_factor,
-        "ac_cap=", ac_capacity_kw)
-
     for ghi, ambient_temp in zip(irradiance_list, temp_list):
 
         # 1. POA irradiance
