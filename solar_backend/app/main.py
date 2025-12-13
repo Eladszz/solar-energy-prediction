@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import forecast_router, simulate_router, health_router, yearly_real_router
+from app.routers import health_router, simulate_router, yearly_forecast_router
 
 app = FastAPI(
     title="Solar Energy Forecasting API",
@@ -12,9 +12,8 @@ app = FastAPI(
 
 # Routers
 app.include_router(health_router.router)
-app.include_router(simulate_router.router, prefix="/simulate", tags=["Simulation"])
-app.include_router(forecast_router.router, prefix="/forecast", tags=["Forecasting"])
-app.include_router(yearly_real_router.router, prefix="/forecast/year", tags=["Year Forecast"])
+app.include_router(simulate_router.router, prefix="/simulate", tags=["Day Simulation"])
+app.include_router(yearly_forecast_router.router, prefix="/forecast/year", tags=["Yearly Forecast"])
 
 @app.get("/")
 def root():

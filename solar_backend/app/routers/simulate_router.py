@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.models.simulate_models import SimulationRequest
+from app.models.pv_models import SimulationRequest
 from app.services.weather_service import get_weather_forecast
 from app.services.simulation_service import simulate_production_enhanced
 from app.services.loss_service import compute_system_loss_factor
