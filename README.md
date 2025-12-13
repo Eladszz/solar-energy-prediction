@@ -8,6 +8,9 @@ A FastAPI-based system for predicting solar energy production using real-time we
 solar-energy-prediction/
 │
 ├── solar_backend/
+│   ├── venv/                    # Backend virtual environment
+│   ├── backend_requirements.txt # Backend dependencies
+│   ├── run.sh                   # Backend startup script
 │   └── app/
 │       ├── main.py              # FastAPI application entry point
 │       ├── config.py            # Configuration and constants
@@ -30,8 +33,14 @@ solar-energy-prediction/
 │       └── utils/
 │           └── http_client.py  # HTTP utilities
 │
-├── requirements.txt    # Python dependencies
-├── run.sh             # Startup script
+├── solar_ui/
+│   ├── venv/                    # Frontend virtual environment
+│   ├── frontend_requirements.txt # Frontend dependencies
+│   ├── run.sh                   # Frontend startup script
+│   ├── app.py                   # Streamlit application
+│   └── config.py                # Frontend configuration
+│
+├── run.sh             # Root startup script (backend)
 └── README.md          # This file
 ```
 
@@ -138,37 +147,71 @@ git clone <repository-url>
 cd solar-energy-prediction
 ```
 
-2. Create a virtual environment (recommended):
+2. Set up Backend:
 ```bash
+cd solar_backend
 python3 -m venv venv
 source venv/bin/activate  # On macOS/Linux
 # venv\Scripts\activate  # On Windows
+pip install -r backend_requirements.txt
+cd ..
 ```
 
-3. Install dependencies:
+3. Set up Frontend:
 ```bash
-pip install -r requirements.txt
+cd solar_ui
+python3 -m venv venv
+source venv/bin/activate  # On macOS/Linux
+# venv\Scripts\activate  # On Windows
+pip install -r frontend_requirements.txt
+cd ..
 ```
 
 ### Running the Application
 
-**Option 1: Using the startup script**
+#### Backend (API Server)
+
+**Option 1: Using the startup script (from root)**
 ```bash
 ./run.sh
 ```
 
-**Option 2: Manual start**
+**Option 2: Using the backend startup script**
 ```bash
 cd solar_backend
+./run.sh
+```
+
+**Option 3: Manual start**
+```bash
+cd solar_backend
+source venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
 The API will be available at `http://127.0.0.1:8000`
 
+#### Frontend (Streamlit Dashboard)
+
+**Using the startup script:**
+```bash
+cd solar_ui
+./run.sh
+```
+
+**Manual start:**
+```bash
+cd solar_ui
+source venv/bin/activate
+streamlit run app.py
+```
+
+The dashboard will be available at `http://localhost:8501`
+
 ### Interactive API Documentation
 
 Once running, visit:
-- **Swagger UI**: http://localhost:8000/docs
+- **Swagger UI**: http://localhost:8000/swagger
 - **ReDoc**: http://localhost:8000/redoc
 
 ### Testing the API

@@ -13,7 +13,7 @@ app = FastAPI(
 # Routers
 app.include_router(health_router.router)
 app.include_router(simulate_router.router, prefix="/simulate", tags=["Day Simulation"])
-app.include_router(yearly_forecast_router.router, prefix="/forecast/year", tags=["Yearly Forecast"])
+app.include_router(yearly_forecast_router.router, prefix="/forecast/yearly", tags=["Yearly Forecast"])
 
 @app.get("/")
 def root():
