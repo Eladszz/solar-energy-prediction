@@ -322,13 +322,10 @@ Contributions are welcome! Please:
 3. Make your changes with tests
 4. Submit a pull request
 
-## License
-
-[Specify license here]
 
 ## Contact
 
-[Your contact information]
+Eladszt@gmail.com
 
 ---
 
