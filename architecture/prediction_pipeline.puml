@@ -1,0 +1,13 @@
+@startuml prediction_pipeline
+title Solar Energy Prediction Pipeline
+
+start
+:User Inputs\n(Location, Dates);
+:Fetch Weather Data;
+:Data Cleaning\n& Feature Engineering;
+:Run AI Prediction Model;
+:Generate Energy Forecast;
+:Visualize Results\n(Graphs & Tables);
+stop
+
+@enduml

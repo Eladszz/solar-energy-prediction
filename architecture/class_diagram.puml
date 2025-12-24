@@ -1,0 +1,69 @@
+@startuml class_diagram
+title Solar Energy Prediction System - Class Diagram
+
+class SimulateRequest {
+  +latitude: float
+  +longitude: float
+  +tilt: float
+  +panel_area: float
+  +panel_efficiency: float
+  +cleanliness: Cleanliness
+  +shading: Shading
+}
+
+class SimulateResponse {
+  +location: tuple
+  +system_loss_factor: float
+  +hourly_ac_kw: list[float]
+  +avg_kw: float
+}
+
+class YearlyForecastRequest {
+  +latitude: float
+  +longitude: float
+  +tilt: float
+  +panel_area: float
+  +panel_efficiency: float
+}
+
+class YearlyForecastResponse {
+  +location: tuple
+  +monthly_kwh: list[float]
+  +yearly_total_kwh: float
+}
+
+enum Cleanliness {
+  very_clean
+  clean
+  normal
+  dirty
+  very_dirty
+}
+
+enum Shading {
+  none
+  low
+  medium
+  high
+}
+
+class SimulationService {
+  +simulate_24h_production()
+  +simulate_monthly_production()
+}
+
+class WeatherService {
+  +get_weather_forecast()
+}
+
+class LossService {
+  +calculate_loss_factor()
+}
+
+SimulateRequest --> Cleanliness
+SimulateRequest --> Shading
+SimulationService ..> SimulateResponse : returns
+SimulationService --> WeatherService : uses
+SimulationService --> LossService : uses
+
+@enduml

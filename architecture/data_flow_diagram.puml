@@ -1,0 +1,26 @@
+@startuml solar_energy_data_flow
+title Solar Energy Prediction System - Data Flow Diagram
+
+actor User
+
+rectangle "Web UI" {
+}
+
+rectangle "Prediction API" {
+}
+
+rectangle "Weather Data API" {
+}
+
+rectangle "AI Model" {
+}
+
+User --> "Web UI" : Location & Time Range
+"Web UI" --> "Prediction API" : Prediction Request
+"Prediction API" --> "Weather Data API" : Weather Data Request
+"Weather Data API" --> "Prediction API" : Weather Data
+"Prediction API" --> "AI Model" : Prepared Features
+"AI Model" --> "Prediction API" : Energy Forecast
+"Prediction API" --> "Web UI" : Forecast Results
+
+@enduml

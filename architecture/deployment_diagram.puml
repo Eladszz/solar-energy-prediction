@@ -1,0 +1,43 @@
+@startuml deployment_diagram
+title Solar Energy Prediction System - Deployment Diagram
+
+node "Client Device" {
+  [Web Browser]
+}
+
+node "Backend Server\n(localhost:8000)" {
+  [FastAPI Application] as API
+  [Simulation Engine] as Engine
+  [Weather Services] as Weather
+}
+
+node "Frontend Server\n(localhost:8501)" {
+  [Streamlit Server] as StreamlitServer
+}
+
+cloud "External Services" {
+  [Open-Meteo API] as OpenMeteo
+}
+
+[Web Browser] --> StreamlitServer : HTTP :8501
+StreamlitServer --> API : REST :8000
+API --> Engine
+API --> Weather
+Weather --> OpenMeteo : HTTPS
+
+note right of API
+  Endpoints:
+  - POST /simulate
+  - POST /forecast/yearly
+  - GET /health
+end note
+
+@enduml
+
+note right of OpenMeteo
+  Free tier limits:
+  • 10,000 calls/day
+  • No API key required
+end note
+
+@enduml

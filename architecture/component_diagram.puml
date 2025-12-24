@@ -1,0 +1,29 @@
+@startuml component_diagram
+title Solar Energy Prediction System - Component Diagram
+
+[Streamlit UI] as UI
+
+package "Backend API" {
+  [FastAPI Routers] as API
+  [Simulation Engine] as Engine
+  [Weather Services] as Weather
+}
+
+cloud "Open-Meteo API" as External
+
+UI --> API : HTTP Requests
+API --> Engine : Calculate Production
+API --> Weather : Fetch Data
+Weather --> External : API Calls
+Engine --> Weather : Get Weather
+API --> UI : JSON Response
+
+note right of Engine
+  PV Physics:
+  • Solar position & irradiance
+  • Temperature effects
+  • System losses
+  • DC/AC conversion
+end note
+
+@enduml
