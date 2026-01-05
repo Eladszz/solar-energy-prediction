@@ -7,3 +7,10 @@ venv/
 .idea/
 .vscode/
 *.log
+*.sqlite3
+*.jsonl
+*.log
+*.log.*
+*.jsonl.*
+solar_backend/logs/solar_prediction_backend.jsonl
+
