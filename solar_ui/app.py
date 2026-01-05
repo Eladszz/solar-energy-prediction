@@ -1,10 +1,10 @@
-import streamlit as st
+import streamlit as st # type: ignore
 import requests
 import pandas as pd
 import plotly.express as px
-from geopy.geocoders import Nominatim
-import folium
-from streamlit_folium import st_folium
+from geopy.geocoders import Nominatim # type: ignore
+import folium # type: ignore
+from streamlit_folium import st_folium # type: ignore
 import pycountry
 
 if "lat" not in st.session_state:
@@ -32,7 +32,7 @@ st.markdown(
 st.sidebar.header("System Parameters")
 st.sidebar.header("📍 Address")
 
-countries = sorted([c.name for c in pycountry.countries])
+countries = sorted([c.name for c in pycountry.countries]) # type: ignore
 
 country = st.sidebar.selectbox(
     "Select Country",

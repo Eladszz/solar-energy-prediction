@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from app.routers import health_router, simulate_router, yearly_forecast_router
-
+import logging
+from app.logging_conf import configure_logging
+logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Solar Energy Forecasting API",
     version="0.2.0",
@@ -10,6 +12,8 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+configure_logging()
+logger.info("Logging is configured.")
 # Routers
 app.include_router(health_router.router)
 app.include_router(simulate_router.router, prefix="/simulate", tags=["Day Simulation"])

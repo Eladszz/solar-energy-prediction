@@ -5,3 +5,13 @@ pydantic
 pandas
 prophet
 numpy
+ruff
+black
+pytest
+httpx
+rich
+asgi-correlation-id
+python-json-logger
+logtail-python
+pydantic-settings
+python-dotenv

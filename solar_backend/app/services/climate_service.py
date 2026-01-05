@@ -1,5 +1,6 @@
 import requests
-
+import logging
+logger = logging.getLogger(__name__)
 def get_climate_daily(lat: float, lon: float):
 
     """
@@ -12,8 +13,10 @@ def get_climate_daily(lat: float, lon: float):
             "&daily=shortwave_radiation_sum,temperature_2m_mean"
             "&models=best_match"
         )
+    logger.info(f"Fetching climate data from {url}")
     res = requests.get(url)
     res.raise_for_status()
+    logger.info(f"Received climate data with status code {res.status_code}")
     return res.json()
 
 

@@ -1,18 +1,21 @@
 import math
-
+from typing import List, Optional
+import logging
+logger = logging.getLogger(__name__)
 def calculate_power_kw(irradiance, t_cell, panel_area, efficiency, gamma):
     """
     Realistic power calculation including thermal derating.
     """
+    logger.debug(f"Calculating power with irradiance={irradiance}, t_cell={t_cell}, panel_area={panel_area}, efficiency={efficiency}, gamma={gamma}")
     stc_temp = 25
     thermal_factor = 1 - gamma * (t_cell - stc_temp)
+    logger.debug(f"Thermal factor calculated as {thermal_factor}")
     thermal_factor = max(thermal_factor, 0)  # avoid negative
-
+    logger.debug(f"Thermal factor after max check: {thermal_factor}")
     power_watts = irradiance * panel_area * efficiency * thermal_factor
+    logger.debug(f"Power in watts calculated as {power_watts}")
     return power_watts / 1000  # kW
 
-import math
-from typing import List, Optional
 
 
 def calculate_poa(ghi: float, latitude: float, tilt: float) -> float:
@@ -21,8 +24,11 @@ def calculate_poa(ghi: float, latitude: float, tilt: float) -> float:
     This is a first-order POA correction, not a full solar-geometry model.
     """
     # difference between tilt and latitude gives rough incidence correction
+    logger.debug(f"Calculating POA with GHI={ghi}, latitude={latitude}, tilt={tilt}")
     angle_diff = abs(latitude - tilt)
+    logger.debug(f"Angle difference calculated as {angle_diff}")
     cos_factor = math.cos(math.radians(angle_diff))
+    logger.debug(f"Cosine factor calculated as {cos_factor}")
     return max(ghi * max(cos_factor, 0.0), 0.0)
 
 
@@ -31,6 +37,7 @@ def calculate_cell_temp(poa: float, ambient_temp: float, noct: float) -> float:
     Estimate cell temperature using the NOCT model:
     Tcell = Tambient + (NOCT - 20°C) / 800 * POA
     """
+    logger.debug(f"Calculating cell temperature with POA={poa}, ambient_temp={ambient_temp}, NOCT={noct}")
     return ambient_temp + ((noct - 20.0) / 800.0) * poa
 
 
@@ -44,11 +51,13 @@ def calculate_dc_power_kw(
     """
     Compute DC power output in kW.
     """
+    logger.debug(f"Calculating DC power with POA={poa}, t_cell={t_cell}, panel_area={panel_area}, efficiency_stc={efficiency_stc}, gamma={gamma}")
     stc_temp = 25.0
     thermal_factor = 1.0 - gamma * (t_cell - stc_temp)
     thermal_factor = max(thermal_factor, 0.0)
-
+    logger.debug(f"Thermal factor calculated as {thermal_factor}")
     dc_power_watts = poa * panel_area * efficiency_stc * thermal_factor
+    logger.debug(f"DC power in watts calculated as {dc_power_watts}")
     return dc_power_watts / 1000.0
 
 
@@ -57,6 +66,7 @@ def apply_system_losses(dc_kw: float, system_loss_factor: float) -> float:
     Apply aggregated system losses AFTER DC generation.
     Example: 0.86 means 14% total losses (soiling, mismatch, wiring, inverter eff., etc.)
     """
+    logger.debug(f"Applying system losses with DC power={dc_kw}, system_loss_factor={system_loss_factor}")
     return max(dc_kw * system_loss_factor, 0.0)
 
 
@@ -65,6 +75,7 @@ def apply_inverter_clipping(ac_kw: float, ac_capacity_kw: Optional[float]) -> fl
     Limit AC power by inverter rated AC capacity.
     If ac_capacity_kw is None or <= 0 → no clipping applied.
     """
+    logger.debug(f"Applying inverter clipping with AC power={ac_kw}, ac_capacity_kw={ac_capacity_kw}")
     if ac_capacity_kw is None or ac_capacity_kw <= 0:
         return ac_kw
     return min(ac_kw, ac_capacity_kw)
@@ -89,7 +100,7 @@ def simulate_production_enhanced(
     Returns list of hourly AC power production in kW.
     """
     results_ac_kw = []
-
+    logger.info("Starting enhanced PV production simulation...")
     for ghi, ambient_temp in zip(irradiance_list, temp_list):
 
         # 1. POA irradiance
@@ -115,8 +126,9 @@ def simulate_production_enhanced(
 
         # 5. Inverter clipping
         ac_kw = apply_inverter_clipping(ac_before_clip, ac_capacity_kw)
-
+        logger.debug(f"Hour result - GHI: {ghi}, POA: {poa}, T_cell: {t_cell}, DC_kW: {dc_kw}, AC_before_clip: {ac_before_clip}, AC_kW: {ac_kw}")
         results_ac_kw.append(ac_kw)
+    logger.info(f"Enhanced PV production simulation completed. Processed {len(results_ac_kw)} hours.")
 
     return results_ac_kw
 
