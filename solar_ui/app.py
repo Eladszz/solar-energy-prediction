@@ -97,24 +97,27 @@ else:
 
 
 panel_area = st.sidebar.number_input("System Area (m²)", value=80.0)
-panel_efficiency = st.sidebar.slider("Panel Efficiency", 0.10, 0.30, 0.20)
-
-tilt = st.sidebar.slider("Tilt Angle (°)", 0, 60, 30)
-
-cleanliness = st.sidebar.selectbox(
-    "Panel Cleanliness", ["clean", "normal", "dusty"],
-    key="cleanliness_select"
-)
-
-shading = st.sidebar.selectbox(
-    "Shading Level", ["none", "low", "medium", "high"],
-    key="shading_select"
-)
-
 ac_capacity_kw = st.sidebar.number_input(
     "Inverter AC Capacity (kW)",
     value=15.0
 )
+with st.sidebar:
+    with st.expander("Advanced Settings"):
+        panel_efficiency = st.slider("Panel Efficiency", 0.10, 0.30, 0.20)
+
+        tilt = st.slider("Tilt Angle (°)", 0, 60, 30)
+
+        cleanliness = st.selectbox(
+            "Panel Cleanliness", ["clean", "normal", "dusty"],
+            key="cleanliness_select"
+        )
+
+        shading = st.selectbox(
+            "Shading Level", ["none", "low", "medium", "high"],
+            key="shading_select"
+        )
+
+
 
 # --------------------
 # Buttons
