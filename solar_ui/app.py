@@ -22,8 +22,6 @@ if "address" not in st.session_state:
     st.session_state.address = None
 if "forecast_data" not in st.session_state:
     st.session_state.forecast_data = None
-if "forecast_ml" not in st.session_state:
-    st.session_state.forecast_ml = None
 if "daily_simulation" not in st.session_state:
     st.session_state.daily_simulation = None
 if "scenarios" not in st.session_state:
@@ -150,8 +148,8 @@ else:
 # -----------------------
 # Tabs
 # -----------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["📊 Overview (Yearly/Monthly)", "📅 Daily Simulation", "🤖 Model Comparison", "🔍 Explainability", "🔁 What-If"]
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📊 Overview (Yearly/Monthly)", "📅 Daily Simulation", "🔍 Explainability", "🔁 What-If"]
 )
 if run_forecast:
     if st.session_state.lat is None or st.session_state.lon is None:
@@ -159,7 +157,6 @@ if run_forecast:
     else:
         with st.spinner("Running forecast..."):
             st.session_state.forecast_data = run_yearly("physical")
-            st.session_state.forecast_ml = run_yearly("ml")
             st.session_state.daily_simulation = run_simulation()
 # =======================
 # TAB 1 – Overview
@@ -232,40 +229,9 @@ with tab2:
 
 
 # =======================
-# TAB 3 – Model Comparison
+# TAB 3 – Explainability
 # =======================
 with tab3:
-    if st.session_state.lat is None or st.session_state.lon is None:
-        st.warning("⚠️ Please enter an address and click '📍 Locate Address' in the sidebar to see forecast data.")
-    elif st.session_state.forecast_data is None or st.session_state.forecast_ml is None:
-        st.info("👉 Click '▶ Run Forecast' in the sidebar to generate forecast data.")
-    else:
-        physical = st.session_state.forecast_data
-        ml = st.session_state.forecast_ml
-
-        df = pd.DataFrame({
-            "month": list(range(1, 13)),
-            "Physical Model": physical["monthly_kwh"],
-            "ML Model": ml["monthly_kwh"]
-        })
-
-        fig = px.line(
-            df,
-            x="month",
-            y=["Physical Model", "ML Model"],
-            markers=True,
-            title="Physical vs ML Forecast Comparison"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-        col1, col2 = st.columns(2)
-        col1.metric("Physical Yearly (kWh)", round(physical["yearly_kwh"], 1))
-        col2.metric("ML Yearly (kWh)", round(ml["yearly_kwh"], 1))
-
-# =======================
-# TAB 4 – Explainability
-# =======================
-with tab4:
     st.subheader("Key Factors Affecting Production")
 
     factors = pd.DataFrame({
@@ -288,9 +254,9 @@ with tab4:
     )
 
 # =======================
-# TAB 5 – What-If Scenario
+# TAB 4 – What-If Scenario
 # =======================
-with tab5:
+with tab4:
     st.info("The What-If scenario allows evaluating the impact of system design changes (e.g., panel area) on annual energy production.")
     if st.session_state.lat is None or st.session_state.lon is None:
         st.warning("⚠️ Please enter an address and click '📍 Locate Address' in the sidebar to see forecast data.")
