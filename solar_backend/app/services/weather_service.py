@@ -12,6 +12,7 @@ def get_weather_forecast(lat: float, lon: float, days: int = 1):
         "&hourly=shortwave_radiation,temperature_2m"
         f"&forecast_days={days}"
         "&past_days=0"
+        "&timezone=auto"
     )
 
     

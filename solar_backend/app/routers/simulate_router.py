@@ -34,9 +34,15 @@ def simulate(req: SimulationRequest):
         ac_capacity_kw=req.ac_capacity_kw
     )
 
+    # Extract timezone and time information from weather data
+    timezone = weather.get("timezone", "UTC")
+    hourly_time = weather.get("hourly", {}).get("time", [])
+
     return {
         "location": [req.latitude, req.longitude],
         "system_loss_factor": system_loss_factor,
         "hourly_ac_kw": ac_power_kw,
-        "avg_kw": sum(ac_power_kw) / len(ac_power_kw)
+        "avg_kw": sum(ac_power_kw) / len(ac_power_kw),
+        "timezone": timezone,
+        "hourly_time": hourly_time
     }
