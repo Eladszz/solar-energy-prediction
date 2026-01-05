@@ -20,7 +20,8 @@ def yearly(req: YearlyForecastRequest):
         efficiency=req.panel_efficiency,
         gamma=req.gamma,
         noct=req.noct,
-        system_loss_factor=system_loss_factor
+        system_loss_factor=system_loss_factor,
+        ac_capacity_kw=req.ac_capacity_kw
     )
 
     return {

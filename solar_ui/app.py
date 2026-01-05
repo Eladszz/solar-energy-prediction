@@ -87,14 +87,14 @@ run_forecast = st.sidebar.button("▶ Run Forecast", type="primary", key="run_fo
 # -----------------------
 # Helper
 # -----------------------
-def run_yearly(model_type="physical", area_override=None):
+def run_yearly(model_type="physical", area_override=None, ac_capacity_override=None):
     payload = {
         "latitude": st.session_state.lat,
         "longitude": st.session_state.lon,
         "panel_area": area_override or panel_area,
         "panel_efficiency": panel_efficiency,
         "tilt": tilt,
-        "ac_capacity_kw": ac_capacity_kw,
+        "ac_capacity_kw": ac_capacity_override or ac_capacity_kw,
         "model_type": model_type
     }
     res = requests.post(f"{BACKEND_URL}/forecast/yearly", json=payload)
@@ -290,6 +290,16 @@ with tab5:
             step=5,
             help="Increase the panel area by a certain percentage to see its effect on production."
         )
+        what_if_ac_capacity = st.text_input(
+            "Inverter AC Capacity Override (kW)",
+            value=str(ac_capacity_kw),
+            help="Optionally override the inverter AC capacity for this scenario."
+        )
+        try:
+            new_ac_capacity_kw = float(what_if_ac_capacity)
+        except ValueError:
+            new_ac_capacity_kw = ac_capacity_kw
+
         new_area = panel_area * (1 + what_if_panel_area / 100)
 
         scenario = None
@@ -297,19 +307,21 @@ with tab5:
             scenario = run_yearly(
                 model_type="physical",
                 area_override=new_area,
+                ac_capacity_override=new_ac_capacity_kw
             )
 
         if scenario:
+            scenario_label = f"Area +{what_if_panel_area}%"
             df = pd.DataFrame({
                 "month": list(range(1, 13)),
                 "Base System": base["monthly_kwh"],
-                "Area +20%": scenario["monthly_kwh"]
+                scenario_label: scenario["monthly_kwh"]
             })
 
             fig = px.line(
                 df,
                 x="month",
-                y=["Base System", "Area +20%"],
+                y=["Base System", scenario_label],
                 markers=True,
                 title="What-If Scenario: Increased Panel Area"
             )

@@ -10,7 +10,8 @@ def compute_yearly_from_real_data(
     efficiency,
     gamma,
     noct,
-    system_loss_factor=0.87
+    system_loss_factor=0.87,
+    ac_capacity_kw= 15.0
 ):
     irr_list = df["irr"].tolist()
     temp_list = df["temp"].tolist()
@@ -24,7 +25,8 @@ def compute_yearly_from_real_data(
         efficiency=efficiency,
         gamma=gamma,
         noct=noct,
-        system_loss_factor=system_loss_factor
+        system_loss_factor=system_loss_factor,
+        ac_capacity_kw=ac_capacity_kw
     )
 
     df["kw"] = hourly_kw

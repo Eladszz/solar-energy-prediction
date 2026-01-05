@@ -8,7 +8,7 @@ class BasePVRequest(BaseModel):
     panel_efficiency: float = 0.20
     cleanliness: str = "normal"
     shading: str = "low"
-    ac_capacity_kw: float | None = None
+    ac_capacity_kw: float = 15.0
     gamma: float = 0.004
     noct: float = 45.0
 
