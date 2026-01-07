@@ -1,26 +1,34 @@
-@startuml solar_energy_data_flow
-title Solar Energy Prediction System - Data Flow Diagram
+@startuml solar_energy_data_flow_layered
+title Data Flow Diagram – Solar Energy Prediction System (Layered View)
 
-actor User
+skinparam componentStyle rectangle
+skinparam style strictuml
 
-rectangle "Web UI" {
+rectangle "Presentation Layer" #E3F2FD {
+  component "User Input\n(Location & System Parameters)" as input
+  component "Forecast Visualization\n(Charts & Reports)" as output
 }
 
-rectangle "Prediction API" {
+rectangle "Application Logic Layer" #E8F5E9 {
+  component "Forecast Management"
+  component "Prediction Models\n(Physical / ML-based)"
 }
 
-rectangle "Weather Data API" {
+rectangle "Data & Integration Layer" #FFFDE7 {
+  component "Geolocation Data"
+  component "Weather Data"
+  component "Historical Production Data"
 }
 
-rectangle "AI Model" {
-}
+input --> "Forecast Management" : Location & Configuration Data
 
-User --> "Web UI" : Location & Time Range
-"Web UI" --> "Prediction API" : Prediction Request
-"Prediction API" --> "Weather Data API" : Weather Data Request
-"Weather Data API" --> "Prediction API" : Weather Data
-"Prediction API" --> "AI Model" : Prepared Features
-"AI Model" --> "Prediction API" : Energy Forecast
-"Prediction API" --> "Web UI" : Forecast Results
+"Forecast Management" --> "Geolocation Data" : Resolve location
+"Forecast Management" --> "Weather Data" : Retrieve climate information
+"Forecast Management" --> "Historical Production Data" : Retrieve past production
+
+"Forecast Management" --> "Prediction Models\n(Physical / ML-based)" : Prepared input features
+"Prediction Models\n(Physical / ML-based)" --> "Forecast Management" : Forecast results
+
+"Forecast Management" --> output : Energy production forecast
 
 @enduml

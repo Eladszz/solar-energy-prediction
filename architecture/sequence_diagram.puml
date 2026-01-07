@@ -1,70 +1,36 @@
-@startuml sequence_diagram
-title Solar Energy Production Simulation - Sequence Diagram
+@startuml sequence_diagram_logical
+autonumber
+skinparam style strictuml
+title Energy Forecast Simulation – Logical Sequence Diagram
 
-actor User
-participant "Streamlit UI" as UI
-participant "FastAPI\nSimulate Router" as Router
-participant "Weather\nService" as Weather
-participant "Simulation\nService" as Simulation
-participant "Loss\nService" as Loss
-participant "HTTP\nClient" as HTTP
-participant "Open-Meteo\nAPI" as API
+actor "User" as user
+participant "User Interface" as ui
+participant "Forecast Controller" as controller
+participant "Loss Calculation" as loss
+participant "Weather Data Provider" as weather
+participant "Forecast Engine" as engine
 
-User -> UI: Enter location &\nsystem parameters
-activate UI
+user -> ui : Initiate forecast request
+activate ui
 
-UI -> Router: POST /simulate\n{lat, lon, tilt, panel_area...}
-activate Router
+ui -> controller : Request energy forecast
+activate controller
 
-Router -> Weather: get_weather_forecast(lat, lon)
-activate Weather
+controller -> loss : Calculate system loss factors
+loss --> controller : Loss parameters
 
-Weather -> HTTP: fetch(weather_url)
-activate HTTP
+controller -> weather : Retrieve weather data
+weather --> controller : Weather information
 
-HTTP -> API: GET /forecast\n?latitude=X&longitude=Y
-activate API
+controller -> engine : Compute energy forecast
+note right of engine
+  Forecast Engine supports:
+  - Physical models (implemented)
+  - ML-based models (planned)
+end note
+engine --> controller : Forecast results
 
-API --> HTTP: Weather data\n(24h forecast)
-deactivate API
-
-HTTP --> Weather: Response
-deactivate HTTP
-
-Weather --> Router: Parsed weather data
-deactivate Weather
-
-Router -> Loss: calculate_loss_factor(cleanliness, shading)
-activate Loss
-
-Loss -> Loss: Calculate cleanliness factor
-Loss -> Loss: Calculate shading factor
-Loss -> Loss: Combine losses
-
-Loss --> Router: loss_factor
-deactivate Loss
-
-Router -> Simulation: simulate_production(\nweather, system_params, loss_factor)
-activate Simulation
-
-loop For each hour (0-23)
-    Simulation -> Simulation: Calculate solar position\n(elevation, azimuth)
-    Simulation -> Simulation: Calculate irradiance on panel\n(angle of incidence, tilt)
-    Simulation -> Simulation: Calculate DC power\n(irradiance × area × efficiency)
-    Simulation -> Simulation: Apply temperature losses\n(temp_coefficient × (T - 25))
-    Simulation -> Simulation: Apply system losses
-    Simulation -> Simulation: Convert DC to AC\n(inverter efficiency)
-    Simulation -> Simulation: Apply inverter clipping
-end
-
-Simulation --> Router: hourly_ac_kw[24], avg_kw
-deactivate Simulation
-
-Router --> UI: {location, system_loss_factor,\nhourly_ac_kw, avg_kw}
-deactivate Router
-
-UI -> UI: Render charts\n& statistics
-UI --> User: Display production graph\n& daily total
-deactivate UI
+controller --> ui : Forecast results
+ui --> user : Display forecast results
 
 @enduml

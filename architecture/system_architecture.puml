@@ -1,0 +1,40 @@
+@startuml system_architecture_high_level
+title System Architecture Diagram – Solar Energy Prediction System
+
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BackgroundColor<<presentation>> #E3F2FD
+  BackgroundColor<<logic>> #E8F5E9
+  BackgroundColor<<data>> #FFFDE7
+}
+
+rectangle "Solar Energy Prediction System" {
+
+  rectangle "Presentation Layer" <<presentation>> {
+    component "User Interface"
+  }
+
+  rectangle "Application Logic Layer" <<logic>> {
+    component "Forecast Management"
+    component "Scenario Comparison"
+    component "Accuracy Evaluation"
+    
+    component "Predictive Models\n(Physical & ML-based)" as models
+  }
+
+  rectangle "Data & Integration Layer" <<data>> {
+    component "Weather Data Integration"
+    component "Geolocation Integration"
+    component "Historical Production Data"
+  }
+}
+
+"User Interface" --> "Forecast Management"
+"Scenario Comparison" --> "Forecast Management"
+
+"Forecast Management" --> models
+"Forecast Management" --> "Weather Data Integration"
+"Forecast Management" --> "Historical Production Data"
+"Geolocation Integration" --> "Forecast Management"
+
+@enduml

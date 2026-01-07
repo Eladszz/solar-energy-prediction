@@ -1,0 +1,37 @@
+@startuml use_case_diagram
+left to right direction
+
+actor "User" as user
+actor "Weather Data Provider" as weather_api
+actor "Geocoding Service" as geocoder
+
+rectangle "Solar Energy Prediction System" {
+
+  usecase "Define Location" as UC_Location
+  usecase "Configure System Parameters" as UC_Config
+  usecase "Run Energy Forecast" as UC_Run
+  usecase "View Production Forecast" as UC_View
+  usecase "Compare Forecast Scenarios" as UC_Compare
+
+  note right of UC_Config
+    System parameters include:
+    - AC Capacity
+    - Panel Area
+    - Tilt & Efficiency
+    - Cleanliness
+    - Shading
+  end note
+
+  UC_Run ..> UC_View : <<include>>
+  UC_Compare ..> UC_Run : <<include>>
+}
+
+user --> UC_Location
+user --> UC_Config
+user --> UC_Run
+user --> UC_Compare
+
+UC_Location -- geocoder : resolve coordinates
+UC_Run -- weather_api : retrieve weather data
+
+@enduml
