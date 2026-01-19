@@ -4,9 +4,16 @@ import requests
 import pandas as pd
 import plotly.express as px
 from geopy.geocoders import Nominatim # type: ignore
+from utils import estimate_area_m2_from_bounds
 import folium # type: ignore
 from streamlit_folium import st_folium # type: ignore
 import pycountry
+from utils import reverse_geocode
+from folium.plugins import Draw # type: ignore
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 BACKEND_URL = "http://127.0.0.1:8000"
 
@@ -27,6 +34,14 @@ if "daily_simulation" not in st.session_state:
     st.session_state.daily_simulation = None
 if "scenarios" not in st.session_state:
     st.session_state.scenarios = []
+if "pending_panel_area" not in st.session_state:
+    st.session_state.pending_panel_area = None
+if "last_drawing_id" not in st.session_state:
+    st.session_state.last_drawing_id = None
+if "pending_address" not in st.session_state:
+    st.session_state.pending_address = None
+if "auto_run_forecast" not in st.session_state:
+    st.session_state.auto_run_forecast = False
 
 # -----------------------
 # Sidebar – System Inputs
@@ -35,19 +50,32 @@ st.sidebar.header("📍 Location")
 
 countries = sorted([c.name for c in pycountry.countries]) # type: ignore
 
+if st.session_state.pending_address is not None:
+    st.session_state.country_select = st.session_state.pending_address.country
+    st.session_state.city_input = st.session_state.pending_address.city
+    st.session_state.street_input = st.session_state.pending_address.street
+    st.session_state.house_number_input = st.session_state.pending_address.number
+    st.session_state.pending_address = None
+
 country = st.sidebar.selectbox(
     "Select Country",
     countries,
     index=countries.index("Israel") if "Israel" in countries else 0,
     key="country_select"
 )
-city = st.sidebar.text_input("City", value="Tel Aviv")
+city = st.sidebar.text_input("City", value="Tel Aviv", key="city_input")
 
 c1, c2 = st.sidebar.columns([3, 1])
 with c1:
-    street = st.text_input("Street", value="Dizengoff")
+    street = st.text_input("Street", value="Dizengoff", key="street_input")
 with c2:
-    number = st.text_input("Number", value="100")
+    number = st.text_input("Number", value="100", key="house_number_input")
+
+st.sidebar.markdown("### 📍 Detected Address")
+if st.session_state.address:
+    st.sidebar.info(st.session_state.address)
+else:
+    st.sidebar.caption("No address detected yet")
 
 address = f"{street} {number}, {city}, {country}"
 geocode_btn = st.sidebar.button("📍 Locate Address", type="primary")
@@ -68,7 +96,18 @@ if geocode_btn and address:
         st.error("Address not found")
 st.sidebar.header("⚙️ System Parameters")
 ac_capacity_kw = st.sidebar.number_input("Inverter AC Capacity (kW)", value=15.0)
-panel_area = st.sidebar.number_input("Panel Area (m²)", value=80.0)
+
+if st.session_state.pending_panel_area is not None:
+    st.session_state.panel_area = st.session_state.pending_panel_area
+    st.session_state.pending_panel_area = None
+
+panel_area = st.sidebar.number_input(
+    "Panel Area (m²)",
+    min_value=0.0,
+    key="panel_area"
+)
+
+
 
 with st.sidebar.expander("Advanced Settings:"):
     panel_efficiency = st.slider("Panel Efficiency", 0.10, 0.30, 0.20)
@@ -141,24 +180,70 @@ def run_simulation():
 if st.session_state.lat is not None and st.session_state.lon is not None:
     m = folium.Map(
         location=[st.session_state.lat, st.session_state.lon],
-        zoom_start=17
-        )
+        zoom_start=18
+    )
+
+    # Marker
     folium.Marker(
         [st.session_state.lat, st.session_state.lon],
         popup=st.session_state.address,
-        draggable=True,
-        icon=folium.Icon(icon="home")
-        ).add_to(m)
-    map_data = st_folium(m, use_container_width=700, height=400)
+        icon=folium.Icon(icon="home"),
+    ).add_to(m)
 
-    if map_data and map_data.get("last_clicked"):
-        st.session_state.lat = map_data["last_clicked"]["lat"]
-        st.session_state.lon = map_data["last_clicked"]["lng"]
+    # Enable drawing (rectangle only)
+    draw = Draw(
+        draw_options={
+            "polyline": False,
+            "polygon": False,
+            "circle": False,
+            "circlemarker": False,
+            "marker": False,
+            "rectangle": True,
+        },
+        edit_options={"edit": True}
+    )
+    draw.add_to(m)
 
-    st.caption(
-        f"📌 Selected location: "
-        f"{st.session_state.lat:.6f}, {st.session_state.lon:.6f}"
-        )
+    map_data = st_folium(m, height=400, use_container_width=True)
+
+    if map_data and map_data.get("all_drawings"):
+        last_shape = map_data["all_drawings"][-1]
+        drawing_id = last_shape.get("id") or hash(str(last_shape))
+
+        if drawing_id != st.session_state.last_drawing_id:
+            st.session_state.last_drawing_id = drawing_id
+
+            coords = last_shape["geometry"]["coordinates"][0]
+            lats = [c[1] for c in coords]
+            lons = [c[0] for c in coords]
+
+            bounds = [[min(lats), min(lons)], [max(lats), max(lons)]]
+
+            roof_area = estimate_area_m2_from_bounds(bounds)
+            center_lat = sum(lats) / len(lats)
+            center_lon = sum(lons) / len(lons)
+
+            st.session_state.pending_panel_area = round(roof_area, 1)
+            st.session_state.lat = center_lat
+            st.session_state.lon = center_lon
+            new_address = reverse_geocode(center_lat, center_lon)
+            if new_address:
+                st.session_state.address = new_address
+                logger.info(f"Updated address: {new_address}")
+
+
+            st.success(
+                f"🏠 Roof detected | Area: {roof_area:.1f} m² | Location updated"
+            )
+            logger.info(f"Detected roof area: {roof_area:.1f} m² at ({center_lat}, {center_lon})")
+
+            st.session_state.auto_run_forecast = True
+            st.rerun()
+
+
+
+
+
 
 
 else:
@@ -171,8 +256,10 @@ else:
 tab1, tab2, tab3, tab4 = st.tabs(
     ["📊 Overview (Yearly/Monthly)", "📅 Daily Simulation", "🔍 Explainability", "🔁 What-If"]
 )
-if run_forecast:
-    if st.session_state.lat is None or st.session_state.lon is None:
+if run_forecast or st.session_state.auto_run_forecast:
+    if st.session_state.panel_area is None or st.session_state.panel_area <= 0:
+        st.error("Please specify a valid Panel Area before running the forecast.")
+    elif st.session_state.lat is None or st.session_state.lon is None:
         st.warning("Please select a location first")
     else:
         with st.spinner("Running forecast..."):
