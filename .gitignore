@@ -14,3 +14,6 @@ venv/
 *.jsonl.*
 solar_backend/logs/solar_prediction_backend.jsonl
 
+solar_backend/logs/solar_prediction_backend.jsonl
+backup
+backup

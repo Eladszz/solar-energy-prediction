@@ -29,5 +29,5 @@ def get_weather_forecast(lat: float, lon: float, days: int = 1):
             return None
         return data
     except Exception as e:
-        print("⚠ Weather API error:", e)
+        logger.error("Weather API error:", e)
         return None

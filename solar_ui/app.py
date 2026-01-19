@@ -1,3 +1,4 @@
+
 import streamlit as st # type: ignore
 import requests
 import pandas as pd
@@ -82,6 +83,25 @@ with st.sidebar.expander("Advanced Settings:"):
         key="shading_select"
     )
 
+    gamma = st.number_input(
+        "Temperature Coefficient (gamma)",
+        min_value=0.002,
+        max_value=0.006,
+        value=0.004,
+        step=0.0001,
+        format="%.4f",
+        help="Panel efficiency loss per °C above 25°C"
+    )
+
+    noct = st.number_input(
+        "NOCT (°C)",
+        min_value=35.0,
+        max_value=60.0,
+        value=45.0,
+        step=1.0,
+        help="Nominal Operating Cell Temperature"
+    )
+
 
 run_forecast = st.sidebar.button("▶ Run Forecast", type="primary", key="run_forecast_btn", disabled=st.session_state.lat is None or st.session_state.lon is None)
 # -----------------------
@@ -129,7 +149,7 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         draggable=True,
         icon=folium.Icon(icon="home")
         ).add_to(m)
-    map_data = st_folium(m, width=700, height=400)
+    map_data = st_folium(m, use_container_width=700, height=400)
 
     if map_data and map_data.get("last_clicked"):
         st.session_state.lat = map_data["last_clicked"]["lat"]
@@ -220,8 +240,9 @@ with tab2:
             x=x_col,
             y="ac_kw",
             labels={"ac_kw": "AC Power (kW)", x_col: x_label},
-            markers=True
+            markers=True,
         )
+        fig.update_layout(hovermode="x unified")
 
         st.plotly_chart(fig, use_container_width=True)
 
@@ -254,145 +275,211 @@ with tab3:
     )
 
 # =======================
-# TAB 4 – What-If Scenario
+# TAB 4 – What-If Scenario (Refactored)
 # =======================
+
+
 with tab4:
-    st.info("The What-If scenario allows evaluating the impact of system design changes (e.g., panel area) on annual energy production.")
+    st.info(
+        "The What-If scenario allows evaluating the impact of system design changes "
+        "(e.g., panel area, inverter capacity) on annual energy production."
+    )
+
     if st.session_state.lat is None or st.session_state.lon is None:
-        st.warning("⚠️ Please enter an address and click '📍 Locate Address' in the sidebar to see forecast data.")
-    elif st.session_state.forecast_data is None:
+        st.warning("⚠️ Please enter an address and click '📍 Locate Address' in the sidebar.")
+        st.stop()
+
+    if st.session_state.forecast_data is None:
         st.info("👉 Click '▶ Run Forecast' in the sidebar to generate baseline forecast data first.")
-    else:
-        base = st.session_state.forecast_data
+        st.stop()
+
+    # -----------------------
+    # Base system (baseline)
+    # -----------------------
+    # Provide default values for gamma and noct if not set in the UI
+
+    if st.session_state.lat is None or st.session_state.lon is None:
+        st.warning("⚠️ Please enter an address and click '📍 Locate Address' in the sidebar.")
+        st.stop()
         
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.write("**Configure a new scenario:**")
-            scenario_name = st.text_input(
-                "Scenario Name",
-                value=f"Scenario {len(st.session_state.scenarios) + 1}",
-                help="Give this scenario a descriptive name"
-            )
-            
-        with col2:
-            st.write("")
-            st.write("")
-            if st.button("🗑️ Clear All Scenarios", help="Remove all scenarios from the comparison"):
-                st.session_state.scenarios = []
-                st.rerun()
-        
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            what_if_panel_area = st.slider(
-                "Panel Area Increase (%)",
-                -50,
-                200,
-                20,
-                step=5,
-                help="Increase or decrease the panel area by a certain percentage."
-            )
-            
-        with col_b:
-            what_if_ac_capacity = st.number_input(
-                "Inverter AC Capacity (kW)",
-                value=float(ac_capacity_kw),
-                min_value=0.0,
-                help="Override the inverter AC capacity for this scenario."
+    latitude: float = float(st.session_state.lat) # type: ignore
+    longitude: float = float(st.session_state.lon) # type: ignore
+
+
+    base_request = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "tilt": tilt,
+        "panel_area": panel_area,
+        "panel_efficiency": panel_efficiency,
+        "cleanliness": cleanliness,
+        "shading": shading,
+        "ac_capacity_kw": ac_capacity_kw,
+        "gamma": gamma,
+        "noct": noct,
+    }
+
+    if "scenario_requests" not in st.session_state:
+        st.session_state.scenario_requests = []
+
+    # -----------------------
+    # Scenario configuration
+    # -----------------------
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.write("**Configure a new scenario:**")
+        scenario_name = st.text_input(
+            "Scenario Name",
+            value=f"Scenario {len(st.session_state.scenario_requests) + 1}",
+        )
+
+    with col2:
+        st.write("")
+        st.write("")
+        if st.button("🗑️ Clear All Scenarios"):
+            st.session_state.scenario_requests = []
+            st.rerun()
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        panel_area_delta_pct = st.slider(
+            "Panel Area Change (%)",
+            -50,
+            200,
+            20,
+            step=5,
+        )
+
+    with col_b:
+        scenario_ac_capacity = st.number_input(
+            "Inverter AC Capacity (kW)",
+            value=float(ac_capacity_kw),
+            min_value=0.0,
+        )
+
+    new_panel_area = panel_area * (1 + panel_area_delta_pct / 100)
+
+    if st.button("➕ Add Scenario to Comparison", type="primary"):
+        scenario_request = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "tilt": tilt,
+            "panel_area": new_panel_area,
+            "panel_efficiency": panel_efficiency,
+            "cleanliness": cleanliness,
+            "shading": shading,
+            "ac_capacity_kw": scenario_ac_capacity,
+            "gamma": gamma,
+            "noct": noct,
+        }
+
+        st.session_state.scenario_requests.append({
+            "name": scenario_name,
+            "request": scenario_request,
+            "panel_area_change": panel_area_delta_pct,
+        })
+
+        st.success(f"✅ Added scenario: {scenario_name}")
+        st.rerun()
+
+    # -----------------------
+    # Scenario comparison
+    # -----------------------
+    if st.session_state.scenario_requests:
+        st.divider()
+        st.subheader("📊 Scenario Comparison")
+
+        scenarios = [base_request] + [
+            s["request"] for s in st.session_state.scenario_requests
+        ]
+
+        with st.spinner("Comparing scenarios..."):
+            response = requests.post(
+            f"{BACKEND_URL}/scenarios/compare",
+            json=[s for s in scenarios]
+        )
+
+        if response.status_code != 200:
+            st.error(response.json().get("detail", "Scenario comparison failed"))
+            st.stop()
+
+        comparison = response.json()
+
+
+        # -----------------------
+        # Monthly comparison chart
+        # -----------------------
+        df_chart = {
+            "month": list(range(1, 13)),
+            "Base System": comparison["results"][0]["monthly_kwh"],
+        }
+
+        for idx, s in enumerate(st.session_state.scenario_requests):
+            df_chart[s["name"]] = comparison["results"][idx + 1]["monthly_kwh"]
+
+        df_plot = pd.DataFrame(df_chart)
+
+        fig = px.line(
+            df_plot,
+            x="month",
+            y=[c for c in df_plot.columns if c != "month"],
+            markers=True,
+            title="Monthly Energy Production Comparison",
+            labels={"value": "Energy (kWh)", "month": "Month", "variable": "Scenario"},
+        )
+        fig.update_layout(hovermode="x unified")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # -----------------------
+        # Annual summary metrics
+        # -----------------------
+        st.subheader("📈 Annual Production Summary")
+        cols = st.columns(len(st.session_state.scenario_requests) + 1)
+
+        base_result = comparison["results"][0]
+
+        with cols[0]:
+            st.metric(
+                "Base System",
+                f"{round(base_result['yearly_kwh'], 1)} kWh",
             )
 
-        new_area = panel_area * (1 + what_if_panel_area / 100)
-        
-        if st.button("➕ Add Scenario to Comparison", type="primary"):
-            with st.spinner("Running scenario..."):
-                scenario_data = run_yearly(
-                    model_type="physical",
-                    area_override=new_area,
-                    ac_capacity_override=what_if_ac_capacity
-                )
-                
-                st.session_state.scenarios.append({
-                    "name": scenario_name,
-                    "panel_area": new_area,
-                    "ac_capacity_kw": what_if_ac_capacity,
-                    "panel_area_change": what_if_panel_area,
-                    "data": scenario_data
-                })
-                st.success(f"✅ Added scenario: {scenario_name}")
-                st.rerun()
-
-        # Display comparison if scenarios exist
-        if st.session_state.scenarios:
-            st.divider()
-            st.subheader("📊 Scenario Comparison")
-            
-            # Build dataframe with base and all scenarios
-            df_dict = {
-                "month": list(range(1, 13)),
-                "Base System": base["monthly_kwh"]
-            }
-            
-            for scenario in st.session_state.scenarios:
-                df_dict[scenario["name"]] = scenario["data"]["monthly_kwh"]
-            
-            df = pd.DataFrame(df_dict)
-            
-            # Create line chart
-            columns_to_plot = [col for col in df.columns if col != "month"]
-            fig = px.line(
-                df,
-                x="month",
-                y=columns_to_plot,
-                markers=True,
-                title="Monthly Energy Production Comparison",
-                labels={"value": "Energy (kWh)", "month": "Month", "variable": "Scenario"}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Display metrics in columns
-            st.subheader("📈 Annual Production Summary")
-            cols = st.columns(len(st.session_state.scenarios) + 1)
-            
-            with cols[0]:
+        for idx, s in enumerate(st.session_state.scenario_requests):
+            result = comparison["results"][idx + 1]
+            with cols[idx + 1]:
                 st.metric(
-                    "Base System",
-                    f"{round(base['yearly_kwh'], 1)} kWh",
-                    help=f"Panel Area: {panel_area} m², AC Capacity: {ac_capacity_kw} kW"
+                    s["name"],
+                    f"{round(result['yearly_kwh'], 1)} kWh",
+                    f"{result['deviation_percent']:+.1f}%",
                 )
-            
-            for idx, scenario in enumerate(st.session_state.scenarios):
-                with cols[idx + 1]:
-                    delta = scenario["data"]["yearly_kwh"] - base["yearly_kwh"]
-                    delta_percent = (delta / base["yearly_kwh"]) * 100
-                    st.metric(
-                        scenario["name"],
-                        f"{round(scenario['data']['yearly_kwh'], 1)} kWh",
-                        f"{delta:+.1f} kWh ({delta_percent:+.1f}%)",
-                        help=f"Panel Area: {scenario['panel_area']:.1f} m² ({scenario['panel_area_change']:+.0f}%), AC Capacity: {scenario['ac_capacity_kw']} kW"
-                    )
-            
-            # Scenario details table
-            with st.expander("📋 View Scenario Details"):
-                details_data = []
-                details_data.append({
-                    "Scenario": "Base System",
-                    "Panel Area (m²)": panel_area,
-                    "AC Capacity (kW)": ac_capacity_kw,
-                    "Annual Energy (kWh)": round(base["yearly_kwh"], 1),
-                    "Gain vs Base (%)": "—"
+
+        # -----------------------
+        # Details table
+        # -----------------------
+        with st.expander("📋 View Scenario Details"):
+            rows = []
+
+            rows.append({
+                "Scenario": "Base System",
+                "Panel Area (m²)": panel_area,
+                "AC Capacity (kW)": ac_capacity_kw,
+                "Annual Energy (kWh)": round(base_result["yearly_kwh"], 1),
+                "Gain vs Base (%)": "—",
+            })
+
+            for idx, s in enumerate(st.session_state.scenario_requests):
+                result = comparison["results"][idx + 1]
+                rows.append({
+                    "Scenario": s["name"],
+                    "Panel Area (m²)": round(s["request"]["panel_area"], 1),
+                    "AC Capacity (kW)": s["request"]["ac_capacity_kw"],
+                    "Annual Energy (kWh)": round(result["yearly_kwh"], 1),
+                    "Gain vs Base (%)": f"{result['deviation_percent']:+.1f}%",
                 })
-                
-                for scenario in st.session_state.scenarios:
-                    delta_percent = ((scenario["data"]["yearly_kwh"] - base["yearly_kwh"]) / base["yearly_kwh"]) * 100
-                    details_data.append({
-                        "Scenario": scenario["name"],
-                        "Panel Area (m²)": round(scenario["panel_area"], 1),
-                        "AC Capacity (kW)": scenario["ac_capacity_kw"],
-                        "Annual Energy (kWh)": round(scenario["data"]["yearly_kwh"], 1),
-                        "Gain vs Base (%)": f"{delta_percent:+.1f}%"
-                    })
-                
-                st.dataframe(pd.DataFrame(details_data), use_container_width=True, hide_index=True)
-        else:
-            st.info("👆 Configure and add scenarios above to see the comparison.")
+
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    else:
+        st.info("👆 Configure and add scenarios above to see the comparison.")

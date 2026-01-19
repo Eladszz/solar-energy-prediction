@@ -79,7 +79,7 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         draggable=True,
         icon=folium.Icon(icon="home")
         ).add_to(m)
-    map_data = st_folium(m, width=700, height=400)
+    map_data = st_folium(m, use_container_width=700, height=400)
 
     if map_data and map_data.get("last_clicked"):
         st.session_state.lat = map_data["last_clicked"]["lat"]
