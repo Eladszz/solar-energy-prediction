@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 import logging
 
-from app.models.pv_models import BasePVRequest
+from app.models.requests import BasePVRequest
 from app.services.scenario_comparison_service import compare_yearly_scenarios
 logger = logging.getLogger(__name__)
 router = APIRouter()

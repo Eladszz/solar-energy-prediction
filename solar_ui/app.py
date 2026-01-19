@@ -483,3 +483,50 @@ with tab4:
 
     else:
         st.info("👆 Configure and add scenarios above to see the comparison.")
+    
+    if st.button("📊 Evaluate Model Accuracy"):
+        with st.spinner("Evaluating accuracy..."):
+            response = requests.post(
+                f"{BACKEND_URL}/evaluation/accuracy",
+                json={
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "tilt": tilt,
+                    "panel_area": panel_area,
+                    "panel_efficiency": panel_efficiency,
+                    "cleanliness": cleanliness,
+                    "shading": shading,
+                    "ac_capacity_kw": ac_capacity_kw,
+                    "gamma": gamma,
+                    "noct": noct,
+                }
+            )
+
+            if response.status_code != 200:
+                st.error("Accuracy evaluation failed")
+                st.stop()
+
+            accuracy = response.json()
+            mape = accuracy["mape_percent"]
+            quality = accuracy["quality"]
+
+            if quality == "EXCELLENT":
+                color = "green"
+            elif quality == "GOOD":
+                color = "orange"
+            else:
+                color = "red"
+
+            st.markdown("### 📊 Model Accuracy")
+
+            st.metric(
+                label="MAPE (%)",
+                value=f"{mape}%",
+                delta=quality
+            )
+
+            st.markdown(
+                f"<span style='color:{color}; font-weight:bold'>Model quality: {quality}</span>",
+                unsafe_allow_html=True
+            )
+

@@ -1,5 +1,5 @@
 from typing import List, Dict
-from app.models.pv_models import BasePVRequest
+from app.models.requests import BasePVRequest
 from app.services.weather_archive_service import get_year_archive
 from app.services.yearly_forecast_service import compute_yearly_from_real_data
 from app.services.loss_service import compute_system_loss_factor
