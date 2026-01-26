@@ -8,6 +8,8 @@ numpy
 ruff
 black
 pytest
+pytest-cov
+pytest-html
 httpx
 rich
 asgi-correlation-id
