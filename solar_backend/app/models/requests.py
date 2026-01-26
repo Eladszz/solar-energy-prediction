@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class BasePVRequest(BaseModel):
     latitude: float
     longitude: float
@@ -19,7 +20,6 @@ class SimulationRequest(BasePVRequest):
 
 class YearlyForecastRequest(BasePVRequest):
     year: int | None = None
-
 
 
 class AccuracyEvaluationRequest(BaseModel):

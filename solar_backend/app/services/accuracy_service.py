@@ -31,8 +31,7 @@ def evaluate_yearly_accuracy(
 
     # 2. System loss
     system_loss_factor = compute_system_loss_factor(
-        cleanliness=cleanliness,
-        shading=shading
+        cleanliness=cleanliness, shading=shading
     )
 
     # 3. Run simulation (prediction)
@@ -45,13 +44,15 @@ def evaluate_yearly_accuracy(
         gamma=gamma,
         noct=noct,
         system_loss_factor=system_loss_factor,
-        ac_capacity_kw=ac_capacity_kw
+        ac_capacity_kw=ac_capacity_kw,
     )
 
     predicted_yearly = forecast["yearly_kwh"]
 
     # 4. “Actual” yearly energy (baseline from same data)
-    actual_yearly = df["irr"].sum() * panel_area * efficiency / 1000  # simplified baseline
+    actual_yearly = (
+        df["irr"].sum() * panel_area * efficiency / 1000
+    )  # simplified baseline
 
     # 5. Accuracy metric
     mape = calculate_mape(actual_yearly, predicted_yearly)
@@ -69,5 +70,5 @@ def evaluate_yearly_accuracy(
         "actual_yearly_kwh": round(actual_yearly, 1),
         "predicted_yearly_kwh": round(predicted_yearly, 1),
         "mape_percent": round(mape, 2),
-        "quality": quality
+        "quality": quality,
     }

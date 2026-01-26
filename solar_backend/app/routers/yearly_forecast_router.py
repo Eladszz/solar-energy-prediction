@@ -5,13 +5,17 @@ from app.services.yearly_forecast_service import compute_yearly_from_real_data
 from app.services.loss_service import compute_system_loss_factor
 
 import pandas as pd
+
 router = APIRouter()
+
 
 @router.post("/")
 def yearly(req: YearlyForecastRequest):
 
     df = get_year_archive(req.latitude, req.longitude, pd.Timestamp.now().year - 1)
-    system_loss_factor = compute_system_loss_factor(cleanliness=req.cleanliness,shading=req.shading)
+    system_loss_factor = compute_system_loss_factor(
+        cleanliness=req.cleanliness, shading=req.shading
+    )
     result = compute_yearly_from_real_data(
         df=df,
         latitude=req.latitude,
@@ -21,7 +25,7 @@ def yearly(req: YearlyForecastRequest):
         gamma=req.gamma,
         noct=req.noct,
         system_loss_factor=system_loss_factor,
-        ac_capacity_kw=req.ac_capacity_kw
+        ac_capacity_kw=req.ac_capacity_kw,
     )
 
     return {
@@ -29,5 +33,5 @@ def yearly(req: YearlyForecastRequest):
         "monthly_kwh": result["monthly_kwh"],
         "yearly_kwh": result["yearly_kwh"],
         "specific_yield_kwh_per_kwp": result["specific_yield_kwh_per_kwp"],
-        "avg_daily_kwh": result["avg_daily_kwh"]
+        "avg_daily_kwh": result["avg_daily_kwh"],
     }

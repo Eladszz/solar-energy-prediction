@@ -1,4 +1,4 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 import pytest
 import pandas as pd
 import numpy as np

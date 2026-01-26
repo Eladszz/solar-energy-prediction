@@ -6,12 +6,12 @@ from app.services.loss_service import compute_system_loss_factor
 
 router = APIRouter()
 
+
 @router.post("/")
 def simulate(req: SimulationRequest):
 
     system_loss_factor = compute_system_loss_factor(
-        cleanliness=req.cleanliness,
-        shading=req.shading
+        cleanliness=req.cleanliness, shading=req.shading
     )
 
     weather = get_weather_forecast(req.latitude, req.longitude, days=1)
@@ -31,7 +31,7 @@ def simulate(req: SimulationRequest):
         gamma=req.gamma,
         noct=req.noct,
         system_loss_factor=system_loss_factor,
-        ac_capacity_kw=req.ac_capacity_kw
+        ac_capacity_kw=req.ac_capacity_kw,
     )
 
     # Extract timezone and time information from weather data
@@ -44,5 +44,5 @@ def simulate(req: SimulationRequest):
         "hourly_ac_kw": ac_power_kw,
         "avg_kw": sum(ac_power_kw) / len(ac_power_kw),
         "timezone": timezone,
-        "hourly_time": hourly_time
+        "hourly_time": hourly_time,
     }

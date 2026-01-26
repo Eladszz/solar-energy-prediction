@@ -1,25 +1,18 @@
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def get_cleanliness_loss(level: str) -> float:
     # Return fractional loss
-    levels = {
-        "clean": 0.02,
-        "normal": 0.05,
-        "dusty": 0.10
-    }
+    levels = {"clean": 0.02, "normal": 0.05, "dusty": 0.10}
     logger.info(f"Calculating cleanliness loss for level: {level}")
     return levels.get(level, 0.05)
 
 
 def get_shading_loss(level: str) -> float:
 
-    levels = {
-        "none": 0.00,
-        "low": 0.03,
-        "medium": 0.07,
-        "high": 0.15
-    }
+    levels = {"none": 0.00, "low": 0.03, "medium": 0.07, "high": 0.15}
     logger.info(f"Calculating shading loss for level: {level}")
     return levels.get(level, 0.03)
 
@@ -33,17 +26,21 @@ def compute_system_loss_factor(cleanliness: str, shading: str) -> float:
         - wiring loss: 2%
         - inverter efficiency: 96%
     """
-    logger.info(f"Computing system loss factor with cleanliness: {cleanliness}, shading: {shading}")
+    logger.info(
+        f"Computing system loss factor with cleanliness: {cleanliness}, shading: {shading}"
+    )
     cleanliness_loss = get_cleanliness_loss(cleanliness)
     shading_loss = get_shading_loss(shading)
     wiring_loss = 0.02
-    inverter_efficiency = 0.96   # 96%
-    logger.info(f"Cleanliness loss: {cleanliness_loss}, Shading loss: {shading_loss}, Wiring loss: {wiring_loss}, Inverter efficiency: {inverter_efficiency}")
+    inverter_efficiency = 0.96  # 96%
+    logger.info(
+        f"Cleanliness loss: {cleanliness_loss}, Shading loss: {shading_loss}, Wiring loss: {wiring_loss}, Inverter efficiency: {inverter_efficiency}"
+    )
     system_factor = (
-        (1 - cleanliness_loss) *
-        (1 - shading_loss) *
-        (1 - wiring_loss) *
-        inverter_efficiency
+        (1 - cleanliness_loss)
+        * (1 - shading_loss)
+        * (1 - wiring_loss)
+        * inverter_efficiency
     )
     logger.info(f"Computed system loss factor: {system_factor}")
     return system_factor

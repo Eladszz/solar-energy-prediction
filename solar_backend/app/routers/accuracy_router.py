@@ -22,5 +22,5 @@ def evaluate_accuracy(req: AccuracyEvaluationRequest):
         shading=req.shading,
         gamma=req.gamma,
         noct=req.noct,
-        ac_capacity_kw=req.ac_capacity_kw
+        ac_capacity_kw=req.ac_capacity_kw,
     )

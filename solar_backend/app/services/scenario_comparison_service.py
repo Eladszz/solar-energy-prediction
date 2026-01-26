@@ -24,8 +24,7 @@ def compare_yearly_scenarios(
 
     for scenario in scenarios:
         system_loss_factor = compute_system_loss_factor(
-            cleanliness=scenario.cleanliness,
-            shading=scenario.shading
+            cleanliness=scenario.cleanliness, shading=scenario.shading
         )
 
         forecast = compute_yearly_from_real_data(
@@ -40,18 +39,18 @@ def compare_yearly_scenarios(
             ac_capacity_kw=scenario.ac_capacity_kw,
         )
 
-        results.append({
-            "scenario": scenario,
-            "yearly_kwh": forecast["yearly_kwh"],
-            "monthly_kwh": forecast["monthly_kwh"],
-        })
+        results.append(
+            {
+                "scenario": scenario,
+                "yearly_kwh": forecast["yearly_kwh"],
+                "monthly_kwh": forecast["monthly_kwh"],
+            }
+        )
 
     baseline = results[0]["yearly_kwh"]
 
     for r in results:
-        r["deviation_percent"] = round(
-            100 * (r["yearly_kwh"] - baseline) / baseline, 2
-        )
+        r["deviation_percent"] = round(100 * (r["yearly_kwh"] - baseline) / baseline, 2)
 
     return {
         "year": year,

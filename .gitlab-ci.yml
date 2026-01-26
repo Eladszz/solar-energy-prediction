@@ -62,7 +62,34 @@ lint:backend:
     - pip install --no-cache-dir ruff black
   script:
     - ruff check app/
-    - black --check app/
+    - black --check --diff app/
+  allow_failure: true
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Optional: generate Black-formatted output + diff artifact
+format:backend:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - cd solar_backend
+    - pip install --no-cache-dir black
+  script:
+    # Produce a patch-like diff you can download from job artifacts
+    - black --diff app/ > black.diff || true
+    # Apply formatting inside CI workspace (does not commit/push)
+    - black app/
+    # Archive formatted sources for convenience
+    - tar -czf black-formatted-app.tgz app/
+  artifacts:
+    paths:
+      - solar_backend/black.diff
+      - solar_backend/black-formatted-app.tgz
+    when: always
+    expire_in: 7 days
+  when: manual
   allow_failure: true
   only:
     - main

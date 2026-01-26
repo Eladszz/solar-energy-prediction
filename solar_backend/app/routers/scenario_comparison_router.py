@@ -4,6 +4,7 @@ import logging
 
 from app.models.requests import BasePVRequest
 from app.services.scenario_comparison_service import compare_yearly_scenarios
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -19,8 +20,7 @@ def compare_scenarios(
 
     if len(scenarios) < 2:
         raise HTTPException(
-            status_code=400,
-            detail="At least two scenarios are required for comparison"
+            status_code=400, detail="At least two scenarios are required for comparison"
         )
 
     latitude = scenarios[0].latitude
@@ -31,7 +31,7 @@ def compare_scenarios(
         if s.latitude != latitude or s.longitude != longitude:
             raise HTTPException(
                 status_code=400,
-                detail="All scenarios must have the same latitude and longitude"
+                detail="All scenarios must have the same latitude and longitude",
             )
 
     try:
@@ -42,7 +42,4 @@ def compare_scenarios(
         )
     except Exception as e:
         logger.error("Scenario comparison error:", e)
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
