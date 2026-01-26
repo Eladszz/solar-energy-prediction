@@ -5,4 +5,5 @@ numpy
 plotly
 geopy
 folium
-streamlit-foliumד
+streamlit-folium
+pycountry

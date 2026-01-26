@@ -208,6 +208,31 @@ streamlit run app.py
 
 The dashboard will be available at `http://localhost:8501`
 
+#### Docker (Recommended)
+
+**Build the Docker image:**
+```bash
+docker build -t solar-energy-app .
+```
+
+**Run the container:**
+```bash
+docker run -p 8000:8000 -p 8501:8501 solar-energy-app
+```
+
+This will start both services in a single container:
+- **Backend API**: http://localhost:8000
+- **Frontend Dashboard**: http://localhost:8501
+
+**Stop the container:**
+```bash
+# Find the container ID
+docker ps
+
+# Stop the container
+docker stop <container_id>
+```
+
 ### Interactive API Documentation
 
 Once running, visit:
@@ -351,7 +376,7 @@ Monthly Aggregation → Performance Metrics → Yearly Statistics
 
 ### Long-term
 - [ ] LSTM models for complex pattern recognition
-- [ ] Docker containerization
+- [x] Docker containerization
 - [ ] Cloud deployment (AWS/GCP/Azure)
 - [ ] CI/CD pipeline with automated testing
 - [ ] Real-time monitoring dashboard
