@@ -1,0 +1,139 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  DOCKER_IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+  DOCKER_DRIVER: overlay2
+
+# Build Docker image
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE -t $DOCKER_IMAGE_LATEST .
+    - docker push $DOCKER_IMAGE
+    - docker push $DOCKER_IMAGE_LATEST
+  only:
+    - main
+    - develop
+    - tags
+
+# Run backend tests
+test:backend:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - cd solar_backend
+    - pip install --no-cache-dir -r backend_requirements.txt
+  script:
+    - pytest tests/ -v --tb=short
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      junit: solar_backend/test-results.xml
+    when: always
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Code quality check
+lint:backend:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - cd solar_backend
+    - pip install --no-cache-dir ruff black
+  script:
+    - ruff check app/
+    - black --check app/
+  allow_failure: true
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Security scan
+security:scan:
+  stage: test
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker pull $DOCKER_IMAGE
+    - |
+      docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+        aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKER_IMAGE
+  allow_failure: true
+  only:
+    - main
+    - develop
+
+# Deploy to staging
+deploy:staging:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $STAGING_SERVER >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh $STAGING_USER@$STAGING_SERVER << EOF
+        docker pull $DOCKER_IMAGE
+        docker stop solar-energy-app || true
+        docker rm solar-energy-app || true
+        docker run -d --name solar-energy-app \
+          -p 8000:8000 -p 8501:8501 \
+          --restart unless-stopped \
+          $DOCKER_IMAGE
+        docker system prune -f
+      EOF
+  environment:
+    name: staging
+    url: http://$STAGING_SERVER:8501
+  only:
+    - develop
+
+# Deploy to production
+deploy:production:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $PRODUCTION_SERVER >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh $PRODUCTION_USER@$PRODUCTION_SERVER << EOF
+        docker pull $DOCKER_IMAGE
+        docker stop solar-energy-app || true
+        docker rm solar-energy-app || true
+        docker run -d --name solar-energy-app \
+          -p 8000:8000 -p 8501:8501 \
+          --restart unless-stopped \
+          $DOCKER_IMAGE
+        docker system prune -f
+      EOF
+  environment:
+    name: production
+    url: http://$PRODUCTION_SERVER:8501
+  when: manual
+  only:
+    - main
+    - tags
