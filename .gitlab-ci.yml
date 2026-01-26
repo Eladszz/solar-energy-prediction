@@ -7,6 +7,8 @@ variables:
   DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
   DOCKER_IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
   DOCKER_DRIVER: overlay2
+  DOCKERHUB_IMAGE: $DOCKERHUB_USERNAME/$CI_PROJECT_NAME:$CI_COMMIT_REF_SLUG
+  DOCKERHUB_IMAGE_LATEST: $DOCKERHUB_USERNAME/$CI_PROJECT_NAME:latest
 
 # Build Docker image
 build:
@@ -15,11 +17,26 @@ build:
   services:
     - docker:24-dind
   before_script:
+    # GitLab Container Registry
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    # Docker Hub (requires CI/CD variables: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN)
+    - |
+      if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+        echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      else
+        echo "DOCKERHUB_USERNAME/DOCKERHUB_TOKEN not set; skipping Docker Hub login"
+      fi
   script:
-    - docker build -t $DOCKER_IMAGE -t $DOCKER_IMAGE_LATEST .
+    - docker build -t $DOCKER_IMAGE -t $DOCKER_IMAGE_LATEST -t $DOCKERHUB_IMAGE -t $DOCKERHUB_IMAGE_LATEST .
     - docker push $DOCKER_IMAGE
     - docker push $DOCKER_IMAGE_LATEST
+    - |
+      if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+        docker push $DOCKERHUB_IMAGE
+        docker push $DOCKERHUB_IMAGE_LATEST
+      else
+        echo "DOCKERHUB_USERNAME/DOCKERHUB_TOKEN not set; skipping Docker Hub push"
+      fi
   only:
     - main
     - develop
