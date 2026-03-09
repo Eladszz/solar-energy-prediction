@@ -1,4 +1,3 @@
-
 .DS_Store
 *.pyc
 __pycache__/
@@ -7,14 +6,9 @@ venv/
 .idea/
 .vscode/
 *.log
+*.log.*
 *.sqlite3
 *.jsonl
-*.log
-*.log.*
 *.jsonl.*
-solar_backend/logs/solar_prediction_backend.jsonl
-
-solar_backend/logs/solar_prediction_backend.jsonl
 backup
-backup
-solar_backend/logs/solar_prediction_backend.jsonl
+solar_backend/logs/
