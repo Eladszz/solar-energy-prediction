@@ -12,16 +12,23 @@ The base request model for all photovoltaic (PV) system calculations. Contains c
 
 - `latitude` (float, required): Geographic latitude of the PV system location (-90 to 90)
 - `longitude` (float, required): Geographic longitude of the PV system location (-180 to 180)
+- `year` (int | None, optional): Target year for forecasting/evaluation when relevant (2000-2100)
 - `tilt` (float, default: 30.0): Panel tilt angle in degrees (0-90)
-- `panel_area` (float, default: 80.0): Total panel area in square meters (m²)
-- `panel_efficiency` (float, default: 0.20): Panel efficiency as a decimal (0.0-1.0), e.g., 0.20 = 20%
-- `cleanliness` (str, default: "normal"): Panel cleanliness level affecting performance
-  - Options: "clean", "normal", "dirty"
-- `shading` (str, default: "low"): Shading level affecting the system
+- `panel_area` (float, default: 80.0): Total panel area in square meters (m²), must be greater than 0
+- `panel_efficiency` (float, default: 0.20): Panel efficiency as a decimal (>0.0 and <=1.0), e.g., 0.20 = 20%
+- `cleanliness` (Literal, default: "normal"): Panel cleanliness level affecting performance
+  - Options: "clean", "normal", "dusty"
+- `shading` (Literal, default: "low"): Shading level affecting the system
   - Options: "none", "low", "medium", "high"
-- `ac_capacity_kw` (float | None, optional): AC capacity in kilowatts for inverter sizing
+- `ac_capacity_kw` (float, default: 15.0): AC capacity in kilowatts for inverter sizing, must be greater than 0
 - `gamma` (float, default: 0.004): Temperature coefficient (power loss per °C above 25°C)
 - `noct` (float, default: 45.0): Nominal Operating Cell Temperature in degrees Celsius
+- `model_type` (Literal, default: "physical"): Forecasting mode
+  - Options: "physical", "ml"
+- `electricity_price_per_kwh` (float, default: 0.17): Tariff assumption, must be greater than or equal to 0
+- `currency` (Literal, default: "USD"): Financial output currency
+  - Options: "USD", "EUR", "ILS"
+- `training_years` (int, default: 3): Historical window for ML training (1-10)
 
 ## Request Models
 
@@ -108,7 +115,7 @@ BasePVRequest (base class)
 ```
 
 All models use Pydantic for:
-- Automatic data validation
-- Type checking
+- Automatic data validation with numeric bounds
+- Type checking and constrained categorical values
 - JSON serialization/deserialization
-- Clear error messages for invalid inputs
+- Clear `422` validation errors for invalid API inputs

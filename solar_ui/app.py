@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from datetime import date
+from importlib import import_module
+from inspect import isawaitable
 import sys
+from typing import TYPE_CHECKING, Any, Mapping, TypeAlias, TypedDict, cast
 
 import folium  # type: ignore
 from folium.plugins import Draw  # type: ignore
@@ -9,12 +12,14 @@ from geopy.geocoders import Nominatim  # type: ignore
 from loguru import logger
 import pandas as pd
 import plotly.express as px
-import pycountry
 import requests
 import streamlit as st  # type: ignore
 from streamlit_folium import st_folium  # type: ignore
 
 from utils import estimate_area_m2_from_bounds, reverse_geocode
+
+if TYPE_CHECKING:
+    from geopy.location import Location
 
 
 BACKEND_URL = "http://127.0.0.1:8000"
@@ -33,6 +38,75 @@ MONTH_NAMES = [
     "Nov",
     "Dec",
 ]
+
+FALLBACK_COUNTRIES = (
+    "Australia",
+    "Brazil",
+    "Canada",
+    "China",
+    "France",
+    "Germany",
+    "India",
+    "Israel",
+    "Italy",
+    "Japan",
+    "Netherlands",
+    "South Africa",
+    "Spain",
+    "United Arab Emirates",
+    "United Kingdom",
+    "United States",
+)
+
+
+class PVRequestPayload(TypedDict):
+    latitude: float
+    longitude: float
+    year: int
+    tilt: int
+    panel_area: float
+    panel_efficiency: float
+    cleanliness: str
+    shading: str
+    ac_capacity_kw: float
+    gamma: float
+    noct: float
+    model_type: str
+    electricity_price_per_kwh: float
+    currency: str
+    training_years: int
+
+
+ApiPayload: TypeAlias = (
+    PVRequestPayload
+    | dict[str, Any]
+    | list[PVRequestPayload]
+    | list[dict[str, Any]]
+)
+
+
+def load_country_names() -> list[str]:
+    try:
+        countries_module = import_module("pycountry")
+    except ModuleNotFoundError:
+        logger.warning("pycountry is not installed; using fallback country list.")
+        return sorted(FALLBACK_COUNTRIES)
+
+    country_names = sorted(
+        country.name
+        for country in getattr(countries_module, "countries", ())
+        if isinstance(getattr(country, "name", None), str)
+    )
+    return country_names or sorted(FALLBACK_COUNTRIES)
+
+
+def geocode_address(address: str) -> Location | None:
+    geolocator = Nominatim(user_agent="solar_energy_prediction_alpha")
+    location_result = geolocator.geocode(address)
+    if isawaitable(location_result):
+        logger.error("Unexpected awaitable geocode result for address lookup.")
+        return None
+    return cast("Location | None", location_result)
 
 logger.remove()
 logger.add(
@@ -86,7 +160,7 @@ def parse_api_error(response: requests.Response) -> str:
     return payload.get("detail") or response.text or "Unknown backend error"
 
 
-def api_post(path: str, payload: dict) -> dict | None:
+def api_post(path: str, payload: ApiPayload) -> dict[str, Any] | None:
     try:
         response = requests.post(
             f"{BACKEND_URL}{path}",
@@ -133,7 +207,7 @@ def build_common_payload(
     electricity_price_per_kwh: float,
     currency: str,
     training_years: int,
-) -> dict:
+) -> PVRequestPayload:
     return {
         "latitude": latitude,
         "longitude": longitude,
@@ -306,13 +380,16 @@ def render_daily_tab(daily_data: dict) -> None:
         st.dataframe(daily_df, width="stretch", hide_index=True)
 
 
-def payload_changed(current_payload: dict | None, previous_payload: dict | None) -> bool:
+def payload_changed(
+    current_payload: Mapping[str, Any] | None,
+    previous_payload: Mapping[str, Any] | None,
+) -> bool:
     if current_payload is None or previous_payload is None:
         return False
     return current_payload != previous_payload
 
 
-def render_last_run_summary(last_run_payload: dict) -> None:
+def render_last_run_summary(last_run_payload: Mapping[str, Any]) -> None:
     run_rows = [
         {"Parameter": "Panel Area (m²)", "Value": str(last_run_payload["panel_area"])},
         {
@@ -475,7 +552,7 @@ def render_comparison_tab(
 
 initialize_session_state()
 
-countries = sorted(country.name for country in pycountry.countries)  # type: ignore
+countries = load_country_names()
 default_country = "Israel" if "Israel" in countries else countries[0]
 current_year = date.today().year
 last_complete_year = current_year - 1
@@ -493,8 +570,7 @@ number = st.sidebar.text_input("Number", value="100", key="house_number_input")
 
 address = f"{street} {number}, {city}, {country}".strip()
 if st.sidebar.button("Locate Address", type="primary"):
-    geolocator = Nominatim(user_agent="solar_energy_prediction_alpha")
-    location = geolocator.geocode(address)
+    location = geocode_address(address)
     if location:
         st.session_state.lat = location.latitude
         st.session_state.lon = location.longitude
@@ -525,13 +601,13 @@ forecast_year = st.sidebar.number_input(
 )
 panel_area = st.sidebar.number_input(
     "Panel Area (m²)",
-    min_value=0.0,
+    min_value=0.1,
     value=st.session_state.get("panel_area", 80.0),
     key="panel_area",
 )
 ac_capacity_kw = st.sidebar.number_input(
     "Inverter AC Capacity (kW)",
-    min_value=0.0,
+    min_value=0.1,
     value=st.session_state.get("ac_capacity_kw_input", 15.0),
     key="ac_capacity_kw_input",
 )
@@ -753,7 +829,7 @@ with tab_scenarios:
         with config_columns[2]:
             scenario_ac_capacity = st.number_input(
                 "Scenario AC Capacity (kW)",
-                min_value=0.0,
+                min_value=0.1,
                 value=float(ac_capacity_kw),
             )
 

@@ -53,12 +53,12 @@ Simulate real-time solar energy production for the next 24 hours based on weathe
 - `longitude`: Geographic longitude
 
 **Optional Fields (with defaults):**
-- `tilt`: Panel tilt angle (default: 30.0°)
-- `panel_area`: Total panel area (default: 80.0 m²)
-- `panel_efficiency`: Panel efficiency (default: 0.20 = 20%)
-- `cleanliness`: Panel cleanliness ("clean", "normal", "dirty")
+- `tilt`: Panel tilt angle (default: 30.0°, valid range 0-90)
+- `panel_area`: Total panel area (default: 80.0 m², must be > 0)
+- `panel_efficiency`: Panel efficiency (default: 0.20 = 20%, must be > 0 and <= 1.0)
+- `cleanliness`: Panel cleanliness ("clean", "normal", "dusty")
 - `shading`: Shading level ("none", "low", "medium", "high")
-- `ac_capacity_kw`: AC inverter capacity in kW
+- `ac_capacity_kw`: AC inverter capacity in kW (must be > 0)
 - `gamma`: Temperature coefficient (default: 0.004)
 - `noct`: Nominal Operating Cell Temperature (default: 45.0°C)
 
@@ -105,7 +105,8 @@ Generate yearly solar energy production forecast using historical weather data a
 
 **Optional Fields (with defaults):**
 - Same as `SimulationRequest` plus:
-- `year`: Target year for forecast (default: current year)
+- `year`: Target year for forecast (default: current year, valid range 2000-2100)
+- `training_years`: ML training window in years (valid range 1-10)
 
 **Process:**
 1. Retrieve historical weather archive data for the previous year
