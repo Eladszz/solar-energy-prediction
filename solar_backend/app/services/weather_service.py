@@ -19,7 +19,7 @@ def get_weather_forecast(lat: float, lon: float, days: int = 1):
 
     logger.info(f"Fetching weather forecast for lat: {lat}, lon: {lon}, days: {days}")
     try:
-        res = requests.get(url)
+        res = requests.get(url, timeout=30)
         res.raise_for_status()
         logger.info(
             f"Received weather forecast data with status code {res.status_code}"

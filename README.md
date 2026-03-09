@@ -1,401 +1,164 @@
-# Solar Energy Production Prediction System
+# Solar Energy Prediction System
 
-## Overview
-A FastAPI-based system for predicting solar energy production using real-time weather forecasts and historical climate data. The system provides hourly simulations and yearly forecasts with detailed physics-based PV modeling, including temperature effects, system losses, and inverter clipping.
+Alpha version of a solar energy forecasting project for academic engineering submission.
 
-## System Architecture
-```
+The system combines:
+- A FastAPI backend for weather retrieval, PV simulation, yearly forecasting, scenario comparison, and backtest accuracy analysis.
+- A Streamlit frontend for location selection, system configuration, forecast visualization, monetary estimation, and demo-ready what-if flows.
+
+## Alpha Scope
+
+Implemented in this version:
+- 24-hour solar production simulation from forecast weather
+- Yearly forecast with two paths:
+  - `physical`: physics-based PV simulation using archived weather as the baseline profile
+  - `ml`: a lightweight trained regression model that forecasts hourly irradiance and temperature from historical weather patterns, then converts that forecast into energy
+- Monetary estimation from predicted kWh using a configurable tariff
+- Scenario comparison against a baseline system
+- Accuracy backtest with monthly and yearly MAPE
+- Map-assisted roof area selection in the UI
+- Clear backend metadata for fallback behavior, reference years, and ML training years
+
+## Main Endpoints
+
+- `GET /health`
+- `POST /simulate`
+- `POST /forecast/yearly`
+- `POST /scenarios/compare`
+- `POST /evaluation/accuracy`
+
+Swagger is available at `http://127.0.0.1:8000/swagger`.
+
+## Repository Layout
+
+```text
 solar-energy-prediction/
-│
 ├── solar_backend/
-│   ├── venv/                    # Backend virtual environment
-│   ├── backend_requirements.txt # Backend dependencies
-│   ├── run.sh                   # Backend startup script
-│   └── app/
-│       ├── main.py              # FastAPI application entry point
-│       ├── config.py            # Configuration and constants
-│       ├── routers/
-│       │   ├── health_router.py         # Health check endpoint
-│       │   ├── simulate_router.py       # 24h production simulation
-│       │   ├── yearly_forecast_router.py # Yearly forecasting
-│       │   └── routers.md               # Router documentation
-│       ├── services/
-│       │   ├── weather_service.py           # Real-time weather data
-│       │   ├── weather_archive_service.py   # Historical weather data
-│       │   ├── climate_service.py           # Climate normals
-│       │   ├── simulation_service.py        # PV physics modeling
-│       │   ├── loss_service.py              # System loss calculations
-│       │   ├── yearly_forecast_service.py   # Yearly aggregation
-│       │   └── services.md                  # Service documentation
-│       ├── models/
-│       │   ├── pv_models.py    # Pydantic request models
-│       │   └── models.md       # Model documentation
-│       └── utils/
-│           └── http_client.py  # HTTP utilities
-│
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── models/
+│   │   ├── routers/
+│   │   └── services/
+│   ├── backend_requirements.txt
+│   └── tests/
 ├── solar_ui/
-│   ├── venv/                    # Frontend virtual environment
-│   ├── frontend_requirements.txt # Frontend dependencies
-│   ├── run.sh                   # Frontend startup script
-│   ├── app.py                   # Streamlit application
-│   └── config.py                # Frontend configuration
-│
-├── run.sh             # Root startup script (backend)
-└── README.md          # This file
+│   ├── app.py
+│   ├── frontend_requirements.txt
+│   └── utils.py
+├── architecture/
+├── ARCHITECTURE.md
+├── IMPLEMENTATION_STATUS.md
+├── TESTING_STRATEGY.md
+└── README.md
 ```
 
-## API Endpoints
+## Quick Start
 
-### 1. Health Check
-**GET** `/health`
+### 1. Backend setup
 
-Verify API service status.
-
-**Response:**
-```json
-{"status": "ok"}
-```
-
-### 2. Simulate Production
-**POST** `/simulate`
-
-Simulate 24-hour solar energy production based on weather forecast.
-
-**Request Body:**
-```json
-{
-  "latitude": 32.08,
-  "longitude": 34.78,
-  "tilt": 30.0,
-  "panel_area": 80.0,
-  "panel_efficiency": 0.20,
-  "cleanliness": "normal",
-  "shading": "low",
-  "gamma": 0.004,
-  "noct": 45.0
-}
-```
-
-**Response:**
-```json
-{
-  "location": [32.08, 34.78],
-  "system_loss_factor": 0.868,
-  "hourly_ac_kw": [0.0, 0.0, ..., 15.2, ..., 0.0],
-  "avg_kw": 8.5
-}
-```
-
-### 3. Yearly Forecast
-**POST** `/yearly-forecast`
-
-Generate yearly production forecast using historical weather data.
-
-**Request Body:**
-```json
-{
-  "latitude": 32.08,
-  "longitude": 34.78,
-  "tilt": 30.0,
-  "panel_area": 80.0,
-  "panel_efficiency": 0.20,
-  "year": 2024
-}
-```
-
-**Response:**
-```json
-{
-  "location": [32.08, 34.78],
-  "monthly_kwh": [450.2, 520.5, ..., 430.1],
-  "yearly_kwh": 6850.5,
-  "specific_yield_kwh_per_kwp": 1250.3,
-  "avg_daily_kwh": 18.8
-}
-```
-
-## Key Features
-
-### Physics-Based PV Modeling
-- **POA Calculation**: Converts GHI to plane-of-array irradiance
-- **Temperature Modeling**: NOCT-based cell temperature estimation
-- **Thermal Derating**: Accounts for efficiency loss at high temperatures
-- **System Losses**: Cleanliness, shading, wiring, and inverter efficiency
-- **Inverter Clipping**: Models inverter capacity limitations
-
-### Weather Data Integration
-- **Real-time Forecasts**: Open-Meteo API for 24h predictions
-- **Historical Archives**: Full year hourly data for forecasting
-- **Climate Normals**: 30-year averages for baseline comparisons
-
-### Comprehensive Documentation
-- **[Models Documentation](solar_backend/app/models/models.md)**: Detailed model schemas
-- **[Routers Documentation](solar_backend/app/routers/routers.md)**: API endpoint specifications
-- **[Services Documentation](solar_backend/app/services/services.md)**: Business logic details
-
-## Getting Started
-
-### Prerequisites
-- Python 3.10+
-- pip
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd solar-energy-prediction
-```
-
-2. Set up Backend:
 ```bash
 cd solar_backend
 python3 -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# venv\Scripts\activate  # On Windows
-pip install -r backend_requirements.txt
-cd ..
-```
-
-3. Set up Frontend:
-```bash
-cd solar_ui
-python3 -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# venv\Scripts\activate  # On Windows
-pip install -r frontend_requirements.txt
-cd ..
-```
-
-### Running the Application
-
-#### Backend (API Server)
-
-**Option 1: Using the startup script (from root)**
-```bash
-./run.sh
-```
-
-**Option 2: Using the backend startup script**
-```bash
-cd solar_backend
-./run.sh
-```
-
-**Option 3: Manual start**
-```bash
-cd solar_backend
 source venv/bin/activate
+pip install -r backend_requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://127.0.0.1:8000`
+Backend URL: `http://127.0.0.1:8000`
 
-#### Frontend (Streamlit Dashboard)
+### 2. Frontend setup
 
-**Using the startup script:**
+Open a second terminal:
+
 ```bash
 cd solar_ui
-./run.sh
-```
-
-**Manual start:**
-```bash
-cd solar_ui
+python3 -m venv venv
 source venv/bin/activate
+pip install -r frontend_requirements.txt
 streamlit run app.py
 ```
 
-The dashboard will be available at `http://localhost:8501`
+Frontend URL: `http://localhost:8501`
 
-#### Docker (Recommended)
+### 3. Docker option
 
-**Build the Docker image:**
 ```bash
 docker build -t solar-energy-app .
-```
-
-**Run the container:**
-```bash
 docker run -p 8000:8000 -p 8501:8501 solar-energy-app
 ```
 
-This will start both services in a single container:
-- **Backend API**: http://localhost:8000
-- **Frontend Dashboard**: http://localhost:8501
+## Example Requests
 
-**Stop the container:**
+### Yearly forecast
+
 ```bash
-# Find the container ID
-docker ps
-
-# Stop the container
-docker stop <container_id>
+curl -X POST http://127.0.0.1:8000/forecast/yearly \
+  -H "Content-Type: application/json" \
+  -d '{
+    "latitude": 32.08,
+    "longitude": 34.78,
+    "year": 2026,
+    "tilt": 30,
+    "panel_area": 80.0,
+    "panel_efficiency": 0.20,
+    "cleanliness": "normal",
+    "shading": "low",
+    "ac_capacity_kw": 15.0,
+    "model_type": "ml",
+    "training_years": 3,
+    "electricity_price_per_kwh": 0.17,
+    "currency": "USD"
+  }'
 ```
 
-### Interactive API Documentation
+### Daily simulation
 
-Once running, visit:
-- **Swagger UI**: http://localhost:8000/swagger
-- **ReDoc**: http://localhost:8000/redoc
-
-### Testing the API
-
-**Health Check:**
 ```bash
-curl http://localhost:8000/health
-```
-
-**Simulate Production:**
-```bash
-curl -X POST http://localhost:8000/simulate \
+curl -X POST http://127.0.0.1:8000/simulate \
   -H "Content-Type: application/json" \
   -d '{
     "latitude": 32.08,
     "longitude": 34.78,
     "panel_area": 80.0,
-    "panel_efficiency": 0.20
+    "panel_efficiency": 0.20,
+    "ac_capacity_kw": 15.0,
+    "electricity_price_per_kwh": 0.17,
+    "currency": "USD"
   }'
 ```
 
-**Yearly Forecast:**
+## Demo Flow
+
+Recommended Alpha demo:
+1. Open the Streamlit UI.
+2. Resolve an address and optionally draw a roof rectangle to auto-fill panel area.
+3. Run a yearly forecast with `physical` mode.
+4. Switch to `ml` mode and rerun to show the alternative forecasting path.
+5. Open the Accuracy tab and run the backtest to show monthly/yearly MAPE.
+6. Add one or two scenarios with larger panel area or inverter size and compare results.
+
+## Testing
+
+Backend tests:
+
 ```bash
-curl -X POST http://localhost:8000/yearly-forecast \
-  -H "Content-Type: application/json" \
-  -d '{
-    "latitude": 32.08,
-    "longitude": 34.78,
-    "tilt": 30.0,
-    "panel_area": 80.0,
-    "panel_efficiency": 0.20
-  }'
+cd solar_backend
+pytest -q
 ```
 
-## Data Flow
+Current backend status: `176 passed, 1 skipped`
 
-### Simulation Flow (24h)
-```
-User Request → Weather Forecast API → POA Calculation → 
-Cell Temperature → DC Power → System Losses → 
-Inverter Clipping → Hourly AC Power Output
-```
+The skipped test is the live weather API check, which is skipped when the test environment has no internet access.
 
-### Yearly Forecast Flow
-```
-User Request → Historical Weather Archive → Hourly Simulation (8760h) → 
-Monthly Aggregation → Performance Metrics → Yearly Statistics
-```
+## Submission Documents
 
-## Technical Details
+- `ARCHITECTURE.md`
+- `IMPLEMENTATION_STATUS.md`
+- `TESTING_STRATEGY.md`
+- `architecture/*.puml`
 
-### PV Modeling Approach
+## Notes
 
-**1. Irradiance Conversion**
-- Converts Global Horizontal Irradiance (GHI) to Plane-Of-Array (POA)
-- Uses cosine correction based on latitude and tilt angle
-
-**2. Temperature Effects**
-- NOCT model for cell temperature estimation
-- Temperature coefficient (gamma) for thermal derating
-- Typical efficiency loss: 0.4% per °C above 25°C
-
-**3. System Losses**
-- **Cleanliness**: 2-10% (clean to dusty)
-- **Shading**: 0-15% (none to high)
-- **Wiring**: 2% fixed
-- **Inverter**: 96% efficiency
-- **Total**: Typically 13-20% combined losses
-
-**4. Performance Metrics**
-- **Specific Yield**: kWh produced per kWp installed
-- **Capacity Factor**: Actual vs. theoretical maximum production
-- **Average Daily Production**: Total yearly kWh / 365
-
-### API Design Principles
-
-- **RESTful Architecture**: Standard HTTP methods and status codes
-- **Type Safety**: Pydantic models for validation
-- **Error Handling**: Graceful degradation with informative messages
-- **Documentation**: Auto-generated OpenAPI/Swagger docs
-- **Modularity**: Separation of concerns (routers → services → utilities)
-
-## Tech Stack
-
-### Core Framework
-- **FastAPI**: Modern, fast web framework with automatic API documentation
-- **Uvicorn**: Lightning-fast ASGI server
-- **Pydantic**: Data validation and settings management
-
-### Data Processing
-- **Pandas**: Time series data manipulation and aggregation
-- **NumPy**: Numerical computations
-
-### External APIs
-- **Open-Meteo**: Free weather forecast and historical archive data
-  - Forecast API: Real-time 24h predictions
-  - Archive API: Historical hourly data
-  - Climate API: 30-year climate normals
-
-### Future Integrations
-- **Prophet**: Time series forecasting with seasonality
-- **LSTM**: Deep learning for complex patterns
-- **Streamlit**: Interactive web dashboard
-- **PostgreSQL**: Persistent data storage
-
-## Project Structure
-
-### Configuration
-- `config.py`: Application settings and API URLs
-- `requirements.txt`: Python package dependencies
-- `.vscode/settings.json`: VS Code Python path configuration
-
-### Core Modules
-- **Routers**: API endpoint definitions and request handling
-- **Services**: Business logic and external API integration
-- **Models**: Pydantic schemas for request/response validation
-- **Utils**: Shared utilities and helper functions
-
-### Documentation
-- Inline code documentation and docstrings
-- Markdown files for comprehensive guides
-- Auto-generated API docs via FastAPI
-
-## Future Enhancements
-
-### Near-term
-- [ ] Prophet integration for ML-based forecasting
-- [ ] Streamlit dashboard for visualization
-- [ ] Caching layer for repeated queries
-- [ ] Unit and integration tests
-
-### Medium-term
-- [ ] Multi-site comparison and aggregation
-- [ ] Battery storage integration
-- [ ] Advanced shading analysis with 3D modeling
-- [ ] Export analysis and grid interaction
-
-### Long-term
-- [ ] LSTM models for complex pattern recognition
-- [x] Docker containerization
-- [ ] Cloud deployment (AWS/GCP/Azure)
-- [ ] CI/CD pipeline with automated testing
-- [ ] Real-time monitoring dashboard
-- [ ] Mobile application
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes with tests
-4. Submit a pull request
-
-
-## Contact
-
-Eladszt@gmail.com
-
----
-
-**Note**: This system uses free Open-Meteo APIs which require no authentication. For production use, consider API rate limits and caching strategies.
-
+- The ML forecast is a real trained baseline model, not a hard-coded placeholder.
+- The financial value is an estimate based on the configured tariff assumption. It is intended for demo and comparison use, not billing.
+- When the ML forecast cannot be built, the backend falls back to the physical baseline and reports that fallback explicitly in the response.

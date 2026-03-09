@@ -18,7 +18,7 @@ def get_year_archive(lat, lon, year):
         "&hourly=shortwave_radiation,temperature_2m"
     )
     logger.info(f"Request URL: {url}")
-    res = requests.get(url)
+    res = requests.get(url, timeout=30)
     res.raise_for_status()
     logger.info(f"Received weather archive data with status code {res.status_code}")
     data = res.json()
