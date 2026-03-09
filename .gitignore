@@ -12,3 +12,4 @@ venv/
 *.jsonl.*
 backup
 solar_backend/logs/
+.coverage
