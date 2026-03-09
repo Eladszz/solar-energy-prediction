@@ -1,25 +1,30 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 ModelType = Literal["physical", "ml"]
+CleanlinessLevel = Literal["clean", "normal", "dusty"]
+ShadingLevel = Literal["none", "low", "medium", "high"]
+CurrencyCode = Literal["USD", "EUR", "ILS"]
 
 
 class BasePVRequest(BaseModel):
-    latitude: float
-    longitude: float
-    year: int | None = None
-    tilt: float = 30.0
-    panel_area: float = 80.0
-    panel_efficiency: float = 0.20
-    cleanliness: str = "normal"
-    shading: str = "low"
-    ac_capacity_kw: float = 15.0
+    model_config = ConfigDict(extra="forbid")
+
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    year: int | None = Field(default=None, ge=2000, le=2100)
+    tilt: float = Field(default=30.0, ge=0.0, le=90.0)
+    panel_area: float = Field(default=80.0, gt=0.0)
+    panel_efficiency: float = Field(default=0.20, gt=0.0, le=1.0)
+    cleanliness: CleanlinessLevel = "normal"
+    shading: ShadingLevel = "low"
+    ac_capacity_kw: float = Field(default=15.0, gt=0.0)
     gamma: float = 0.004
     noct: float = 45.0
     model_type: ModelType = "physical"
     electricity_price_per_kwh: float = Field(default=0.17, ge=0.0)
-    currency: str = "USD"
+    currency: CurrencyCode = "USD"
     training_years: int = Field(default=3, ge=1, le=10)
 
 
