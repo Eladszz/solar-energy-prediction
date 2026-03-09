@@ -1,121 +1,143 @@
-# Models Documentation
+# API Models Documentation
 
-This document describes the Pydantic models used in the Solar Energy Prediction System API.
+This backend uses two model groups:
 
-## Base Models
+- Request schemas in `requests.py`
+- Response schemas in `responses.py`
 
-### BasePVRequest
+## Request Schemas
 
-The base request model for all photovoltaic (PV) system calculations. Contains common parameters used across different endpoints.
+### `BasePVRequest`
 
-**Fields:**
+Shared request body for:
 
-- `latitude` (float, required): Geographic latitude of the PV system location (-90 to 90)
-- `longitude` (float, required): Geographic longitude of the PV system location (-180 to 180)
-- `year` (int | None, optional): Target year for forecasting/evaluation when relevant (2000-2100)
-- `tilt` (float, default: 30.0): Panel tilt angle in degrees (0-90)
-- `panel_area` (float, default: 80.0): Total panel area in square meters (m²), must be greater than 0
-- `panel_efficiency` (float, default: 0.20): Panel efficiency as a decimal (>0.0 and <=1.0), e.g., 0.20 = 20%
-- `cleanliness` (Literal, default: "normal"): Panel cleanliness level affecting performance
-  - Options: "clean", "normal", "dusty"
-- `shading` (Literal, default: "low"): Shading level affecting the system
-  - Options: "none", "low", "medium", "high"
-- `ac_capacity_kw` (float, default: 15.0): AC capacity in kilowatts for inverter sizing, must be greater than 0
-- `gamma` (float, default: 0.004): Temperature coefficient (power loss per °C above 25°C)
-- `noct` (float, default: 45.0): Nominal Operating Cell Temperature in degrees Celsius
-- `model_type` (Literal, default: "physical"): Forecasting mode
-  - Options: "physical", "ml"
-- `electricity_price_per_kwh` (float, default: 0.17): Tariff assumption, must be greater than or equal to 0
-- `currency` (Literal, default: "USD"): Financial output currency
-  - Options: "USD", "EUR", "ILS"
-- `training_years` (int, default: 3): Historical window for ML training (1-10)
+- `POST /simulate`
+- `POST /forecast/yearly`
+- `POST /evaluation/accuracy`
+- each item in `POST /scenarios/compare`
 
-## Request Models
+Validated fields:
 
-### SimulationRequest
+- `latitude`: `-90.0` to `90.0`
+- `longitude`: `-180.0` to `180.0`
+- `year`: optional, `2000` to `2100`
+- `tilt`: `0.0` to `90.0`
+- `panel_area`: `> 0`
+- `panel_efficiency`: `> 0` and `<= 1.0`
+- `cleanliness`: `"clean" | "normal" | "dusty"`
+- `shading`: `"none" | "low" | "medium" | "high"`
+- `ac_capacity_kw`: `> 0`
+- `gamma`: float
+- `noct`: float
+- `model_type`: `"physical" | "ml"`
+- `electricity_price_per_kwh`: `>= 0`
+- `currency`: `"USD" | "EUR" | "ILS"`
+- `training_years`: `1` to `10`
 
-Inherits from `BasePVRequest` without additional fields. Used for immediate solar panel simulations based on current or provided weather data.
+Additional request-contract behavior:
 
-**Endpoint:** `/simulate`
+- extra JSON fields are rejected
+- invalid values return FastAPI `422` validation errors
 
-**Purpose:** Calculate instantaneous or short-term solar energy production based on location and panel specifications.
+### Derived Request Schemas
 
-**Example:**
-```json
-{
-  "latitude": 32.08,
-  "longitude": 34.78,
-  "tilt": 30.0,
-  "panel_area": 80.0,
-  "panel_efficiency": 0.20,
-  "cleanliness": "normal",
-  "shading": "low"
-}
-```
+- `SimulationRequest`: `POST /simulate`
+- `YearlyForecastRequest`: `POST /forecast/yearly`
+- `AccuracyEvaluationRequest`: `POST /evaluation/accuracy`
 
-### YearlyForecastRequest
+These currently inherit `BasePVRequest` without adding extra fields.
 
-Inherits from `BasePVRequest` with an additional `year` field. Used for yearly solar energy production forecasting using Prophet machine learning model.
+## Response Schemas
 
-**Endpoint:** `/yearly-forecast`
+### `HealthResponse`
 
-**Additional Fields:**
-- `year` (int | None, optional): Target year for forecasting. If not provided, uses current year.
+Used by `GET /health`.
 
-**Purpose:** Generate yearly solar energy production forecasts based on historical data and location parameters. Returns monthly breakdown and total yearly production.
+### `RootResponse`
 
-**Example:**
-```json
-{
-  "latitude": 32.08,
-  "longitude": 34.78,
-  "tilt": 30.0,
-  "panel_area": 80.0,
-  "panel_efficiency": 0.20,
-  "year": 2024,
-  "gamma": 0.004,
-  "noct": 45.0
-}
-```
+Used by `GET /`.
 
-## Usage Notes
+### `SimulationResponse`
 
-### Parameter Guidelines
+Used by `POST /simulate`.
 
-**Location Parameters:**
-- Ensure latitude/longitude coordinates are accurate for best results
-- System uses these coordinates to fetch weather data and calculate solar angles
+Key fields:
 
-**Panel Parameters:**
-- `panel_area`: Total surface area of all panels combined
-- `panel_efficiency`: Modern panels typically range from 0.15-0.22 (15%-22%)
-- `tilt`: Optimal tilt often equals latitude for fixed installations
+- `location`
+- `system_loss_factor`
+- `hourly_ac_kw`
+- `avg_kw`
+- `daily_kwh`
+- `estimated_daily_value`
+- `financial_assumptions`
+- `timezone`
+- `hourly_time`
 
-**Environmental Factors:**
-- `cleanliness`: Accounts for dust, dirt, and debris on panels
-- `shading`: Considers nearby obstacles (trees, buildings, etc.)
+### `YearlyForecastResponse`
 
-**Temperature Parameters:**
-- `gamma`: Temperature coefficient varies by panel type (typically 0.003-0.005)
-- `noct`: Standard is 45°C but varies by manufacturer
+Used by `POST /forecast/yearly`.
 
-### Best Practices
+Key fields:
 
-1. **Use realistic values**: Default values are reasonable starting points but adjust based on actual system specifications
-2. **Consider local conditions**: Adjust cleanliness and shading based on site-specific factors
-3. **Validate coordinates**: Ensure coordinates are within valid ranges and match intended location
-4. **Temperature coefficients**: Use manufacturer specifications when available for `gamma` and `noct`
+- `location`
+- `forecast_year`
+- `model_type_requested`
+- `model_type_used`
+- `weather_reference_year`
+- `training_years_used`
+- `monthly_kwh`
+- `yearly_kwh`
+- `specific_yield_kwh_per_kwp`
+- `avg_daily_kwh`
+- `monthly_estimated_value`
+- `yearly_estimated_value`
+- `avg_monthly_estimated_value`
+- `financial_assumptions`
+- `fallback_reason`
+- `ml_metadata`
 
-## Model Hierarchy
+### `AccuracyEvaluationResponse`
 
-```
-BasePVRequest (base class)
-├── SimulationRequest (immediate calculations)
-└── YearlyForecastRequest (ML-based forecasting)
-```
+Used by `POST /evaluation/accuracy`.
 
-All models use Pydantic for:
-- Automatic data validation with numeric bounds
-- Type checking and constrained categorical values
-- JSON serialization/deserialization
-- Clear `422` validation errors for invalid API inputs
+Key fields:
+
+- `year`
+- `model_type_requested`
+- `model_type_used`
+- `weather_reference_year`
+- `training_years_used`
+- `fallback_reason`
+- `actual_yearly_kwh`
+- `predicted_yearly_kwh`
+- `actual_monthly_kwh`
+- `predicted_monthly_kwh`
+- `mape_percent`
+- `yearly_mape_percent`
+- `quality`
+- `financial_assumptions`
+- `ml_metadata`
+
+### `ScenarioComparisonResponse`
+
+Used by `POST /scenarios/compare`.
+
+Key fields:
+
+- `year`
+- `model_type_requested`
+- `model_type_used`
+- `weather_reference_year`
+- `training_years_used`
+- `fallback_reason`
+- `baseline_yearly_kwh`
+- `baseline_yearly_estimated_value`
+- `results`
+
+Each `results` item is a `ScenarioComparisonResult` containing:
+
+- the validated `scenario` payload
+- yearly and monthly energy
+- yearly and monthly estimated value
+- financial assumptions
+- energy and value deltas versus baseline

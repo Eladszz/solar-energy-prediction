@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.services.finance_service import estimate_energy_value
 from app.models.requests import SimulationRequest
+from app.models.responses import SimulationResponse
 from app.services.loss_service import compute_system_loss_factor
 from app.services.simulation_service import simulate_production_enhanced
 from app.services.weather_service import get_weather_forecast
@@ -9,7 +10,7 @@ from app.services.weather_service import get_weather_forecast
 router = APIRouter()
 
 
-@router.post("/")
+@router.post("", response_model=SimulationResponse)
 def simulate(req: SimulationRequest):
     system_loss_factor = compute_system_loss_factor(
         cleanliness=req.cleanliness,

@@ -4,13 +4,14 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 
 from app.models.requests import BasePVRequest
+from app.models.responses import ScenarioComparisonResponse
 from app.services.scenario_comparison_service import compare_yearly_scenarios
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/compare")
+@router.post("/compare", response_model=ScenarioComparisonResponse)
 def compare_scenarios(
     scenarios: List[BasePVRequest],
 ):

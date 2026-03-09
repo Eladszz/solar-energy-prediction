@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException
 import pandas as pd
 from app.models.requests import AccuracyEvaluationRequest
+from app.models.responses import AccuracyEvaluationResponse
 from app.services.accuracy_service import evaluate_yearly_accuracy
 
 router = APIRouter()
 
 
-@router.post("/accuracy")
+@router.post("/accuracy", response_model=AccuracyEvaluationResponse)
 def evaluate_accuracy(req: AccuracyEvaluationRequest):
 
     year = req.year or (pd.Timestamp.now().year - 1)

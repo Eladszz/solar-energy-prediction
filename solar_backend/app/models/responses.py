@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models.requests import BasePVRequest, CurrencyCode, ModelType
+
+
+class ApiResponseModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class HealthResponse(ApiResponseModel):
+    status: Literal["ok"]
+
+
+class RootResponse(ApiResponseModel):
+    message: str
+
+
+class FinancialAssumptions(ApiResponseModel):
+    electricity_price_per_kwh: float
+    currency: CurrencyCode
+    valuation_basis: str
+
+
+class SimulationResponse(ApiResponseModel):
+    location: list[float] = Field(min_length=2, max_length=2)
+    system_loss_factor: float
+    hourly_ac_kw: list[float]
+    avg_kw: float
+    daily_kwh: float
+    estimated_daily_value: float
+    financial_assumptions: FinancialAssumptions
+    timezone: str
+    hourly_time: list[str]
+
+
+class YearlyForecastResponse(ApiResponseModel):
+    location: list[float] = Field(min_length=2, max_length=2)
+    forecast_year: int
+    model_type_requested: ModelType
+    model_type_used: ModelType
+    weather_reference_year: int | None = None
+    training_years_used: list[int]
+    monthly_kwh: list[float]
+    yearly_kwh: float
+    specific_yield_kwh_per_kwp: float
+    avg_daily_kwh: float
+    monthly_estimated_value: list[float]
+    yearly_estimated_value: float
+    avg_monthly_estimated_value: float
+    financial_assumptions: FinancialAssumptions
+    fallback_reason: str | None = None
+    ml_metadata: dict[str, Any] | None = None
+
+
+QualityLabel = Literal["EXCELLENT", "GOOD", "POOR"]
+
+
+class AccuracyEvaluationResponse(ApiResponseModel):
+    year: int
+    model_type_requested: ModelType
+    model_type_used: ModelType
+    weather_reference_year: int | None = None
+    training_years_used: list[int]
+    fallback_reason: str | None = None
+    actual_yearly_kwh: float
+    predicted_yearly_kwh: float
+    actual_yearly_estimated_value: float
+    predicted_yearly_estimated_value: float
+    actual_monthly_kwh: list[float]
+    predicted_monthly_kwh: list[float]
+    actual_monthly_estimated_value: list[float]
+    predicted_monthly_estimated_value: list[float]
+    mape_percent: float
+    yearly_mape_percent: float
+    quality: QualityLabel
+    financial_assumptions: FinancialAssumptions
+    ml_metadata: dict[str, Any] | None = None
+
+
+class ScenarioComparisonResult(ApiResponseModel):
+    scenario: BasePVRequest
+    yearly_kwh: float
+    monthly_kwh: list[float]
+    yearly_estimated_value: float
+    monthly_estimated_value: list[float]
+    financial_assumptions: FinancialAssumptions
+    deviation_percent: float
+    value_deviation_percent: float
+
+
+class ScenarioComparisonResponse(ApiResponseModel):
+    year: int
+    model_type_requested: ModelType
+    model_type_used: ModelType
+    weather_reference_year: int | None = None
+    training_years_used: list[int]
+    fallback_reason: str | None = None
+    baseline_yearly_kwh: float
+    baseline_yearly_estimated_value: float
+    results: list[ScenarioComparisonResult]
