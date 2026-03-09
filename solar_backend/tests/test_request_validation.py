@@ -52,6 +52,84 @@ def build_valid_payload(**overrides):
     return payload
 
 
+def build_financial_assumptions():
+    return {
+        "electricity_price_per_kwh": 0.17,
+        "currency": "USD",
+        "valuation_basis": "Estimated value from forecasted energy.",
+    }
+
+
+def build_yearly_response():
+    return {
+        "location": [32.08, 34.78],
+        "forecast_year": 2026,
+        "model_type_requested": "physical",
+        "model_type_used": "physical",
+        "weather_reference_year": 2025,
+        "training_years_used": [],
+        "monthly_kwh": [100.0] * 12,
+        "yearly_kwh": 1200.0,
+        "specific_yield_kwh_per_kwp": 75.0,
+        "avg_daily_kwh": 3.3,
+        "monthly_estimated_value": [17.0] * 12,
+        "yearly_estimated_value": 204.0,
+        "avg_monthly_estimated_value": 17.0,
+        "financial_assumptions": build_financial_assumptions(),
+        "fallback_reason": None,
+        "ml_metadata": None,
+    }
+
+
+def build_accuracy_response():
+    return {
+        "year": 2025,
+        "model_type_requested": "physical",
+        "model_type_used": "physical",
+        "weather_reference_year": 2024,
+        "training_years_used": [],
+        "fallback_reason": None,
+        "actual_yearly_kwh": 1180.0,
+        "predicted_yearly_kwh": 1200.0,
+        "actual_yearly_estimated_value": 200.6,
+        "predicted_yearly_estimated_value": 204.0,
+        "actual_monthly_kwh": [98.3] * 12,
+        "predicted_monthly_kwh": [100.0] * 12,
+        "actual_monthly_estimated_value": [16.71] * 12,
+        "predicted_monthly_estimated_value": [17.0] * 12,
+        "mape_percent": 5.4,
+        "yearly_mape_percent": 1.69,
+        "quality": "GOOD",
+        "financial_assumptions": build_financial_assumptions(),
+        "ml_metadata": None,
+    }
+
+
+def build_scenario_comparison_response():
+    return {
+        "year": 2026,
+        "model_type_requested": "physical",
+        "model_type_used": "physical",
+        "weather_reference_year": 2025,
+        "training_years_used": [],
+        "fallback_reason": None,
+        "baseline_yearly_kwh": 1200.0,
+        "baseline_yearly_estimated_value": 204.0,
+        "results": [
+            {
+                "scenario": build_valid_payload(panel_area=80.0),
+                "yearly_kwh": 1200.0,
+                "monthly_kwh": [100.0] * 12,
+                "yearly_estimated_value": 204.0,
+                "monthly_estimated_value": [17.0] * 12,
+                "financial_assumptions": build_financial_assumptions(),
+                "deviation_percent": 0.0,
+                "value_deviation_percent": 0.0,
+            }
+        ],
+    }
+
+
 def assert_validation_error(response, field_name: str) -> None:
     assert response.status_code == 422
     errors = response.json()["detail"]
@@ -156,14 +234,14 @@ class TestApiValidation:
         return_value=0.87,
     )
     def test_simulate_accepts_valid_payload(self, *_mocks):
-        response = client.post("/simulate/", json=build_valid_payload())
+        response = client.post("/simulate", json=build_valid_payload())
 
         assert response.status_code == 200
         assert response.json()["daily_kwh"] == 24.0
 
     @patch(
         "app.routers.yearly_forecast_router.build_yearly_forecast_response",
-        return_value={"yearly_kwh": 12345.6},
+        return_value=build_yearly_response(),
     )
     @patch(
         "app.routers.yearly_forecast_router.compute_system_loss_factor",
@@ -174,14 +252,14 @@ class TestApiValidation:
         return_value=object(),
     )
     def test_yearly_accepts_valid_payload(self, *_mocks):
-        response = client.post("/forecast/yearly/", json=build_valid_payload())
+        response = client.post("/forecast/yearly", json=build_valid_payload())
 
         assert response.status_code == 200
-        assert response.json()["yearly_kwh"] == 12345.6
+        assert response.json()["yearly_kwh"] == 1200.0
 
     @patch(
         "app.routers.accuracy_router.evaluate_yearly_accuracy",
-        return_value={"quality": "GOOD"},
+        return_value=build_accuracy_response(),
     )
     def test_accuracy_accepts_valid_payload(self, _mock_evaluate):
         response = client.post("/evaluation/accuracy", json=build_valid_payload())
@@ -191,7 +269,7 @@ class TestApiValidation:
 
     @patch(
         "app.routers.scenario_comparison_router.compare_yearly_scenarios",
-        return_value={"results": []},
+        return_value=build_scenario_comparison_response(),
     )
     def test_scenario_comparison_accepts_valid_payloads(self, _mock_compare):
         scenarios = [
@@ -202,19 +280,19 @@ class TestApiValidation:
         response = client.post("/scenarios/compare", json=scenarios)
 
         assert response.status_code == 200
-        assert response.json()["results"] == []
+        assert len(response.json()["results"]) == 1
 
     @pytest.mark.parametrize(
         ("path", "payload", "field_name", "patch_target"),
         [
             (
-                "/simulate/",
+                "/simulate",
                 build_valid_payload(latitude=95.0),
                 "latitude",
                 "app.routers.simulate_router.get_weather_forecast",
             ),
             (
-                "/forecast/yearly/",
+                "/forecast/yearly",
                 build_valid_payload(panel_area=0.0),
                 "panel_area",
                 "app.routers.yearly_forecast_router.build_forecast_weather_profile",

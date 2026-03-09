@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.models.requests import YearlyForecastRequest
+from app.models.responses import YearlyForecastResponse
 from app.services.loss_service import compute_system_loss_factor
 from app.services.yearly_forecast_service import (
     build_forecast_weather_profile,
@@ -10,7 +11,7 @@ from app.services.yearly_forecast_service import (
 router = APIRouter()
 
 
-@router.post("/")
+@router.post("", response_model=YearlyForecastResponse)
 def yearly(req: YearlyForecastRequest):
     try:
         weather_profile = build_forecast_weather_profile(

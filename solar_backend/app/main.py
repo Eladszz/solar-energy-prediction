@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.models.responses import RootResponse
 from app.routers import (
     health_router,
     simulate_router,
@@ -34,6 +35,6 @@ app.include_router(
 )
 
 
-@app.get("/")
+@app.get("/", response_model=RootResponse)
 def root():
     return {"message": "Solar Forecasting Backend is running 🚀"}

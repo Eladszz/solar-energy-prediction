@@ -21,6 +21,7 @@ Implemented in this version:
 
 ## Main Endpoints
 
+- `GET /`
 - `GET /health`
 - `POST /simulate`
 - `POST /forecast/yearly`
@@ -28,6 +29,7 @@ Implemented in this version:
 - `POST /evaluation/accuracy`
 
 Swagger is available at `http://127.0.0.1:8000/swagger`.
+OpenAPI JSON is available at `http://127.0.0.1:8000/openapi.json`.
 
 ## Repository Layout
 
@@ -89,6 +91,8 @@ docker run -p 8000:8000 -p 8501:8501 solar-energy-app
 
 ## Example Requests
 
+All examples below use the exact mounted paths exposed by the backend. No trailing slash is required.
+
 ### Yearly forecast
 
 ```bash
@@ -122,6 +126,59 @@ curl -X POST http://127.0.0.1:8000/simulate \
     "panel_area": 80.0,
     "panel_efficiency": 0.20,
     "ac_capacity_kw": 15.0,
+    "electricity_price_per_kwh": 0.17,
+    "currency": "USD"
+  }'
+```
+
+### Scenario comparison
+
+```bash
+curl -X POST http://127.0.0.1:8000/scenarios/compare \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "latitude": 32.08,
+      "longitude": 34.78,
+      "year": 2026,
+      "panel_area": 80.0,
+      "panel_efficiency": 0.20,
+      "ac_capacity_kw": 15.0,
+      "model_type": "physical",
+      "electricity_price_per_kwh": 0.17,
+      "currency": "USD"
+    },
+    {
+      "latitude": 32.08,
+      "longitude": 34.78,
+      "year": 2026,
+      "panel_area": 96.0,
+      "panel_efficiency": 0.20,
+      "ac_capacity_kw": 18.0,
+      "model_type": "physical",
+      "electricity_price_per_kwh": 0.17,
+      "currency": "USD"
+    }
+  ]'
+```
+
+### Accuracy backtest
+
+```bash
+curl -X POST http://127.0.0.1:8000/evaluation/accuracy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "latitude": 32.08,
+    "longitude": 34.78,
+    "year": 2025,
+    "tilt": 30,
+    "panel_area": 80.0,
+    "panel_efficiency": 0.20,
+    "cleanliness": "normal",
+    "shading": "low",
+    "ac_capacity_kw": 15.0,
+    "model_type": "ml",
+    "training_years": 3,
     "electricity_price_per_kwh": 0.17,
     "currency": "USD"
   }'
