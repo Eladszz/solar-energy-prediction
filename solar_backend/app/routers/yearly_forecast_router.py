@@ -1,37 +1,47 @@
-from fastapi import APIRouter
-from app.models.requests import YearlyForecastRequest
-from app.services.weather_archive_service import get_year_archive
-from app.services.yearly_forecast_service import compute_yearly_from_real_data
-from app.services.loss_service import compute_system_loss_factor
+from fastapi import APIRouter, HTTPException
 
-import pandas as pd
+from app.models.requests import YearlyForecastRequest
+from app.services.loss_service import compute_system_loss_factor
+from app.services.yearly_forecast_service import (
+    build_forecast_weather_profile,
+    build_yearly_forecast_response,
+)
 
 router = APIRouter()
 
 
 @router.post("/")
 def yearly(req: YearlyForecastRequest):
-
-    df = get_year_archive(req.latitude, req.longitude, pd.Timestamp.now().year - 1)
-    system_loss_factor = compute_system_loss_factor(
-        cleanliness=req.cleanliness, shading=req.shading
-    )
-    result = compute_yearly_from_real_data(
-        df=df,
-        latitude=req.latitude,
-        tilt=req.tilt,
-        panel_area=req.panel_area,
-        efficiency=req.panel_efficiency,
-        gamma=req.gamma,
-        noct=req.noct,
-        system_loss_factor=system_loss_factor,
-        ac_capacity_kw=req.ac_capacity_kw,
-    )
-
-    return {
-        "location": (req.latitude, req.longitude),
-        "monthly_kwh": result["monthly_kwh"],
-        "yearly_kwh": result["yearly_kwh"],
-        "specific_yield_kwh_per_kwp": result["specific_yield_kwh_per_kwp"],
-        "avg_daily_kwh": result["avg_daily_kwh"],
-    }
+    try:
+        weather_profile = build_forecast_weather_profile(
+            latitude=req.latitude,
+            longitude=req.longitude,
+            forecast_year=req.year,
+            model_type=req.model_type,
+            training_years=req.training_years,
+        )
+        system_loss_factor = compute_system_loss_factor(
+            cleanliness=req.cleanliness,
+            shading=req.shading,
+        )
+        return build_yearly_forecast_response(
+            weather_profile=weather_profile,
+            latitude=req.latitude,
+            longitude=req.longitude,
+            tilt=req.tilt,
+            panel_area=req.panel_area,
+            efficiency=req.panel_efficiency,
+            gamma=req.gamma,
+            noct=req.noct,
+            system_loss_factor=system_loss_factor,
+            ac_capacity_kw=req.ac_capacity_kw,
+            electricity_price_per_kwh=req.electricity_price_per_kwh,
+            currency=req.currency,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Yearly forecast failed: {exc}",
+        ) from exc

@@ -1,0 +1,218 @@
+# Architecture
+
+## System Purpose
+
+The Solar Energy Prediction System estimates solar energy production for a user-defined PV system and location. The Alpha version supports:
+- 24-hour operational simulation from forecast weather
+- Yearly forecast generation
+- A physical baseline forecast path
+- A real ML-based yearly forecast path
+- Financial value estimation from predicted kWh
+- Scenario comparison and backtest accuracy analysis
+
+## High-Level Architecture
+
+The system is split into two runtime components:
+
+1. FastAPI backend
+   - Exposes REST endpoints
+   - Retrieves weather data from Open-Meteo
+   - Runs physical PV simulation
+   - Trains and executes the ML baseline yearly forecast
+   - Computes financial summaries and accuracy metrics
+
+2. Streamlit frontend
+   - Collects location and system inputs
+   - Visualizes yearly, daily, comparison, and accuracy outputs
+   - Displays model metadata, tariff assumptions, and fallback messages
+   - Supports map-based roof area selection
+
+External dependency:
+- Open-Meteo forecast and archive APIs
+
+## Main Modules
+
+### Backend routers
+
+- `simulate_router.py`
+  - Daily production simulation from forecast weather
+- `yearly_forecast_router.py`
+  - Yearly forecast for `physical` or `ml` mode
+- `scenario_comparison_router.py`
+  - Multi-scenario yearly comparison
+- `accuracy_router.py`
+  - Backtest against archived actual weather
+- `health_router.py`
+  - Basic service status endpoint
+
+### Backend services
+
+- `weather_service.py`
+  - Retrieves short-range forecast weather
+- `weather_archive_service.py`
+  - Retrieves archived hourly weather by year
+- `simulation_service.py`
+  - Converts irradiance and temperature into AC output
+- `loss_service.py`
+  - Computes aggregate system loss factor from cleanliness and shading
+- `yearly_forecast_service.py`
+  - Orchestrates yearly weather profile preparation and yearly energy aggregation
+- `ml_forecast_service.py`
+  - Trains a ridge-regression weather model from historical hourly data
+- `finance_service.py`
+  - Converts energy outputs to estimated financial value
+- `scenario_comparison_service.py`
+  - Reuses one yearly weather profile across multiple scenarios
+- `accuracy_service.py`
+  - Compares predicted and actual outputs and calculates MAPE
+
+### Frontend modules
+
+- `solar_ui/app.py`
+  - Main user workflow and visual presentation
+- `solar_ui/utils.py`
+  - Roof area estimation and reverse geocoding helper functions
+
+## Data Flow
+
+### Daily simulation flow
+
+1. User selects a location and system configuration in Streamlit.
+2. Frontend sends `POST /simulate`.
+3. Backend pulls hourly forecast weather.
+4. Backend applies:
+   - POA approximation
+   - NOCT cell temperature model
+   - thermal derating
+   - system loss factor
+   - inverter clipping
+5. Backend returns hourly AC output, daily kWh, and estimated daily value.
+
+### Yearly forecast flow
+
+1. User selects forecast year, model type, and tariff assumption.
+2. Frontend sends `POST /forecast/yearly`.
+3. Backend builds a yearly weather profile:
+   - `physical`: archived weather baseline
+   - `ml`: trained weather regression forecast
+4. Backend runs the physical PV conversion stack over the yearly hourly weather profile.
+5. Backend aggregates monthly and yearly kWh.
+6. Backend converts energy to estimated monthly and yearly value.
+7. Backend returns forecast data plus metadata about:
+   - forecast year
+   - model requested and used
+   - archived weather reference year
+   - ML training years
+   - fallback reason if any
+
+## Forecasting Logic
+
+### Physical path
+
+The physical path is the deterministic baseline:
+- input weather: archived hourly shortwave radiation and temperature
+- POA approximation from latitude and tilt
+- cell temperature estimation with NOCT
+- power reduction using temperature coefficient
+- loss adjustment
+- inverter clipping
+
+This path is reliable, transparent, and serves as:
+- the baseline forecast
+- the fallback path when ML is unavailable
+- the energy conversion layer for both yearly modes
+
+## ML Integration
+
+The Alpha ML path is intentionally simple and real:
+
+- Training target:
+  - archived hourly irradiance
+  - archived hourly temperature
+- Training data:
+  - previous archived weather years for the selected location
+- Features:
+  - hour-of-day harmonics
+  - day-of-year harmonics
+  - month indicators
+  - daylight proxy
+  - year trend
+- Model:
+  - lightweight ridge regression implemented with NumPy
+
+The ML model predicts an hourly weather profile for the target year. The system then passes that predicted weather into the same PV simulation pipeline used by the physical baseline. This keeps the architecture modular:
+- ML predicts the weather profile
+- the physics model converts weather to PV output
+
+This design keeps the Alpha version:
+- real
+- explainable
+- testable
+- easy to extend later with richer models
+
+## Monetary Estimation Logic
+
+Financial outputs are computed from forecasted energy:
+
+- input:
+  - `electricity_price_per_kwh`
+  - `currency`
+- output:
+  - monthly estimated value
+  - yearly estimated value
+  - average monthly estimated value
+
+The tariff is user-configurable and returned in the backend response under `financial_assumptions`. This keeps the monetary estimate transparent and suitable for scenario comparison.
+
+## Frontend / Backend Responsibilities
+
+### Frontend responsibilities
+
+- address entry and geocoding
+- optional roof rectangle selection
+- parameter collection
+- forecast model selection
+- tariff input
+- result visualization
+- scenario setup
+- invoking backtest analysis
+
+### Backend responsibilities
+
+- data retrieval
+- numerical forecasting and simulation
+- ML training and prediction
+- fallback behavior
+- value estimation
+- response shaping for the UI
+
+## Current Alpha Scope
+
+Included in Alpha:
+- end-to-end demo flow
+- physical and ML yearly forecasts
+- daily simulation
+- scenario comparison
+- backtest accuracy with MAPE
+- tariff-based monetary estimation
+- automated test coverage for core services
+
+Not included in Alpha:
+- database persistence
+- user accounts
+- actual utility tariff catalogs by region
+- plant monitoring integration
+- advanced neural or probabilistic forecasting models
+
+## Future Extensions
+
+- direct learning from real PV production datasets
+- better solar geometry and irradiance decomposition
+- battery and storage modeling
+- tariff plans with time-of-use pricing
+- confidence intervals and uncertainty bands
+- forecast history persistence and experiment tracking
+
+## Related Artifacts
+
+- `architecture/*.puml` contains the project diagrams used for the engineering report.

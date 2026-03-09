@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
-from typing import List
 import logging
+from typing import List
+
+from fastapi import APIRouter, HTTPException
 
 from app.models.requests import BasePVRequest
 from app.services.scenario_comparison_service import compare_yearly_scenarios
@@ -33,6 +34,21 @@ def compare_scenarios(
                 status_code=400,
                 detail="All scenarios must have the same latitude and longitude",
             )
+        if s.model_type != scenarios[0].model_type:
+            raise HTTPException(
+                status_code=400,
+                detail="All scenarios must use the same forecast model type for a fair comparison.",
+            )
+        if s.currency != scenarios[0].currency:
+            raise HTTPException(
+                status_code=400,
+                detail="All scenarios must use the same currency for financial comparison.",
+            )
+        if s.electricity_price_per_kwh != scenarios[0].electricity_price_per_kwh:
+            raise HTTPException(
+                status_code=400,
+                detail="All scenarios must use the same tariff assumption for financial comparison.",
+            )
 
     try:
         return compare_yearly_scenarios(
@@ -41,5 +57,5 @@ def compare_scenarios(
             scenarios=scenarios,
         )
     except Exception as e:
-        logger.error("Scenario comparison error:", e)
+        logger.exception("Scenario comparison error")
         raise HTTPException(status_code=500, detail=str(e))
