@@ -10,9 +10,6 @@ pytest
 pytest-cov
 pytest-html
 httpx
-rich
-asgi-correlation-id
-python-json-logger
-logtail-python
+loguru
 pydantic-settings
 python-dotenv

@@ -6,10 +6,9 @@ from app.routers import (
     scenario_comparison_router,
     accuracy_router,
 )
-import logging
+from loguru import logger
 from app.logging_conf import configure_logging
 
-logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Solar Energy Forecasting API",
     version="0.2.0",

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from datetime import date
-import logging
+import sys
 
 import folium  # type: ignore
 from folium.plugins import Draw  # type: ignore
 from geopy.geocoders import Nominatim  # type: ignore
+from loguru import logger
 import pandas as pd
 import plotly.express as px
 import pycountry
@@ -33,9 +34,21 @@ MONTH_NAMES = [
     "Dec",
 ]
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
+logger.remove()
+logger.add(
+    sys.stderr,
+    level="INFO",
+    enqueue=True,
+    backtrace=False,
+    diagnose=False,
+    colorize=True,
+    format=(
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+        "<level>{message}</level>"
+    ),
+)
 
 st.set_page_config(page_title="Solar Energy Forecast", layout="wide")
 st.title("Solar Energy Prediction System")
@@ -81,16 +94,25 @@ def api_post(path: str, payload: dict) -> dict | None:
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except requests.RequestException as exc:
+        logger.error("Frontend request to {} failed: {}", path, exc)
         st.error(f"Request to backend failed: {exc}")
         return None
 
     if response.status_code != 200:
-        st.error(parse_api_error(response))
+        error_message = parse_api_error(response)
+        logger.error(
+            "Backend request {} returned status {}: {}",
+            path,
+            response.status_code,
+            error_message,
+        )
+        st.error(error_message)
         return None
 
     try:
         return response.json()
     except ValueError:
+        logger.error("Backend response for {} was not valid JSON.", path)
         st.error("Backend response was not valid JSON.")
         return None
 

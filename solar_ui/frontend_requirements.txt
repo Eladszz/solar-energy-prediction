@@ -7,3 +7,4 @@ geopy
 folium
 streamlit-folium
 pycountry
+loguru
