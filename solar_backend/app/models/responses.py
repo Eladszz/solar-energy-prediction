@@ -4,7 +4,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.requests import BasePVRequest, CurrencyCode, ModelType
+from app.models.requests import (
+    CurrencyCode,
+    ModelType,
+    ScenarioComparisonScenario,
+)
 
 
 class ApiResponseModel(BaseModel):
@@ -91,7 +95,7 @@ class AccuracyEvaluationResponse(ApiResponseModel):
 
 
 class ScenarioComparisonResult(ApiResponseModel):
-    scenario: BasePVRequest
+    scenario: ScenarioComparisonScenario
     yearly_kwh: float
     monthly_kwh: list[float]
     yearly_estimated_value: float

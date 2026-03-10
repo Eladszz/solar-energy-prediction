@@ -89,8 +89,38 @@ class PVRequestPayload(TypedDict):
     demo_scenario_id: str | None
 
 
+class ScenarioComparisonContextPayload(TypedDict):
+    latitude: float
+    longitude: float
+    year: int
+    model_type: str
+    training_years: int
+    electricity_price_per_kwh: float
+    currency: str
+    demo_mode: bool
+    demo_scenario_id: str | None
+
+
+class ScenarioComparisonScenarioPayload(TypedDict):
+    name: str
+    tilt: int
+    panel_area: float
+    panel_efficiency: float
+    cleanliness: str
+    shading: str
+    ac_capacity_kw: float
+    gamma: float
+    noct: float
+
+
+class ScenarioComparisonRequestPayload(TypedDict):
+    context: ScenarioComparisonContextPayload
+    scenarios: list[ScenarioComparisonScenarioPayload]
+
+
 ApiPayload: TypeAlias = (
     PVRequestPayload
+    | ScenarioComparisonRequestPayload
     | dict[str, Any]
     | list[PVRequestPayload]
     | list[dict[str, Any]]
@@ -293,7 +323,7 @@ def build_common_payload(
     training_years: int,
     demo_mode: bool,
     demo_scenario_id: str | None,
-) -> PVRequestPayload:
+    ) -> PVRequestPayload:
     return {
         "latitude": latitude,
         "longitude": longitude,
@@ -312,6 +342,56 @@ def build_common_payload(
         "training_years": training_years,
         "demo_mode": demo_mode,
         "demo_scenario_id": demo_scenario_id,
+    }
+
+
+def build_scenario_comparison_context(
+    base_payload: PVRequestPayload,
+) -> ScenarioComparisonContextPayload:
+    return {
+        "latitude": base_payload["latitude"],
+        "longitude": base_payload["longitude"],
+        "year": base_payload["year"],
+        "model_type": base_payload["model_type"],
+        "training_years": base_payload["training_years"],
+        "electricity_price_per_kwh": base_payload["electricity_price_per_kwh"],
+        "currency": base_payload["currency"],
+        "demo_mode": base_payload["demo_mode"],
+        "demo_scenario_id": base_payload["demo_scenario_id"],
+    }
+
+
+def build_scenario_comparison_scenario(
+    name: str,
+    payload: Mapping[str, Any],
+) -> ScenarioComparisonScenarioPayload:
+    return {
+        "name": name,
+        "tilt": int(payload["tilt"]),
+        "panel_area": float(payload["panel_area"]),
+        "panel_efficiency": float(payload["panel_efficiency"]),
+        "cleanliness": str(payload["cleanliness"]),
+        "shading": str(payload["shading"]),
+        "ac_capacity_kw": float(payload["ac_capacity_kw"]),
+        "gamma": float(payload["gamma"]),
+        "noct": float(payload["noct"]),
+    }
+
+
+def build_scenario_comparison_payload(
+    base_payload: PVRequestPayload,
+    scenario_requests: list[dict[str, Any]],
+) -> ScenarioComparisonRequestPayload:
+    scenarios = [
+        build_scenario_comparison_scenario("Base System", base_payload),
+        *[
+            build_scenario_comparison_scenario(scenario["name"], scenario["payload"])
+            for scenario in scenario_requests
+        ],
+    ]
+    return {
+        "context": build_scenario_comparison_context(base_payload),
+        "scenarios": scenarios,
     }
 
 
@@ -587,17 +667,14 @@ def render_accuracy_tab(accuracy_data: dict) -> None:
             st.json(accuracy_data["ml_metadata"])
 
 
-def render_comparison_tab(
-    comparison_data: dict,
-    scenario_names: list[str],
-) -> None:
+def render_comparison_tab(comparison_data: dict) -> None:
     render_data_source_notice(comparison_data)
     if comparison_data.get("fallback_reason"):
         st.warning(comparison_data["fallback_reason"])
 
     monthly_chart_rows: list[dict] = []
-    for index, result in enumerate(comparison_data["results"]):
-        scenario_label = "Base System" if index == 0 else scenario_names[index - 1]
+    for result in comparison_data["results"]:
+        scenario_label = result["scenario"]["name"]
         for month_name, monthly_value in zip(MONTH_NAMES, result["monthly_kwh"]):
             monthly_chart_rows.append(
                 {
@@ -619,8 +696,8 @@ def render_comparison_tab(
     st.plotly_chart(monthly_chart, width="stretch")
 
     summary_rows = []
-    for index, result in enumerate(comparison_data["results"]):
-        scenario_label = "Base System" if index == 0 else scenario_names[index - 1]
+    for result in comparison_data["results"]:
+        scenario_label = result["scenario"]["name"]
         summary_rows.append(
             {
                 "Scenario": scenario_label,
@@ -1083,11 +1160,12 @@ with tab_scenarios:
 
         if st.session_state.scenario_requests:
             if st.button("Run Scenario Comparison"):
-                scenario_payloads = [base_payload] + [
-                    scenario["payload"] for scenario in st.session_state.scenario_requests
-                ]
+                comparison_payload = build_scenario_comparison_payload(
+                    base_payload,
+                    st.session_state.scenario_requests,
+                )
                 with st.spinner("Comparing yearly scenarios..."):
-                    comparison_response = api_post("/scenarios/compare", scenario_payloads)
+                    comparison_response = api_post("/scenarios/compare", comparison_payload)
                     if comparison_response is not None:
                         st.session_state.comparison_result = comparison_response
 
@@ -1105,9 +1183,6 @@ with tab_scenarios:
             st.dataframe(scenario_table, width="stretch", hide_index=True)
 
             if st.session_state.comparison_result is not None:
-                render_comparison_tab(
-                    st.session_state.comparison_result,
-                    [scenario["name"] for scenario in st.session_state.scenario_requests],
-                )
+                render_comparison_tab(st.session_state.comparison_result)
         else:
             st.info("Add at least one scenario to compare it against the base system.")

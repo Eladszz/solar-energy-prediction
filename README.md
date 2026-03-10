@@ -14,7 +14,7 @@ Implemented in this version:
   - `physical`: physics-based PV simulation using archived weather as the baseline profile
   - `ml`: a lightweight trained regression model that forecasts hourly irradiance and temperature from historical weather patterns, then converts that forecast into energy
 - Monetary estimation from predicted kWh using a configurable tariff
-- Scenario comparison against a baseline system
+- Scenario comparison against a baseline system using a shared comparison context plus per-scenario system definitions
 - Accuracy backtest with monthly and yearly MAPE
 - Map-assisted roof area selection in the UI
 - Clear backend metadata for fallback behavior, reference years, and ML training years
@@ -133,33 +133,45 @@ curl -X POST http://127.0.0.1:8000/simulate \
 
 ### Scenario comparison
 
+Scenario comparison now uses one shared `context` object for weather/model/tariff settings, plus a `scenarios` array that contains only scenario-specific system fields.
+
 ```bash
 curl -X POST http://127.0.0.1:8000/scenarios/compare \
   -H "Content-Type: application/json" \
-  -d '[
-    {
+  -d '{
+    "context": {
       "latitude": 32.08,
       "longitude": 34.78,
       "year": 2026,
-      "panel_area": 80.0,
-      "panel_efficiency": 0.20,
-      "ac_capacity_kw": 15.0,
       "model_type": "physical",
       "electricity_price_per_kwh": 0.17,
       "currency": "USD"
     },
-    {
-      "latitude": 32.08,
-      "longitude": 34.78,
-      "year": 2026,
-      "panel_area": 96.0,
-      "panel_efficiency": 0.20,
-      "ac_capacity_kw": 18.0,
-      "model_type": "physical",
-      "electricity_price_per_kwh": 0.17,
-      "currency": "USD"
-    }
-  ]'
+    "scenarios": [
+      {
+        "name": "Base System",
+        "panel_area": 80.0,
+        "panel_efficiency": 0.20,
+        "ac_capacity_kw": 15.0,
+        "tilt": 30.0,
+        "cleanliness": "normal",
+        "shading": "low",
+        "gamma": 0.004,
+        "noct": 45.0
+      },
+      {
+        "name": "Expanded Array",
+        "panel_area": 96.0,
+        "panel_efficiency": 0.20,
+        "ac_capacity_kw": 18.0,
+        "tilt": 30.0,
+        "cleanliness": "clean",
+        "shading": "none",
+        "gamma": 0.004,
+        "noct": 45.0
+      }
+    ]
+  }'
 ```
 
 ### Accuracy backtest
@@ -192,7 +204,7 @@ Recommended Alpha demo:
 3. Run a yearly forecast with `physical` mode.
 4. Switch to `ml` mode and rerun to show the alternative forecasting path.
 5. Open the Accuracy tab and run the backtest to show monthly/yearly MAPE.
-6. Add one or two scenarios with larger panel area or inverter size and compare results.
+6. Add one or two system variants and compare them under the same shared weather/model/tariff context.
 
 ## Testing
 

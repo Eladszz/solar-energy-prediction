@@ -10,6 +10,9 @@ from pydantic import ValidationError
 from app.models.requests import (
     AccuracyEvaluationRequest,
     BasePVRequest,
+    ScenarioComparisonContext,
+    ScenarioComparisonRequest,
+    ScenarioComparisonScenario,
     SimulationRequest,
     YearlyForecastRequest,
 )
@@ -47,6 +50,50 @@ def build_valid_payload(**overrides):
         "electricity_price_per_kwh": 0.17,
         "currency": "USD",
         "training_years": 3,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def build_valid_comparison_context(**overrides):
+    payload = {
+        "latitude": 32.08,
+        "longitude": 34.78,
+        "year": 2026,
+        "model_type": "physical",
+        "training_years": 3,
+        "electricity_price_per_kwh": 0.17,
+        "currency": "USD",
+        "demo_mode": False,
+        "demo_scenario_id": None,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def build_valid_comparison_scenario(**overrides):
+    payload = {
+        "name": "Base System",
+        "tilt": 30.0,
+        "panel_area": 80.0,
+        "panel_efficiency": 0.20,
+        "cleanliness": "normal",
+        "shading": "low",
+        "ac_capacity_kw": 15.0,
+        "gamma": 0.004,
+        "noct": 45.0,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def build_valid_comparison_payload(**overrides):
+    payload = {
+        "context": build_valid_comparison_context(),
+        "scenarios": [
+            build_valid_comparison_scenario(name="Base System"),
+            build_valid_comparison_scenario(name="Expanded Array", panel_area=90.0),
+        ],
     }
     payload.update(overrides)
     return payload
@@ -117,7 +164,7 @@ def build_scenario_comparison_response():
         "baseline_yearly_estimated_value": 204.0,
         "results": [
             {
-                "scenario": build_valid_payload(panel_area=80.0),
+                "scenario": build_valid_comparison_scenario(name="Base System"),
                 "yearly_kwh": 1200.0,
                 "monthly_kwh": [100.0] * 12,
                 "yearly_estimated_value": 204.0,
@@ -140,15 +187,19 @@ def assert_validation_error(response, field_name: str) -> None:
 class TestRequestModels:
     def test_request_models_accept_valid_payloads(self):
         payload = build_valid_payload()
+        comparison_payload = build_valid_comparison_payload()
 
         base_request = BasePVRequest(**payload)
         simulation_request = SimulationRequest(**payload)
         yearly_request = YearlyForecastRequest(**payload)
         accuracy_request = AccuracyEvaluationRequest(**payload)
+        comparison_request = ScenarioComparisonRequest(**comparison_payload)
 
         assert base_request.model_dump() == simulation_request.model_dump()
         assert yearly_request.year == 2026
         assert accuracy_request.currency == "USD"
+        assert comparison_request.context.model_type == "physical"
+        assert comparison_request.scenarios[1].name == "Expanded Array"
 
     @pytest.mark.parametrize(
         ("field_name", "value"),
@@ -272,12 +323,7 @@ class TestApiValidation:
         return_value=build_scenario_comparison_response(),
     )
     def test_scenario_comparison_accepts_valid_payloads(self, _mock_compare):
-        scenarios = [
-            build_valid_payload(panel_area=80.0),
-            build_valid_payload(panel_area=90.0),
-        ]
-
-        response = client.post("/scenarios/compare", json=scenarios)
+        response = client.post("/scenarios/compare", json=build_valid_comparison_payload())
 
         assert response.status_code == 200
         assert len(response.json()["results"]) == 1
@@ -305,10 +351,15 @@ class TestApiValidation:
             ),
             (
                 "/scenarios/compare",
-                [
-                    build_valid_payload(),
-                    build_valid_payload(shading="partial"),
-                ],
+                build_valid_comparison_payload(
+                    scenarios=[
+                        build_valid_comparison_scenario(name="Base System"),
+                        build_valid_comparison_scenario(
+                            name="Invalid Variant",
+                            shading="partial",
+                        ),
+                    ]
+                ),
                 "shading",
                 "app.routers.scenario_comparison_router.compare_yearly_scenarios",
             ),
@@ -328,3 +379,18 @@ class TestApiValidation:
             response = client.post(path, json=payload)
 
         assert_validation_error(response, field_name)
+
+    def test_scenario_comparison_rejects_shared_context_fields_inside_scenario(self):
+        payload = build_valid_comparison_payload(
+            scenarios=[
+                build_valid_comparison_scenario(name="Base System"),
+                build_valid_comparison_scenario(
+                    name="Bad Variant",
+                    year=2027,
+                ),
+            ]
+        )
+
+        response = client.post("/scenarios/compare", json=payload)
+
+        assert_validation_error(response, "year")
