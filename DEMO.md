@@ -20,6 +20,7 @@ Each scenario includes:
 - fixed coordinates and address
 - default system parameters
 - preset comparison variants for the scenario comparison tab
+- a shared comparison context so demo variants only change system-specific fields
 - deterministic weather coefficients used to generate the same demo-ready outputs every run
 
 ## Run The Backend In Demo Mode

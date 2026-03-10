@@ -1,9 +1,9 @@
 from unittest.mock import patch
 
-import pytest
 import pandas as pd
+import pytest
 
-from app.models.requests import BasePVRequest
+from app.models.requests import ScenarioComparisonContext, ScenarioComparisonScenario
 from app.services.scenario_comparison_service import compare_yearly_scenarios
 from app.services.yearly_forecast_service import WeatherProfileResult
 
@@ -27,11 +27,22 @@ def sample_weather_profile():
 
 
 @pytest.fixture
-def base_scenario():
-    return BasePVRequest(
+def comparison_context():
+    return ScenarioComparisonContext(
         latitude=32.08,
         longitude=34.78,
         year=2026,
+        model_type="physical",
+        training_years=3,
+        electricity_price_per_kwh=0.18,
+        currency="USD",
+    )
+
+
+@pytest.fixture
+def base_scenario():
+    return ScenarioComparisonScenario(
+        name="Base System",
         tilt=30.0,
         panel_area=80.0,
         panel_efficiency=0.20,
@@ -40,19 +51,13 @@ def base_scenario():
         ac_capacity_kw=15.0,
         gamma=0.004,
         noct=45.0,
-        model_type="physical",
-        electricity_price_per_kwh=0.18,
-        currency="USD",
-        training_years=3,
     )
 
 
 @pytest.fixture
 def larger_scenario():
-    return BasePVRequest(
-        latitude=32.08,
-        longitude=34.78,
-        year=2026,
+    return ScenarioComparisonScenario(
+        name="Expanded Array",
         tilt=30.0,
         panel_area=100.0,
         panel_efficiency=0.20,
@@ -61,16 +66,12 @@ def larger_scenario():
         ac_capacity_kw=18.0,
         gamma=0.004,
         noct=45.0,
-        model_type="physical",
-        electricity_price_per_kwh=0.18,
-        currency="USD",
-        training_years=3,
     )
 
 
-def test_compare_yearly_scenarios_requires_at_least_one_scenario():
+def test_compare_yearly_scenarios_requires_at_least_one_scenario(comparison_context):
     with pytest.raises(ValueError, match="At least one scenario"):
-        compare_yearly_scenarios(32.08, 34.78, [])
+        compare_yearly_scenarios(comparison_context, [])
 
 
 @patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")
@@ -81,6 +82,7 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
     mock_loss_factor,
     mock_compute_yearly,
     sample_weather_profile,
+    comparison_context,
     base_scenario,
     larger_scenario,
 ):
@@ -92,14 +94,15 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
     ]
 
     result = compare_yearly_scenarios(
-        latitude=32.08,
-        longitude=34.78,
+        context=comparison_context,
         scenarios=[base_scenario, larger_scenario],
     )
 
     assert result["year"] == 2026
     assert result["baseline_yearly_kwh"] == 7200.0
     assert result["baseline_yearly_estimated_value"] == 1296.0
+    assert result["results"][0]["scenario"]["name"] == "Base System"
+    assert result["results"][1]["scenario"]["name"] == "Expanded Array"
     assert result["results"][0]["deviation_percent"] == 0.0
     assert result["results"][1]["deviation_percent"] == 25.0
     assert result["results"][1]["yearly_estimated_value"] == 1620.0
@@ -119,28 +122,23 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
 @patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")
 @patch("app.services.scenario_comparison_service.compute_system_loss_factor")
 @patch("app.services.scenario_comparison_service.build_forecast_weather_profile")
-def test_compare_yearly_scenarios_uses_baseline_model_settings(
+def test_compare_yearly_scenarios_uses_shared_context_for_weather_and_finance(
     mock_build_profile,
     mock_loss_factor,
     mock_compute_yearly,
     sample_weather_profile,
+    base_scenario,
 ):
-    baseline = BasePVRequest(
+    context = ScenarioComparisonContext(
         latitude=32.08,
         longitude=34.78,
         year=2027,
-        tilt=35.0,
-        panel_area=90.0,
-        panel_efficiency=0.21,
-        cleanliness="normal",
-        shading="low",
-        ac_capacity_kw=17.0,
-        gamma=0.004,
-        noct=45.0,
         model_type="ml",
+        training_years=4,
         electricity_price_per_kwh=0.22,
         currency="EUR",
-        training_years=4,
+        demo_mode=True,
+        demo_scenario_id="tel_aviv_rooftop",
     )
     mock_build_profile.return_value = sample_weather_profile
     mock_loss_factor.return_value = 0.87
@@ -150,9 +148,8 @@ def test_compare_yearly_scenarios_uses_baseline_model_settings(
     }
 
     result = compare_yearly_scenarios(
-        latitude=32.08,
-        longitude=34.78,
-        scenarios=[baseline],
+        context=context,
+        scenarios=[base_scenario],
     )
 
     mock_build_profile.assert_called_once_with(
@@ -161,10 +158,11 @@ def test_compare_yearly_scenarios_uses_baseline_model_settings(
         forecast_year=2027,
         model_type="ml",
         training_years=4,
-        demo_mode=False,
-        demo_scenario_id=None,
+        demo_mode=True,
+        demo_scenario_id="tel_aviv_rooftop",
     )
     assert result["results"][0]["financial_assumptions"]["currency"] == "EUR"
+    assert result["results"][0]["financial_assumptions"]["electricity_price_per_kwh"] == 0.22
 
 
 @patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")
@@ -175,6 +173,7 @@ def test_compare_yearly_scenarios_preserves_demo_metadata(
     mock_loss_factor,
     mock_compute_yearly,
     sample_weather_profile,
+    comparison_context,
     base_scenario,
 ):
     mock_build_profile.return_value = WeatherProfileResult(
@@ -194,8 +193,7 @@ def test_compare_yearly_scenarios_preserves_demo_metadata(
     }
 
     result = compare_yearly_scenarios(
-        latitude=32.08,
-        longitude=34.78,
+        context=comparison_context,
         scenarios=[base_scenario],
     )
 

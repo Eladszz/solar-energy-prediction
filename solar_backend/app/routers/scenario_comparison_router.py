@@ -1,9 +1,8 @@
 import logging
-from typing import List
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.requests import BasePVRequest
+from app.models.requests import ScenarioComparisonRequest
 from app.models.responses import ScenarioComparisonResponse
 from app.services.external_service import (
     ExternalServiceError,
@@ -17,62 +16,22 @@ router = APIRouter()
 
 @router.post("/compare", response_model=ScenarioComparisonResponse)
 def compare_scenarios(
-    scenarios: List[BasePVRequest],
+    req: ScenarioComparisonRequest,
 ):
     """
     Use Case 6.2.2:
     Compare multiple PV system scenarios under identical weather conditions.
     """
 
-    if len(scenarios) < 2:
-        raise HTTPException(
-            status_code=400, detail="At least two scenarios are required for comparison"
-        )
-
-    latitude = scenarios[0].latitude
-    longitude = scenarios[0].longitude
-
-    # Safety: ensure all scenarios refer to same location
-    for s in scenarios:
-        if s.latitude != latitude or s.longitude != longitude:
-            raise HTTPException(
-                status_code=400,
-                detail="All scenarios must have the same latitude and longitude",
-            )
-        if s.model_type != scenarios[0].model_type:
-            raise HTTPException(
-                status_code=400,
-                detail="All scenarios must use the same forecast model type for a fair comparison.",
-            )
-        if s.currency != scenarios[0].currency:
-            raise HTTPException(
-                status_code=400,
-                detail="All scenarios must use the same currency for financial comparison.",
-            )
-        if s.electricity_price_per_kwh != scenarios[0].electricity_price_per_kwh:
-            raise HTTPException(
-                status_code=400,
-                detail="All scenarios must use the same tariff assumption for financial comparison.",
-            )
-        if s.demo_mode != scenarios[0].demo_mode:
-            raise HTTPException(
-                status_code=400,
-                detail="All scenarios must use the same demo mode setting.",
-            )
-        if s.demo_scenario_id != scenarios[0].demo_scenario_id:
-            raise HTTPException(
-                status_code=400,
-                detail="All scenarios must use the same demo scenario in demo mode.",
-            )
-
     try:
         return compare_yearly_scenarios(
-            latitude=latitude,
-            longitude=longitude,
-            scenarios=scenarios,
+            context=req.context,
+            scenarios=req.scenarios,
         )
     except ExternalServiceError as exc:
         raise external_service_to_http_exception(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         logger.exception("Scenario comparison error")
         raise HTTPException(status_code=500, detail=str(e))

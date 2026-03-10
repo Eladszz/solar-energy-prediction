@@ -42,6 +42,54 @@ def build_valid_payload(**overrides):
     return payload
 
 
+def build_valid_comparison_context(**overrides):
+    payload = {
+        "latitude": 32.08,
+        "longitude": 34.78,
+        "year": 2026,
+        "model_type": "physical",
+        "training_years": 3,
+        "electricity_price_per_kwh": 0.17,
+        "currency": "USD",
+        "demo_mode": False,
+        "demo_scenario_id": None,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def build_valid_comparison_scenario(**overrides):
+    payload = {
+        "name": "Base System",
+        "tilt": 30.0,
+        "panel_area": 80.0,
+        "panel_efficiency": 0.20,
+        "cleanliness": "normal",
+        "shading": "low",
+        "ac_capacity_kw": 15.0,
+        "gamma": 0.004,
+        "noct": 45.0,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def build_valid_comparison_payload(**overrides):
+    payload = {
+        "context": build_valid_comparison_context(),
+        "scenarios": [
+            build_valid_comparison_scenario(name="Base System"),
+            build_valid_comparison_scenario(
+                name="Expanded Array",
+                panel_area=96.0,
+                ac_capacity_kw=18.0,
+            ),
+        ],
+    }
+    payload.update(overrides)
+    return payload
+
+
 def build_financial_assumptions():
     return {
         "electricity_price_per_kwh": 0.17,
@@ -107,7 +155,7 @@ def build_scenario_response():
         "baseline_yearly_estimated_value": 204.0,
         "results": [
             {
-                "scenario": build_valid_payload(panel_area=80.0),
+                "scenario": build_valid_comparison_scenario(name="Base System"),
                 "yearly_kwh": 1200.0,
                 "monthly_kwh": [100.0] * 12,
                 "yearly_estimated_value": 204.0,
@@ -117,7 +165,11 @@ def build_scenario_response():
                 "value_deviation_percent": 0.0,
             },
             {
-                "scenario": build_valid_payload(panel_area=96.0, ac_capacity_kw=18.0),
+                "scenario": build_valid_comparison_scenario(
+                    name="Expanded Array",
+                    panel_area=96.0,
+                    ac_capacity_kw=18.0,
+                ),
                 "yearly_kwh": 1440.0,
                 "monthly_kwh": [120.0] * 12,
                 "yearly_estimated_value": 244.8,
@@ -272,10 +324,7 @@ def test_documented_accuracy_path_works(_mock_evaluate):
 def test_documented_scenario_compare_path_works(_mock_compare):
     response = client.post(
         "/scenarios/compare",
-        json=[
-            build_valid_payload(panel_area=80.0),
-            build_valid_payload(panel_area=96.0, ac_capacity_kw=18.0),
-        ],
+        json=build_valid_comparison_payload(),
     )
 
     assert response.status_code == 200

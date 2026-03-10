@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict
 
-from app.models.requests import BasePVRequest
+from app.models.requests import ScenarioComparisonContext, ScenarioComparisonScenario
 from app.services.finance_service import build_financial_summary
 from app.services.loss_service import compute_system_loss_factor
 from app.services.yearly_forecast_service import (
@@ -12,22 +12,20 @@ from app.services.yearly_forecast_service import (
 
 
 def compare_yearly_scenarios(
-    latitude: float,
-    longitude: float,
-    scenarios: List[BasePVRequest],
+    context: ScenarioComparisonContext,
+    scenarios: list[ScenarioComparisonScenario],
 ) -> Dict:
     if not scenarios:
         raise ValueError("At least one scenario is required")
 
-    baseline_request = scenarios[0]
     weather_profile = build_forecast_weather_profile(
-        latitude=latitude,
-        longitude=longitude,
-        forecast_year=baseline_request.year,
-        model_type=baseline_request.model_type,
-        training_years=baseline_request.training_years,
-        demo_mode=baseline_request.demo_mode,
-        demo_scenario_id=baseline_request.demo_scenario_id,
+        latitude=context.latitude,
+        longitude=context.longitude,
+        forecast_year=context.year,
+        model_type=context.model_type,
+        training_years=context.training_years,
+        demo_mode=context.demo_mode,
+        demo_scenario_id=context.demo_scenario_id,
     )
 
     results = []
@@ -40,7 +38,7 @@ def compare_yearly_scenarios(
 
         forecast = compute_yearly_from_real_data(
             df=weather_profile.df.copy(),
-            latitude=latitude,
+            latitude=context.latitude,
             tilt=scenario.tilt,
             panel_area=scenario.panel_area,
             efficiency=scenario.panel_efficiency,
@@ -51,13 +49,13 @@ def compare_yearly_scenarios(
         )
         finance = build_financial_summary(
             monthly_kwh=forecast["monthly_kwh"],
-            electricity_price_per_kwh=scenario.electricity_price_per_kwh,
-            currency=scenario.currency,
+            electricity_price_per_kwh=context.electricity_price_per_kwh,
+            currency=context.currency,
         )
 
         results.append(
             {
-                "scenario": scenario,
+                "scenario": scenario.model_dump(),
                 "yearly_kwh": forecast["yearly_kwh"],
                 "monthly_kwh": forecast["monthly_kwh"],
                 "yearly_estimated_value": finance["yearly_estimated_value"],
