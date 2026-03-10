@@ -28,6 +28,38 @@ def calculate_series_mape(actual_values: Iterable[float], predicted_values: Iter
     return sum(errors) / len(errors)
 
 
+def calculate_mae(actual: float, predicted: float) -> float:
+    return abs(actual - predicted)
+
+
+def calculate_series_mae(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+    errors = [
+        calculate_mae(float(actual), float(predicted))
+        for actual, predicted in zip(actual_values, predicted_values)
+    ]
+    if not errors:
+        return 0.0
+    return sum(errors) / len(errors)
+
+
+def calculate_bias_percent(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+    actual_total = sum(float(actual) for actual in actual_values)
+    predicted_total = sum(float(predicted) for predicted in predicted_values)
+    if actual_total == 0.0:
+        return 0.0
+    return ((predicted_total - actual_total) / actual_total) * 100
+
+
+def calculate_mean_bias_kwh(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+    differences = [
+        float(predicted) - float(actual)
+        for actual, predicted in zip(actual_values, predicted_values)
+    ]
+    if not differences:
+        return 0.0
+    return sum(differences) / len(differences)
+
+
 def classify_quality(mape: float) -> str:
     if mape < 10:
         return "EXCELLENT"

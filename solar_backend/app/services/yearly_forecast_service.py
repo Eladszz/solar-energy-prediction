@@ -41,6 +41,28 @@ class WeatherProfileResult:
     demo_scenario_name: str | None = None
 
 
+def build_weather_profile_metadata(
+    latitude: float,
+    longitude: float,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
+) -> dict[str, str | None]:
+    metadata = {
+        "data_source": "live",
+        "demo_scenario_id": None,
+        "demo_scenario_name": None,
+    }
+    if is_demo_mode_enabled(demo_mode):
+        metadata = build_demo_response_metadata(
+            resolve_demo_scenario(
+                latitude=latitude,
+                longitude=longitude,
+                demo_scenario_id=demo_scenario_id,
+            )
+        )
+    return metadata
+
+
 def normalize_model_type(model_type: str | None) -> str:
     normalized = (model_type or "physical").strip().lower()
     if normalized not in SUPPORTED_MODEL_TYPES:
@@ -55,6 +77,39 @@ def resolve_forecast_year(requested_year: int | None) -> int:
 
 def get_last_complete_year() -> int:
     return pd.Timestamp.now().year - 1
+
+
+def load_training_history(
+    latitude: float,
+    longitude: float,
+    forecast_year: int,
+    training_years: int,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
+) -> tuple[list[pd.DataFrame], list[int]]:
+    last_complete_year = get_last_complete_year()
+    training_end_year = min(forecast_year - 1, last_complete_year)
+    training_start_year = training_end_year - training_years + 1
+    candidate_years = list(range(training_start_year, training_end_year + 1))
+
+    history_frames: list[pd.DataFrame] = []
+    years_used: list[int] = []
+    for year in candidate_years:
+        try:
+            history_frames.append(
+                get_year_archive(
+                    latitude,
+                    longitude,
+                    year,
+                    demo_mode=demo_mode,
+                    demo_scenario_id=demo_scenario_id,
+                )
+            )
+            years_used.append(year)
+        except Exception as exc:
+            logger.warning("Skipping training year %s: %s", year, exc)
+
+    return history_frames, years_used
 
 
 def align_profile_to_year(df: pd.DataFrame, target_year: int) -> pd.DataFrame:
@@ -193,20 +248,6 @@ def prepare_physical_weather_profile(
                 "baseline profile."
             )
 
-    demo_metadata = {
-        "data_source": "live",
-        "demo_scenario_id": None,
-        "demo_scenario_name": None,
-    }
-    if is_demo_mode_enabled(demo_mode):
-        demo_metadata = build_demo_response_metadata(
-            resolve_demo_scenario(
-                latitude=latitude,
-                longitude=longitude,
-                demo_scenario_id=demo_scenario_id,
-            )
-        )
-
     return WeatherProfileResult(
         df=aligned_df,
         forecast_year=forecast_year,
@@ -214,7 +255,12 @@ def prepare_physical_weather_profile(
         model_type_used="physical",
         weather_reference_year=weather_reference_year,
         fallback_reason=fallback_reason,
-        **demo_metadata,
+        **build_weather_profile_metadata(
+            latitude=latitude,
+            longitude=longitude,
+            demo_mode=demo_mode,
+            demo_scenario_id=demo_scenario_id,
+        ),
     )
 
 
@@ -226,27 +272,14 @@ def prepare_ml_weather_profile(
     demo_mode: bool = False,
     demo_scenario_id: str | None = None,
 ) -> WeatherProfileResult:
-    last_complete_year = get_last_complete_year()
-    training_end_year = min(forecast_year - 1, last_complete_year)
-    training_start_year = training_end_year - training_years + 1
-    candidate_years = list(range(training_start_year, training_end_year + 1))
-
-    history_frames: list[pd.DataFrame] = []
-    years_used: list[int] = []
-    for year in candidate_years:
-        try:
-            history_frames.append(
-                get_year_archive(
-                    latitude,
-                    longitude,
-                    year,
-                    demo_mode=demo_mode,
-                    demo_scenario_id=demo_scenario_id,
-                )
-            )
-            years_used.append(year)
-        except Exception as exc:
-            logger.warning("Skipping ML training year %s: %s", year, exc)
+    history_frames, years_used = load_training_history(
+        latitude=latitude,
+        longitude=longitude,
+        forecast_year=forecast_year,
+        training_years=training_years,
+        demo_mode=demo_mode,
+        demo_scenario_id=demo_scenario_id,
+    )
 
     if not history_frames:
         raise ValueError("No historical weather data was available for ML training")
@@ -255,20 +288,6 @@ def prepare_ml_weather_profile(
     model = train_weather_regression_model(history_df, years_used)
     predicted_weather_df = predict_weather_profile(model, forecast_year)
 
-    demo_metadata = {
-        "data_source": "live",
-        "demo_scenario_id": None,
-        "demo_scenario_name": None,
-    }
-    if is_demo_mode_enabled(demo_mode):
-        demo_metadata = build_demo_response_metadata(
-            resolve_demo_scenario(
-                latitude=latitude,
-                longitude=longitude,
-                demo_scenario_id=demo_scenario_id,
-            )
-        )
-
     return WeatherProfileResult(
         df=predicted_weather_df,
         forecast_year=forecast_year,
@@ -276,7 +295,90 @@ def prepare_ml_weather_profile(
         model_type_used="ml",
         training_years=years_used,
         ml_metadata=build_ml_metadata(model),
-        **demo_metadata,
+        **build_weather_profile_metadata(
+            latitude=latitude,
+            longitude=longitude,
+            demo_mode=demo_mode,
+            demo_scenario_id=demo_scenario_id,
+        ),
+    )
+
+
+def prepare_naive_weather_profile(
+    latitude: float,
+    longitude: float,
+    forecast_year: int,
+    training_years: int,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
+) -> WeatherProfileResult:
+    history_frames, years_used = load_training_history(
+        latitude=latitude,
+        longitude=longitude,
+        forecast_year=forecast_year,
+        training_years=training_years,
+        demo_mode=demo_mode,
+        demo_scenario_id=demo_scenario_id,
+    )
+
+    if not history_frames:
+        raise ValueError("No historical weather data was available for naive benchmark training")
+
+    aligned_history = [
+        align_profile_to_year(frame, forecast_year)
+        for frame in history_frames
+    ]
+    combined = pd.concat(aligned_history, ignore_index=True)
+    combined["month"] = pd.to_datetime(combined["time"]).dt.month
+    combined["day"] = pd.to_datetime(combined["time"]).dt.day
+    combined["hour"] = pd.to_datetime(combined["time"]).dt.hour
+
+    climatology = (
+        combined.groupby(["month", "day", "hour"])[["irr", "temp"]]
+        .mean()
+        .reset_index()
+    )
+
+    target_times = build_hourly_time_index(forecast_year)
+    target_df = pd.DataFrame({"time": target_times})
+    target_df["month"] = target_df["time"].dt.month
+    target_df["day"] = target_df["time"].dt.day
+    target_df["hour"] = target_df["time"].dt.hour
+
+    merged = target_df.merge(
+        climatology,
+        on=["month", "day", "hour"],
+        how="left",
+    )
+
+    if merged["irr"].isna().any() or merged["temp"].isna().any():
+        fallback_source = combined.groupby(["month", "hour"])[["irr", "temp"]].mean()
+        missing_mask = merged["irr"].isna() | merged["temp"].isna()
+        if missing_mask.any():
+            fallback_rows = (
+                merged.loc[missing_mask, ["month", "hour"]]
+                .merge(
+                    fallback_source.reset_index(),
+                    on=["month", "hour"],
+                    how="left",
+                )
+                .reset_index(drop=True)
+            )
+            merged.loc[missing_mask, "irr"] = fallback_rows["irr"].to_numpy()
+            merged.loc[missing_mask, "temp"] = fallback_rows["temp"].to_numpy()
+
+    return WeatherProfileResult(
+        df=merged[["time", "irr", "temp"]],
+        forecast_year=forecast_year,
+        model_type_requested="naive",
+        model_type_used="naive",
+        training_years=years_used,
+        **build_weather_profile_metadata(
+            latitude=latitude,
+            longitude=longitude,
+            demo_mode=demo_mode,
+            demo_scenario_id=demo_scenario_id,
+        ),
     )
 
 

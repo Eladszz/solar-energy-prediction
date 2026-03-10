@@ -86,15 +86,29 @@ curl -X POST http://localhost:8000/forecast/yearly \
 
 Compares multiple PV configurations under the same location and forecast context.
 
-Request model: `List[BasePVRequest]`
+Request model: `ScenarioComparisonRequest`
 
 Response model: `ScenarioComparisonResponse`
 
 Notes:
 
 - at least two scenarios are required
-- all scenarios must share latitude/longitude
-- all scenarios must share model type, currency, and tariff assumption
+- `context` carries the shared location, model, tariff, and demo settings
+- each item in `scenarios` carries only scenario-specific system fields
+
+### `POST /evaluation/benchmark`
+
+Runs a lightweight historical benchmark study across the `physical`, `ml`, and `naive` forecasting approaches.
+
+Request model: `BenchmarkEvaluationRequest`
+
+Response model: `BenchmarkEvaluationResponse`
+
+Notes:
+
+- evaluates a completed historical window ending at the requested year
+- uses archived actual weather replay as the shared production reference
+- returns monthly and yearly MAPE, MAE, and signed bias for each approach
 
 ### `POST /evaluation/accuracy`
 
@@ -114,6 +128,7 @@ app.include_router(simulate_router.router, prefix="/simulate", tags=["Day Simula
 app.include_router(yearly_forecast_router.router, prefix="/forecast/yearly", tags=["Yearly Forecast"])
 app.include_router(scenario_comparison_router.router, prefix="/scenarios", tags=["Scenario Comparison"])
 app.include_router(accuracy_router.router, prefix="/evaluation", tags=["Accuracy Evaluation"])
+app.include_router(benchmark_router.router, prefix="/evaluation", tags=["Benchmark Evaluation"])
 ```
 
 `/simulate` and `/forecast/yearly` are mounted without requiring a trailing slash.

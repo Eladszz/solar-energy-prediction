@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.models.responses import RootResponse
 from app.routers import (
+    benchmark_router,
     health_router,
     simulate_router,
     yearly_forecast_router,
@@ -32,6 +33,9 @@ app.include_router(
 )
 app.include_router(
     accuracy_router.router, prefix="/evaluation", tags=["Accuracy Evaluation"]
+)
+app.include_router(
+    benchmark_router.router, prefix="/evaluation", tags=["Benchmark Evaluation"]
 )
 
 

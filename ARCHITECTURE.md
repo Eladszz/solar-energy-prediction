@@ -7,8 +7,9 @@ The Solar Energy Prediction System estimates solar energy production for a user-
 - Yearly forecast generation
 - A physical baseline forecast path
 - A real ML-based yearly forecast path
+- A naive climatology benchmark baseline
 - Financial value estimation from predicted kWh
-- Scenario comparison and backtest accuracy analysis
+- Scenario comparison, benchmark evaluation, and backtest accuracy analysis
 
 ## High-Level Architecture
 
@@ -19,11 +20,11 @@ The system is split into two runtime components:
    - Retrieves weather data from Open-Meteo
    - Runs physical PV simulation
    - Trains and executes the ML baseline yearly forecast
-   - Computes financial summaries and accuracy metrics
+   - Computes financial summaries, benchmark metrics, and accuracy metrics
 
 2. Streamlit frontend
    - Collects location and system inputs
-   - Visualizes yearly, daily, comparison, and accuracy outputs
+   - Visualizes yearly, daily, comparison, benchmark, and accuracy outputs
    - Displays model metadata, tariff assumptions, and fallback messages
    - Supports map-based roof area selection
 
@@ -42,6 +43,8 @@ External dependency:
   - Multi-scenario yearly comparison
 - `accuracy_router.py`
   - Backtest against archived actual weather
+- `benchmark_router.py`
+  - Historical benchmark study across physical, ML, and naive baselines
 - `health_router.py`
   - Basic service status endpoint
 
@@ -65,6 +68,8 @@ External dependency:
   - Reuses one yearly weather profile across multiple scenarios
 - `accuracy_service.py`
   - Compares predicted and actual outputs and calculates MAPE
+- `benchmark_service.py`
+  - Evaluates physical, ML, and naive baselines across multiple completed years
 
 ### Frontend modules
 
@@ -105,6 +110,23 @@ External dependency:
    - ML training years
    - fallback reason if any
 
+### Benchmark flow
+
+1. User selects a benchmark end year and historical window in Streamlit.
+2. Frontend sends `POST /evaluation/benchmark`.
+3. Backend builds a reference production proxy for each completed evaluation year by replaying archived actual weather through the shared PV simulation stack.
+4. Backend evaluates three approaches for each year:
+   - `physical`: prior-year archived weather baseline
+   - `ml`: lightweight weather regression forecast
+   - `naive`: historical climatology average aligned to the target year
+5. Backend aggregates:
+   - monthly MAPE
+   - monthly MAE
+   - yearly MAPE
+   - yearly MAE
+   - signed bias
+6. Backend returns a comparison-ready response with per-approach metrics, per-year results, fallback years, and benchmark methodology notes.
+
 ## Forecasting Logic
 
 ### Physical path
@@ -121,6 +143,21 @@ This path is reliable, transparent, and serves as:
 - the baseline forecast
 - the fallback path when ML is unavailable
 - the energy conversion layer for both yearly modes
+
+## Benchmarking Logic
+
+The benchmark intentionally stays lightweight and reviewer-safe:
+
+- All approaches share the same downstream PV conversion stack so the comparison isolates the weather-profile forecasting choice rather than mixing different production models.
+- The benchmark reference is not utility-grade telemetry. It is a production proxy produced from archived actual weather and the configured PV system parameters.
+- The `naive` baseline uses a calendar-aligned climatology from the recent training window. This provides a simple sanity-check baseline for the ML path.
+- If the ML path cannot be trained for a benchmark year, the response records the fallback year explicitly instead of silently hiding the issue.
+
+This makes the project academically stronger because it demonstrates:
+- one deterministic physical baseline
+- one learned forecasting baseline
+- one intentionally simple naive baseline
+- quantitative comparison across historical periods instead of anecdotal single-run results
 
 ## ML Integration
 
@@ -191,6 +228,7 @@ The tariff is user-configurable and returned in the backend response under `fina
 Included in Alpha:
 - end-to-end demo flow
 - physical and ML yearly forecasts
+- benchmark study comparing physical, ML, and naive baselines
 - daily simulation
 - scenario comparison
 - backtest accuracy with MAPE
