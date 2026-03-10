@@ -1,8 +1,17 @@
-import requests
 from app.config import WEATHER_API_URL
 import logging
+import requests
+
+from app.services.external_service import (
+    DEFAULT_EXTERNAL_TIMEOUT_SECONDS,
+    ExternalServiceResponseError,
+    fetch_json_from_provider,
+    require_list_fields,
+)
 
 logger = logging.getLogger(__name__)
+WEATHER_FORECAST_PROVIDER = "Weather forecast provider"
+WEATHER_FORECAST_TIMEOUT_SECONDS = DEFAULT_EXTERNAL_TIMEOUT_SECONDS
 
 
 def get_weather_forecast(lat: float, lon: float, days: int = 1):
@@ -18,19 +27,26 @@ def get_weather_forecast(lat: float, lon: float, days: int = 1):
     )
 
     logger.info(f"Fetching weather forecast for lat: {lat}, lon: {lon}, days: {days}")
-    try:
-        res = requests.get(url, timeout=30)
-        res.raise_for_status()
-        logger.info(
-            f"Received weather forecast data with status code {res.status_code}"
+    data = fetch_json_from_provider(
+        url=url,
+        provider=WEATHER_FORECAST_PROVIDER,
+        timeout=WEATHER_FORECAST_TIMEOUT_SECONDS,
+        request_get=requests.get,
+    )
+    logger.info("Received weather forecast data with keys: %s", list(data.keys()))
+
+    hourly = data.get("hourly")
+    if not isinstance(hourly, dict):
+        raise ExternalServiceResponseError(
+            provider=WEATHER_FORECAST_PROVIDER,
+            user_message="Weather forecast provider returned malformed hourly data. Please try again shortly.",
+            detail="Missing 'hourly' object in forecast response.",
         )
-        data = res.json()
-        logger.info(f"Forecast data keys: {list(data.keys())}")
-        # Must have "hourly"
-        if "hourly" not in data:
-            print("⚠ No 'hourly' in forecast API response")
-            return None
-        return data
-    except Exception as e:
-        logger.error(f"Weather API error: {e}")
-        return None
+
+    require_list_fields(
+        container=hourly,
+        fields=("time", "shortwave_radiation", "temperature_2m"),
+        provider=WEATHER_FORECAST_PROVIDER,
+        context="forecast hourly data",
+    )
+    return data

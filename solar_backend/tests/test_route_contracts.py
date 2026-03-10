@@ -13,6 +13,11 @@ from app.routers import (
     simulate_router,
     yearly_forecast_router,
 )
+from app.services.external_service import (
+    ExternalServiceRateLimitError,
+    ExternalServiceTimeoutError,
+    ExternalServiceUnavailableError,
+)
 
 
 def build_valid_payload(**overrides):
@@ -275,3 +280,45 @@ def test_documented_scenario_compare_path_works(_mock_compare):
 
     assert response.status_code == 200
     assert len(response.json()["results"]) == 2
+
+
+@patch(
+    "app.routers.simulate_router.get_weather_forecast",
+    side_effect=ExternalServiceTimeoutError(
+        provider="Weather forecast provider",
+        user_message="Weather forecast provider timed out. Please try again in a moment.",
+    ),
+)
+def test_simulate_returns_gateway_timeout_for_upstream_timeout(_mock_weather):
+    response = client.post("/simulate", json=build_valid_payload())
+
+    assert response.status_code == 504
+    assert "timed out" in response.json()["detail"]
+
+
+@patch(
+    "app.routers.yearly_forecast_router.build_forecast_weather_profile",
+    side_effect=ExternalServiceRateLimitError(
+        provider="Historical weather provider",
+        user_message="Historical weather provider is temporarily rate limited. Please retry in a minute.",
+    ),
+)
+def test_yearly_returns_service_unavailable_for_rate_limit(_mock_profile):
+    response = client.post("/forecast/yearly", json=build_valid_payload())
+
+    assert response.status_code == 503
+    assert "rate limited" in response.json()["detail"]
+
+
+@patch(
+    "app.routers.accuracy_router.evaluate_yearly_accuracy",
+    side_effect=ExternalServiceUnavailableError(
+        provider="Historical weather provider",
+        user_message="Historical weather provider is temporarily unavailable. Please try again shortly.",
+    ),
+)
+def test_accuracy_returns_service_unavailable_for_upstream_outage(_mock_evaluate):
+    response = client.post("/evaluation/accuracy", json=build_valid_payload())
+
+    assert response.status_code == 503
+    assert "temporarily unavailable" in response.json()["detail"]

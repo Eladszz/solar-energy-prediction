@@ -2,6 +2,10 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.requests import YearlyForecastRequest
 from app.models.responses import YearlyForecastResponse
+from app.services.external_service import (
+    ExternalServiceError,
+    external_service_to_http_exception,
+)
 from app.services.loss_service import compute_system_loss_factor
 from app.services.yearly_forecast_service import (
     build_forecast_weather_profile,
@@ -39,6 +43,8 @@ def yearly(req: YearlyForecastRequest):
             electricity_price_per_kwh=req.electricity_price_per_kwh,
             currency=req.currency,
         )
+    except ExternalServiceError as exc:
+        raise external_service_to_http_exception(exc) from exc
     except HTTPException:
         raise
     except Exception as exc:

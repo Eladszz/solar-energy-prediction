@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import logging
 
-import numpy as np
 import pandas as pd
 
 from app.services.finance_service import build_financial_summary
