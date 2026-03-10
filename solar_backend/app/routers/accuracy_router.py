@@ -2,6 +2,10 @@ from fastapi import APIRouter, HTTPException
 import pandas as pd
 from app.models.requests import AccuracyEvaluationRequest
 from app.models.responses import AccuracyEvaluationResponse
+from app.services.external_service import (
+    ExternalServiceError,
+    external_service_to_http_exception,
+)
 from app.services.accuracy_service import evaluate_yearly_accuracy
 
 router = APIRouter()
@@ -30,6 +34,8 @@ def evaluate_accuracy(req: AccuracyEvaluationRequest):
             electricity_price_per_kwh=req.electricity_price_per_kwh,
             currency=req.currency,
         )
+    except ExternalServiceError as exc:
+        raise external_service_to_http_exception(exc) from exc
     except HTTPException:
         raise
     except Exception as exc:

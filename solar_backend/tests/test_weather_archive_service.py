@@ -2,6 +2,10 @@ from unittest.mock import patch, Mock
 import pytest
 import requests
 import pandas as pd
+from app.services.external_service import (
+    ExternalServiceResponseError,
+    ExternalServiceUnavailableError,
+)
 from app.services.weather_archive_service import get_year_archive
 
 
@@ -166,10 +170,9 @@ class TestGetYearArchive:
         """Test handling of 404 error."""
         mock_response = Mock()
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(ExternalServiceResponseError):
             get_year_archive(52.52, 13.405, 2023)
 
     @patch('app.services.weather_archive_service.requests.get')
@@ -177,10 +180,9 @@ class TestGetYearArchive:
         """Test handling of 500 server error."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("500 Internal Server Error")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(ExternalServiceUnavailableError):
             get_year_archive(52.52, 13.405, 2023)
 
     @patch('app.services.weather_archive_service.requests.get')
@@ -188,7 +190,7 @@ class TestGetYearArchive:
         """Test handling of general request exception."""
         mock_get.side_effect = requests.exceptions.RequestException("Connection error")
 
-        with pytest.raises(requests.exceptions.RequestException):
+        with pytest.raises(ExternalServiceUnavailableError):
             get_year_archive(52.52, 13.405, 2023)
 
     @patch('app.services.weather_archive_service.requests.get')
@@ -199,11 +201,8 @@ class TestGetYearArchive:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        result = get_year_archive(52.52, 13.405, 2023)
-
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
-        assert list(result.columns) == ['time', 'irr', 'temp']
+        with pytest.raises(ExternalServiceResponseError):
+            get_year_archive(52.52, 13.405, 2023)
 
     @patch('app.services.weather_archive_service.requests.get')
     def test_get_year_archive_partial_fields(self, mock_get):
@@ -219,8 +218,7 @@ class TestGetYearArchive:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        # Should raise ValueError due to arrays of different lengths
-        with pytest.raises(ValueError, match="All arrays must be of the same length"):
+        with pytest.raises(ExternalServiceResponseError):
             get_year_archive(52.52, 13.405, 2023)
 
     @patch('app.services.weather_archive_service.requests.get')
@@ -324,7 +322,7 @@ class TestGetYearArchive:
         mock_response.json.side_effect = requests.exceptions.JSONDecodeError("Expecting value", "", 0)
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.JSONDecodeError):
+        with pytest.raises(ExternalServiceResponseError):
             get_year_archive(52.52, 13.405, 2023)
 
     @patch('app.services.weather_archive_service.requests.get')

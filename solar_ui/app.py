@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 from importlib import import_module
-from inspect import isawaitable
 import sys
-from typing import TYPE_CHECKING, Any, Mapping, TypeAlias, TypedDict, cast
+from typing import Any, Mapping, TypeAlias, TypedDict
 
 import folium  # type: ignore
 from folium.plugins import Draw  # type: ignore
-from geopy.geocoders import Nominatim  # type: ignore
 from loguru import logger
 import pandas as pd
 import plotly.express as px
@@ -16,14 +14,11 @@ import requests
 import streamlit as st  # type: ignore
 from streamlit_folium import st_folium  # type: ignore
 
-from utils import estimate_area_m2_from_bounds, reverse_geocode
-
-if TYPE_CHECKING:
-    from geopy.location import Location
+from utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
 
 
 BACKEND_URL = "http://127.0.0.1:8000"
-REQUEST_TIMEOUT_SECONDS = 90
+REQUEST_TIMEOUT_SECONDS = 45
 MONTH_NAMES = [
     "Jan",
     "Feb",
@@ -99,15 +94,6 @@ def load_country_names() -> list[str]:
     )
     return country_names or sorted(FALLBACK_COUNTRIES)
 
-
-def geocode_address(address: str) -> Location | None:
-    geolocator = Nominatim(user_agent="solar_energy_prediction_alpha")
-    location_result = geolocator.geocode(address)
-    if isawaitable(location_result):
-        logger.error("Unexpected awaitable geocode result for address lookup.")
-        return None
-    return cast("Location | None", location_result)
-
 logger.remove()
 logger.add(
     sys.stderr,
@@ -137,6 +123,7 @@ def initialize_session_state() -> None:
         "lat": None,
         "lon": None,
         "address": None,
+        "location_notice": None,
         "forecast_data": None,
         "daily_simulation": None,
         "comparison_result": None,
@@ -160,6 +147,20 @@ def parse_api_error(response: requests.Response) -> str:
     return payload.get("detail") or response.text or "Unknown backend error"
 
 
+def format_request_exception(exc: requests.RequestException) -> str:
+    if isinstance(exc, requests.Timeout):
+        return (
+            "The backend request timed out. A weather or geocoding provider may be slow right now. "
+            "Please try again."
+        )
+    if isinstance(exc, requests.ConnectionError):
+        return (
+            f"Could not reach the backend at {BACKEND_URL}. "
+            "Make sure the FastAPI server is running and try again."
+        )
+    return f"Request to backend failed: {exc}"
+
+
 def api_post(path: str, payload: ApiPayload) -> dict[str, Any] | None:
     try:
         response = requests.post(
@@ -169,7 +170,7 @@ def api_post(path: str, payload: ApiPayload) -> dict[str, Any] | None:
         )
     except requests.RequestException as exc:
         logger.error("Frontend request to {} failed: {}", path, exc)
-        st.error(f"Request to backend failed: {exc}")
+        st.error(format_request_exception(exc))
         return None
 
     if response.status_code != 200:
@@ -570,22 +571,27 @@ number = st.sidebar.text_input("Number", value="100", key="house_number_input")
 
 address = f"{street} {number}, {city}, {country}".strip()
 if st.sidebar.button("Locate Address", type="primary"):
-    location = geocode_address(address)
-    if location:
-        st.session_state.lat = location.latitude
-        st.session_state.lon = location.longitude
-        st.session_state.address = address
+    location_lookup = geocode_address(address)
+    if location_lookup.is_success:
+        st.session_state.lat = location_lookup.latitude
+        st.session_state.lon = location_lookup.longitude
+        st.session_state.address = location_lookup.address or address
+        st.session_state.location_notice = None
         st.success(
             f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}"
         )
     else:
-        st.error("Address could not be resolved. Try a more specific address.")
+        st.session_state.location_notice = location_lookup.error_message
+        st.error(location_lookup.error_message or "Address lookup failed.")
 
 st.sidebar.markdown("### Detected Address")
 if st.session_state.address:
     st.sidebar.info(st.session_state.address)
 else:
     st.sidebar.caption("No address selected yet.")
+
+if st.session_state.location_notice:
+    st.sidebar.warning(st.session_state.location_notice)
 
 st.sidebar.header("System Parameters")
 if st.session_state.pending_panel_area is not None:
@@ -699,9 +705,13 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
             st.session_state.pending_panel_area = round(roof_area, 1)
             st.session_state.lat = center_lat
             st.session_state.lon = center_lon
-            resolved_address = reverse_geocode(center_lat, center_lon)
-            if resolved_address:
-                st.session_state.address = resolved_address
+            reverse_lookup = reverse_geocode(center_lat, center_lon)
+            if reverse_lookup.address:
+                st.session_state.address = reverse_lookup.address
+                st.session_state.location_notice = None
+            else:
+                st.session_state.address = f"{center_lat:.5f}, {center_lon:.5f}"
+                st.session_state.location_notice = reverse_lookup.error_message
             st.session_state.auto_run_forecast = True
             st.success(
                 f"Roof area detected: {roof_area:.1f} m². Location and panel area were updated."

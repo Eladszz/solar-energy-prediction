@@ -1,6 +1,12 @@
 import pytest
 from unittest.mock import patch, Mock
 import requests
+from app.services.external_service import (
+    ExternalServiceRateLimitError,
+    ExternalServiceResponseError,
+    ExternalServiceTimeoutError,
+    ExternalServiceUnavailableError,
+)
 from app.services.climate_service import get_climate_daily
 
 
@@ -140,10 +146,9 @@ class TestGetClimateDaily:
         """Test handling of 404 error from API."""
         mock_response = Mock()
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(ExternalServiceResponseError):
             get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
@@ -151,10 +156,9 @@ class TestGetClimateDaily:
         """Test handling of 500 server error from API."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("500 Internal Server Error")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(ExternalServiceUnavailableError):
             get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
@@ -162,7 +166,7 @@ class TestGetClimateDaily:
         """Test handling of connection timeout."""
         mock_get.side_effect = requests.exceptions.Timeout("Connection timeout")
 
-        with pytest.raises(requests.exceptions.Timeout):
+        with pytest.raises(ExternalServiceTimeoutError):
             get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
@@ -170,7 +174,7 @@ class TestGetClimateDaily:
         """Test handling of connection error."""
         mock_get.side_effect = requests.exceptions.ConnectionError("Failed to connect")
 
-        with pytest.raises(requests.exceptions.ConnectionError):
+        with pytest.raises(ExternalServiceUnavailableError):
             get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
@@ -238,7 +242,7 @@ class TestGetClimateDaily:
         mock_response.json.side_effect = ValueError("Invalid JSON")
         mock_get.return_value = mock_response
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ExternalServiceResponseError):
             get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
@@ -249,10 +253,8 @@ class TestGetClimateDaily:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        result = get_climate_daily(32.08, 34.78)
-        
-        # Should return empty dict, not raise error
-        assert result == {}
+        with pytest.raises(ExternalServiceResponseError):
+            get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
     def test_get_climate_daily_partial_data(self, mock_get):
@@ -268,12 +270,8 @@ class TestGetClimateDaily:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        result = get_climate_daily(32.08, 34.78)
-        
-        # Should return the partial data
-        assert 'daily' in result
-        assert 'shortwave_radiation_sum' in result['daily']
-        assert 'temperature_2m_mean' not in result['daily']
+        with pytest.raises(ExternalServiceResponseError):
+            get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')
     def test_get_climate_daily_logging(self, mock_get, mock_climate_response, caplog):
@@ -330,10 +328,9 @@ class TestGetClimateDaily:
         """Test handling of rate limiting (429 error)."""
         mock_response = Mock()
         mock_response.status_code = 429
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("429 Too Many Requests")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(ExternalServiceRateLimitError):
             get_climate_daily(32.08, 34.78)
 
     @patch('app.services.climate_service.requests.get')

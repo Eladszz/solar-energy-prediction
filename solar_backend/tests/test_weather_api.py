@@ -1,6 +1,12 @@
 import pytest
 from unittest.mock import patch, Mock
 import requests
+from app.services.external_service import (
+    ExternalServiceRateLimitError,
+    ExternalServiceResponseError,
+    ExternalServiceTimeoutError,
+    ExternalServiceUnavailableError,
+)
 from app.services.weather_service import get_weather_forecast
 
 
@@ -11,8 +17,14 @@ class TestGetWeatherForecast:
         """Test actual API call returns expected fields."""
         lat = 52.52  # Berlin
         lon = 13.405
-        data = get_weather_forecast(lat, lon, days=1)
-        if data is None:
+        try:
+            data = get_weather_forecast(lat, lon, days=1)
+        except (
+            ExternalServiceRateLimitError,
+            ExternalServiceTimeoutError,
+            ExternalServiceUnavailableError,
+            ExternalServiceResponseError,
+        ):
             pytest.skip("Live weather API is unavailable in the current test environment")
         assert isinstance(data, dict), "Response should be a dictionary"
         assert "hourly" in data, "Response should contain 'hourly' key"
@@ -141,36 +153,30 @@ class TestGetWeatherForecast:
         """Test handling of 404 error."""
         mock_response = Mock()
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
         mock_get.return_value = mock_response
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceResponseError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_http_error_500(self, mock_get):
         """Test handling of 500 server error."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("500 Internal Server Error")
         mock_get.return_value = mock_response
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceUnavailableError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_http_error_403(self, mock_get):
         """Test handling of 403 forbidden error."""
         mock_response = Mock()
         mock_response.status_code = 403
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("403 Forbidden")
         mock_get.return_value = mock_response
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceResponseError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_partial_data(self, mock_get):
@@ -186,11 +192,8 @@ class TestGetWeatherForecast:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is not None
-        assert 'hourly' in result
-        assert 'shortwave_radiation' in result['hourly']
+        with pytest.raises(ExternalServiceResponseError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_zero_days(self, mock_get, mock_weather_response):
@@ -211,9 +214,8 @@ class TestGetWeatherForecast:
         """Test handling of general request exception."""
         mock_get.side_effect = requests.exceptions.RequestException("Request failed")
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceUnavailableError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_response_text_instead_of_json(self, mock_get):
@@ -223,9 +225,8 @@ class TestGetWeatherForecast:
         mock_response.json.side_effect = requests.exceptions.JSONDecodeError("Expecting value", "", 0)
         mock_get.return_value = mock_response
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceResponseError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_null_values_in_arrays(self, mock_get):
@@ -325,12 +326,10 @@ class TestGetWeatherForecast:
         """Test handling of rate limiting (429 error)."""
         mock_response = Mock()
         mock_response.status_code = 429
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("429 Too Many Requests")
         mock_get.return_value = mock_response
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceRateLimitError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_logging(self, mock_get, mock_weather_response, caplog):
@@ -371,9 +370,8 @@ class TestGetWeatherForecast:
         """Test handling of generic exceptions."""
         mock_get.side_effect = Exception("Unexpected error")
 
-        result = get_weather_forecast(52.52, 13.405, days=1)
-        
-        assert result is None
+        with pytest.raises(ExternalServiceUnavailableError):
+            get_weather_forecast(52.52, 13.405, days=1)
 
     @patch('app.services.weather_service.requests.get')
     def test_get_weather_forecast_max_days(self, mock_get, mock_weather_response):

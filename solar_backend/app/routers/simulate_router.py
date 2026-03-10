@@ -3,6 +3,10 @@ from fastapi import APIRouter, HTTPException
 from app.services.finance_service import estimate_energy_value
 from app.models.requests import SimulationRequest
 from app.models.responses import SimulationResponse
+from app.services.external_service import (
+    ExternalServiceError,
+    external_service_to_http_exception,
+)
 from app.services.loss_service import compute_system_loss_factor
 from app.services.simulation_service import simulate_production_enhanced
 from app.services.weather_service import get_weather_forecast
@@ -12,24 +16,30 @@ router = APIRouter()
 
 @router.post("", response_model=SimulationResponse)
 def simulate(req: SimulationRequest):
-    system_loss_factor = compute_system_loss_factor(
-        cleanliness=req.cleanliness,
-        shading=req.shading,
-    )
-
-    weather = get_weather_forecast(req.latitude, req.longitude, days=1)
-    if weather is None or "hourly" not in weather:
-        raise HTTPException(
-            status_code=502,
-            detail="Weather forecast data is currently unavailable for the requested location.",
+    try:
+        system_loss_factor = compute_system_loss_factor(
+            cleanliness=req.cleanliness,
+            shading=req.shading,
         )
+        weather = get_weather_forecast(req.latitude, req.longitude, days=1)
+    except ExternalServiceError as exc:
+        raise external_service_to_http_exception(exc) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Daily simulation failed: {exc}",
+        ) from exc
 
-    irradiance = weather["hourly"].get("shortwave_radiation", [])
-    temps = weather["hourly"].get("temperature_2m", [])
+    hourly = weather["hourly"]
+    irradiance = hourly["shortwave_radiation"]
+    temps = hourly["temperature_2m"]
+
     if not irradiance or not temps:
         raise HTTPException(
             status_code=502,
-            detail="Weather forecast response did not include the hourly fields required for simulation.",
+            detail="Weather forecast provider returned empty hourly fields required for simulation.",
         )
 
     ac_power_kw = simulate_production_enhanced(

@@ -5,6 +5,10 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.requests import BasePVRequest
 from app.models.responses import ScenarioComparisonResponse
+from app.services.external_service import (
+    ExternalServiceError,
+    external_service_to_http_exception,
+)
 from app.services.scenario_comparison_service import compare_yearly_scenarios
 
 logger = logging.getLogger(__name__)
@@ -57,6 +61,8 @@ def compare_scenarios(
             longitude=longitude,
             scenarios=scenarios,
         )
+    except ExternalServiceError as exc:
+        raise external_service_to_http_exception(exc) from exc
     except Exception as e:
         logger.exception("Scenario comparison error")
         raise HTTPException(status_code=500, detail=str(e))
