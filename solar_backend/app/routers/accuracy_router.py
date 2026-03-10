@@ -33,6 +33,8 @@ def evaluate_accuracy(req: AccuracyEvaluationRequest):
             training_years=req.training_years,
             electricity_price_per_kwh=req.electricity_price_per_kwh,
             currency=req.currency,
+            demo_mode=req.demo_mode,
+            demo_scenario_id=req.demo_scenario_id,
         )
     except ExternalServiceError as exc:
         raise external_service_to_http_exception(exc) from exc

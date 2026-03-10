@@ -99,6 +99,8 @@ def test_evaluate_yearly_accuracy_returns_backtest_summary(
         model_type="ml",
         training_years=3,
         backtest_mode=True,
+        demo_mode=False,
+        demo_scenario_id=None,
     )
 
 
@@ -139,3 +141,52 @@ def test_evaluate_yearly_accuracy_zero_actual_energy_returns_zero_mape(
     assert result["actual_yearly_kwh"] == 0.0
     assert result["mape_percent"] == 0.0
     assert result["yearly_mape_percent"] == 0.0
+
+
+@patch("app.services.accuracy_service.compute_yearly_from_real_data")
+@patch("app.services.accuracy_service.build_forecast_weather_profile")
+@patch("app.services.accuracy_service.compute_system_loss_factor")
+@patch("app.services.accuracy_service.get_year_archive")
+def test_evaluate_yearly_accuracy_preserves_demo_metadata(
+    mock_get_year_archive,
+    mock_loss_factor,
+    mock_build_profile,
+    mock_compute_yearly,
+    actual_weather_df,
+):
+    mock_get_year_archive.return_value = actual_weather_df
+    mock_loss_factor.return_value = 0.86
+    mock_build_profile.return_value = WeatherProfileResult(
+        df=actual_weather_df,
+        forecast_year=2025,
+        model_type_requested="physical",
+        model_type_used="physical",
+        weather_reference_year=2024,
+        data_source="demo",
+        demo_scenario_id="phoenix_distribution_center",
+        demo_scenario_name="Phoenix Distribution Center",
+    )
+    mock_compute_yearly.side_effect = [
+        {"yearly_kwh": 1200.0, "monthly_kwh": [100.0] * 12},
+        {"yearly_kwh": 1150.0, "monthly_kwh": [95.8] * 12},
+    ]
+
+    result = evaluate_yearly_accuracy(
+        latitude=33.43,
+        longitude=-112.01,
+        year=2025,
+        tilt=16.0,
+        panel_area=180.0,
+        efficiency=0.22,
+        cleanliness="clean",
+        shading="none",
+        gamma=0.004,
+        noct=46.0,
+        ac_capacity_kw=38.0,
+        demo_mode=True,
+        demo_scenario_id="phoenix_distribution_center",
+    )
+
+    assert result["data_source"] == "demo"
+    assert result["demo_scenario_id"] == "phoenix_distribution_center"
+    assert result["demo_scenario_name"] == "Phoenix Distribution Center"

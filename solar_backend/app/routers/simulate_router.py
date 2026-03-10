@@ -21,7 +21,13 @@ def simulate(req: SimulationRequest):
             cleanliness=req.cleanliness,
             shading=req.shading,
         )
-        weather = get_weather_forecast(req.latitude, req.longitude, days=1)
+        weather = get_weather_forecast(
+            req.latitude,
+            req.longitude,
+            days=1,
+            demo_mode=req.demo_mode,
+            demo_scenario_id=req.demo_scenario_id,
+        )
     except ExternalServiceError as exc:
         raise external_service_to_http_exception(exc) from exc
     except HTTPException:
@@ -76,4 +82,7 @@ def simulate(req: SimulationRequest):
         },
         "timezone": timezone,
         "hourly_time": hourly_time,
+        "data_source": weather.get("data_source", "live"),
+        "demo_scenario_id": weather.get("demo_scenario_id"),
+        "demo_scenario_name": weather.get("demo_scenario_name"),
     }

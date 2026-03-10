@@ -13,6 +13,24 @@ from app.services.weather_service import get_weather_forecast
 class TestGetWeatherForecast:
     """Test suite for weather forecast service."""
 
+    @patch("app.services.weather_service.requests.get")
+    def test_get_weather_forecast_demo_mode_uses_bundled_fixture(self, mock_get):
+        result = get_weather_forecast(
+            32.0853,
+            34.7818,
+            days=1,
+            demo_mode=True,
+            demo_scenario_id="tel_aviv_rooftop",
+        )
+
+        assert result["data_source"] == "demo"
+        assert result["demo_scenario_id"] == "tel_aviv_rooftop"
+        assert result["demo_scenario_name"] == "Tel Aviv Rooftop"
+        assert result["timezone"] == "Asia/Jerusalem"
+        assert len(result["hourly"]["time"]) == 24
+        assert len(result["hourly"]["shortwave_radiation"]) == 24
+        mock_get.assert_not_called()
+
     def test_weather_api_fields(self):
         """Test actual API call returns expected fields."""
         lat = 52.52  # Berlin

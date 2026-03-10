@@ -52,13 +52,21 @@ def evaluate_yearly_accuracy(
     training_years: int = 3,
     electricity_price_per_kwh: float = 0.17,
     currency: str = "USD",
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
 ) -> dict:
     system_loss_factor = compute_system_loss_factor(
         cleanliness=cleanliness,
         shading=shading,
     )
 
-    actual_df = get_year_archive(latitude, longitude, year)
+    actual_df = get_year_archive(
+        latitude,
+        longitude,
+        year,
+        demo_mode=demo_mode,
+        demo_scenario_id=demo_scenario_id,
+    )
     actual_summary = compute_yearly_from_real_data(
         df=actual_df.copy(),
         latitude=latitude,
@@ -83,6 +91,8 @@ def evaluate_yearly_accuracy(
         model_type=model_type,
         training_years=training_years,
         backtest_mode=True,
+        demo_mode=demo_mode,
+        demo_scenario_id=demo_scenario_id,
     )
     predicted_summary = compute_yearly_from_real_data(
         df=predicted_weather_profile.df.copy(),
@@ -131,4 +141,7 @@ def evaluate_yearly_accuracy(
         "quality": quality,
         "financial_assumptions": predicted_finance["financial_assumptions"],
         "ml_metadata": predicted_weather_profile.ml_metadata,
+        "data_source": predicted_weather_profile.data_source,
+        "demo_scenario_id": predicted_weather_profile.demo_scenario_id,
+        "demo_scenario_name": predicted_weather_profile.demo_scenario_name,
     }
