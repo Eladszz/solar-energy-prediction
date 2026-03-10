@@ -146,9 +146,6 @@ def apply_demo_scenario(scenario_id: str) -> dict[str, Any]:
     st.session_state.shading_select = defaults["shading"]
     st.session_state.gamma_input = float(defaults["gamma"])
     st.session_state.noct_input = float(defaults["noct"])
-    st.session_state.scenario_requests = []
-    st.session_state.comparison_result = None
-    st.session_state.accuracy_result = None
     st.session_state.last_applied_demo_scenario_id = scenario_id
     return scenario
 
@@ -676,11 +673,15 @@ if demo_mode_active:
         format_func=lambda scenario_id: build_demo_option_label(DEMO_SCENARIO_OPTIONS[scenario_id]),
         key="demo_scenario_id",
     )
-    if (
-        st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
-        or st.session_state.lat is None
-        or st.session_state.lon is None
-    ):
+    scenario_changed = st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
+    if scenario_changed:
+        st.session_state.forecast_data = None
+        st.session_state.daily_simulation = None
+        st.session_state.accuracy_result = None
+        st.session_state.comparison_result = None
+        st.session_state.scenario_requests = []
+        st.session_state.last_run_payload = None
+    if scenario_changed or st.session_state.lat is None or st.session_state.lon is None:
         selected_demo_scenario = apply_demo_scenario(selected_demo_scenario_id)
     else:
         selected_demo_scenario = get_demo_scenario_by_id(selected_demo_scenario_id)
@@ -1014,6 +1015,7 @@ with tab_accuracy:
                 accuracy_response = api_post("/evaluation/accuracy", accuracy_payload)
                 if accuracy_response is not None:
                     st.session_state.accuracy_result = accuracy_response
+                    st.success("Accuracy backtest completed.")
 
         if st.session_state.accuracy_result is None:
             st.info("Run the backtest to compare predicted and actual yearly output.")
