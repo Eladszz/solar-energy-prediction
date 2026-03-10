@@ -118,8 +118,27 @@ class ScenarioComparisonRequestPayload(TypedDict):
     scenarios: list[ScenarioComparisonScenarioPayload]
 
 
+class BenchmarkEvaluationPayload(TypedDict):
+    latitude: float
+    longitude: float
+    year: int
+    benchmark_years: int
+    tilt: int
+    panel_area: float
+    panel_efficiency: float
+    cleanliness: str
+    shading: str
+    ac_capacity_kw: float
+    gamma: float
+    noct: float
+    training_years: int
+    demo_mode: bool
+    demo_scenario_id: str | None
+
+
 ApiPayload: TypeAlias = (
     PVRequestPayload
+    | BenchmarkEvaluationPayload
     | ScenarioComparisonRequestPayload
     | dict[str, Any]
     | list[PVRequestPayload]
@@ -224,7 +243,7 @@ st.set_page_config(page_title="Solar Energy Forecast", layout="wide")
 st.title("Solar Energy Prediction System")
 st.caption(
     "Alpha demo with physical and ML yearly forecasting, tariff-based value estimation, "
-    "scenario comparison, and backtest accuracy analysis."
+    "scenario comparison, benchmark evaluation, and backtest accuracy analysis."
 )
 
 
@@ -238,11 +257,13 @@ def initialize_session_state() -> None:
         "daily_simulation": None,
         "comparison_result": None,
         "accuracy_result": None,
+        "benchmark_result": None,
         "scenario_requests": [],
         "pending_panel_area": None,
         "last_drawing_id": None,
         "auto_run_forecast": False,
         "last_run_payload": None,
+        "last_benchmark_payload": None,
         "demo_mode": DEMO_MODE_DEFAULT,
         "demo_scenario_id": get_default_demo_scenario_id(),
         "last_applied_demo_scenario_id": None,
@@ -392,6 +413,30 @@ def build_scenario_comparison_payload(
     return {
         "context": build_scenario_comparison_context(base_payload),
         "scenarios": scenarios,
+    }
+
+
+def build_benchmark_payload(
+    base_payload: PVRequestPayload,
+    benchmark_years: int,
+    evaluation_year: int,
+) -> BenchmarkEvaluationPayload:
+    return {
+        "latitude": base_payload["latitude"],
+        "longitude": base_payload["longitude"],
+        "year": evaluation_year,
+        "benchmark_years": benchmark_years,
+        "tilt": base_payload["tilt"],
+        "panel_area": base_payload["panel_area"],
+        "panel_efficiency": base_payload["panel_efficiency"],
+        "cleanliness": base_payload["cleanliness"],
+        "shading": base_payload["shading"],
+        "ac_capacity_kw": base_payload["ac_capacity_kw"],
+        "gamma": base_payload["gamma"],
+        "noct": base_payload["noct"],
+        "training_years": base_payload["training_years"],
+        "demo_mode": base_payload["demo_mode"],
+        "demo_scenario_id": base_payload["demo_scenario_id"],
     }
 
 
@@ -574,6 +619,18 @@ def render_last_run_summary(last_run_payload: Mapping[str, Any]) -> None:
     st.dataframe(pd.DataFrame(run_rows), width="stretch", hide_index=True)
 
 
+def render_last_benchmark_summary(last_benchmark_payload: Mapping[str, Any]) -> None:
+    run_rows = [
+        {"Parameter": "Benchmark End Year", "Value": str(last_benchmark_payload["year"])},
+        {"Parameter": "Benchmark Window (years)", "Value": str(last_benchmark_payload["benchmark_years"])},
+        {"Parameter": "Panel Area (m²)", "Value": str(last_benchmark_payload["panel_area"])},
+        {"Parameter": "Inverter AC Capacity (kW)", "Value": str(last_benchmark_payload["ac_capacity_kw"])},
+        {"Parameter": "ML Training Window", "Value": str(last_benchmark_payload["training_years"])},
+    ]
+    st.caption("Displayed benchmark results are based on the last executed benchmark payload.")
+    st.dataframe(pd.DataFrame(run_rows), width="stretch", hide_index=True)
+
+
 def render_accuracy_tab(accuracy_data: dict) -> None:
     render_data_source_notice(accuracy_data)
     assumptions = accuracy_data["financial_assumptions"]
@@ -667,6 +724,116 @@ def render_accuracy_tab(accuracy_data: dict) -> None:
             st.json(accuracy_data["ml_metadata"])
 
 
+def render_benchmark_tab(benchmark_data: dict) -> None:
+    render_data_source_notice(benchmark_data)
+    st.info(benchmark_data["reference_note"])
+
+    explanation_columns = st.columns(len(benchmark_data["approaches"]))
+    for index, approach in enumerate(benchmark_data["approaches"]):
+        explanation_columns[index].markdown(f"**{approach['label']}**")
+        explanation_columns[index].caption(approach["description"])
+
+    summary_rows = []
+    metric_chart_rows: list[dict[str, Any]] = []
+    yearly_chart_rows: list[dict[str, Any]] = []
+    detail_rows: list[dict[str, Any]] = []
+
+    actual_series = benchmark_data["approaches"][0]["yearly_results"]
+    for result in actual_series:
+        yearly_chart_rows.append(
+            {
+                "Year": result["year"],
+                "Series": "Actual reference",
+                "Yearly Energy (kWh)": result["actual_yearly_kwh"],
+            }
+        )
+
+    for approach in benchmark_data["approaches"]:
+        metrics = approach["metrics"]
+        fallback_years = ", ".join(map(str, approach["fallback_years"])) or "None"
+        summary_rows.append(
+            {
+                "Approach": approach["label"],
+                "Monthly MAPE (%)": metrics["monthly_mape_percent"],
+                "Monthly MAE (kWh)": metrics["monthly_mae_kwh"],
+                "Yearly MAPE (%)": metrics["yearly_mape_percent"],
+                "Yearly MAE (kWh)": metrics["yearly_mae_kwh"],
+                "Bias (%)": metrics["bias_percent"],
+                "Bias (kWh/year)": metrics["bias_kwh"],
+                "Fallback Years": fallback_years,
+            }
+        )
+        metric_chart_rows.extend(
+            [
+                {
+                    "Approach": approach["label"],
+                    "Metric": "Monthly MAPE (%)",
+                    "Value": metrics["monthly_mape_percent"],
+                },
+                {
+                    "Approach": approach["label"],
+                    "Metric": "Yearly MAPE (%)",
+                    "Value": metrics["yearly_mape_percent"],
+                },
+                {
+                    "Approach": approach["label"],
+                    "Metric": "Bias (%)",
+                    "Value": metrics["bias_percent"],
+                },
+            ]
+        )
+        for result in approach["yearly_results"]:
+            yearly_chart_rows.append(
+                {
+                    "Year": result["year"],
+                    "Series": approach["label"],
+                    "Yearly Energy (kWh)": result["predicted_yearly_kwh"],
+                }
+            )
+            detail_rows.append(
+                {
+                    "Approach": approach["label"],
+                    "Year": result["year"],
+                    "Actual Energy (kWh)": result["actual_yearly_kwh"],
+                    "Predicted Energy (kWh)": result["predicted_yearly_kwh"],
+                    "Yearly MAPE (%)": result["yearly_mape_percent"],
+                    "Bias (kWh)": result["yearly_bias_kwh"],
+                    "Model Used": result["model_type_used"],
+                    "Reference Year": result["weather_reference_year"] or "Climatology / ML",
+                    "Fallback": result["fallback_reason"] or "",
+                }
+            )
+
+    st.dataframe(pd.DataFrame(summary_rows), width="stretch", hide_index=True)
+
+    chart_columns = st.columns(2)
+    with chart_columns[0]:
+        yearly_chart = px.line(
+            pd.DataFrame(yearly_chart_rows),
+            x="Year",
+            y="Yearly Energy (kWh)",
+            color="Series",
+            markers=True,
+            title="Historical Benchmark: Actual Reference vs Forecasted Energy",
+        )
+        yearly_chart.update_layout(hovermode="x unified")
+        st.plotly_chart(yearly_chart, width="stretch")
+
+    with chart_columns[1]:
+        metric_chart = px.bar(
+            pd.DataFrame(metric_chart_rows),
+            x="Approach",
+            y="Value",
+            color="Metric",
+            barmode="group",
+            title="Benchmark Error Profile",
+        )
+        st.plotly_chart(metric_chart, width="stretch")
+
+    with st.expander("Year-by-Year Benchmark Details", expanded=False):
+        st.dataframe(pd.DataFrame(detail_rows), width="stretch", hide_index=True)
+
+
 def render_comparison_tab(comparison_data: dict) -> None:
     render_data_source_notice(comparison_data)
     if comparison_data.get("fallback_reason"):
@@ -755,9 +922,11 @@ if demo_mode_active:
         st.session_state.forecast_data = None
         st.session_state.daily_simulation = None
         st.session_state.accuracy_result = None
+        st.session_state.benchmark_result = None
         st.session_state.comparison_result = None
         st.session_state.scenario_requests = []
         st.session_state.last_run_payload = None
+        st.session_state.last_benchmark_payload = None
     if scenario_changed or st.session_state.lat is None or st.session_state.lon is None:
         selected_demo_scenario = apply_demo_scenario(selected_demo_scenario_id)
     else:
@@ -1044,9 +1213,17 @@ if run_forecast or st.session_state.auto_run_forecast:
                 st.session_state.last_run_payload = dict(base_payload)
             st.session_state.comparison_result = None
             st.session_state.accuracy_result = None
+            st.session_state.benchmark_result = None
+            st.session_state.last_benchmark_payload = None
 
-tab_overview, tab_daily, tab_accuracy, tab_scenarios = st.tabs(
-    ["Overview", "Daily Simulation", "Accuracy Backtest", "Scenario Comparison"]
+tab_overview, tab_daily, tab_accuracy, tab_benchmark, tab_scenarios = st.tabs(
+    [
+        "Overview",
+        "Daily Simulation",
+        "Accuracy Backtest",
+        "Benchmark Study",
+        "Scenario Comparison",
+    ]
 )
 
 with tab_overview:
@@ -1098,6 +1275,52 @@ with tab_accuracy:
             st.info("Run the backtest to compare predicted and actual yearly output.")
         else:
             render_accuracy_tab(st.session_state.accuracy_result)
+
+with tab_benchmark:
+    evaluation_year = min(int(forecast_year), last_complete_year)
+    benchmark_years = st.slider(
+        "Benchmark Window (years)",
+        min_value=1,
+        max_value=5,
+        value=3,
+        help="Evaluates physical, ML, and naive baselines over completed historical years.",
+    )
+    benchmark_caption = (
+        "Benchmark compares physical, ML, and naive weather-profile approaches against a "
+        f"historical production proxy through {evaluation_year}."
+    )
+    if demo_mode_active:
+        benchmark_caption += " In demo mode, the benchmark uses the bundled deterministic dataset."
+    st.caption(benchmark_caption)
+
+    benchmark_payload = (
+        build_benchmark_payload(
+            base_payload=base_payload,
+            benchmark_years=benchmark_years,
+            evaluation_year=evaluation_year,
+        )
+        if base_payload is not None
+        else None
+    )
+
+    if base_payload is None:
+        st.info("Select a location and system configuration first.")
+    else:
+        if st.button("Run Benchmark Study", type="primary"):
+            with st.spinner("Evaluating physical, ML, and naive benchmark baselines..."):
+                benchmark_response = api_post("/evaluation/benchmark", benchmark_payload)
+                if benchmark_response is not None:
+                    st.session_state.benchmark_result = benchmark_response
+                    st.session_state.last_benchmark_payload = dict(benchmark_payload)
+                    st.success("Benchmark study completed.")
+
+        if st.session_state.benchmark_result is None:
+            st.info("Run the benchmark to compare the physical, ML, and naive approaches.")
+        else:
+            if payload_changed(benchmark_payload, st.session_state.last_benchmark_payload):
+                st.warning("Inputs changed after the last benchmark run. Re-run the study to refresh the comparison.")
+                render_last_benchmark_summary(st.session_state.last_benchmark_payload)
+            render_benchmark_tab(st.session_state.benchmark_result)
 
 with tab_scenarios:
     if base_payload is None or st.session_state.forecast_data is None:

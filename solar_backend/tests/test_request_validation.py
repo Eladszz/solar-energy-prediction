@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from app.models.requests import (
     AccuracyEvaluationRequest,
     BasePVRequest,
+    BenchmarkEvaluationRequest,
     ScenarioComparisonContext,
     ScenarioComparisonRequest,
     ScenarioComparisonScenario,
@@ -18,6 +19,7 @@ from app.models.requests import (
 )
 from app.routers import (
     accuracy_router,
+    benchmark_router,
     health_router,
     scenario_comparison_router,
     simulate_router,
@@ -30,6 +32,7 @@ api_app.include_router(simulate_router.router, prefix="/simulate")
 api_app.include_router(yearly_forecast_router.router, prefix="/forecast/yearly")
 api_app.include_router(scenario_comparison_router.router, prefix="/scenarios")
 api_app.include_router(accuracy_router.router, prefix="/evaluation")
+api_app.include_router(benchmark_router.router, prefix="/evaluation")
 client = TestClient(api_app)
 
 
@@ -64,6 +67,28 @@ def build_valid_comparison_context(**overrides):
         "training_years": 3,
         "electricity_price_per_kwh": 0.17,
         "currency": "USD",
+        "demo_mode": False,
+        "demo_scenario_id": None,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def build_valid_benchmark_payload(**overrides):
+    payload = {
+        "latitude": 32.08,
+        "longitude": 34.78,
+        "year": 2025,
+        "benchmark_years": 3,
+        "tilt": 30.0,
+        "panel_area": 80.0,
+        "panel_efficiency": 0.20,
+        "cleanliness": "normal",
+        "shading": "low",
+        "ac_capacity_kw": 15.0,
+        "gamma": 0.004,
+        "noct": 45.0,
+        "training_years": 3,
         "demo_mode": False,
         "demo_scenario_id": None,
     }
@@ -177,6 +202,110 @@ def build_scenario_comparison_response():
     }
 
 
+def build_benchmark_response():
+    return {
+        "evaluation_years": [2023, 2024, 2025],
+        "benchmark_years_requested": 3,
+        "training_window_years": 3,
+        "reference_note": "Benchmark note",
+        "approaches": [
+            {
+                "approach": "physical",
+                "label": "Physical",
+                "description": "Physical baseline",
+                "metrics": {
+                    "monthly_mape_percent": 8.4,
+                    "monthly_mae_kwh": 12.2,
+                    "yearly_mape_percent": 5.3,
+                    "yearly_mae_kwh": 81.4,
+                    "bias_percent": -2.1,
+                    "bias_kwh": -26.9,
+                },
+                "yearly_results": [
+                    {
+                        "year": 2025,
+                        "actual_yearly_kwh": 1180.0,
+                        "predicted_yearly_kwh": 1150.0,
+                        "actual_monthly_kwh": [98.3] * 12,
+                        "predicted_monthly_kwh": [95.8] * 12,
+                        "yearly_mape_percent": 2.54,
+                        "yearly_mae_kwh": 30.0,
+                        "yearly_bias_kwh": -30.0,
+                        "model_type_used": "physical",
+                        "weather_reference_year": 2024,
+                        "training_years_used": [],
+                        "fallback_reason": None,
+                    }
+                ],
+                "fallback_years": [],
+            },
+            {
+                "approach": "ml",
+                "label": "ML",
+                "description": "ML baseline",
+                "metrics": {
+                    "monthly_mape_percent": 6.1,
+                    "monthly_mae_kwh": 9.4,
+                    "yearly_mape_percent": 3.8,
+                    "yearly_mae_kwh": 60.1,
+                    "bias_percent": 1.2,
+                    "bias_kwh": 14.2,
+                },
+                "yearly_results": [
+                    {
+                        "year": 2025,
+                        "actual_yearly_kwh": 1180.0,
+                        "predicted_yearly_kwh": 1198.0,
+                        "actual_monthly_kwh": [98.3] * 12,
+                        "predicted_monthly_kwh": [99.8] * 12,
+                        "yearly_mape_percent": 1.53,
+                        "yearly_mae_kwh": 18.0,
+                        "yearly_bias_kwh": 18.0,
+                        "model_type_used": "ml",
+                        "weather_reference_year": None,
+                        "training_years_used": [2022, 2023, 2024],
+                        "fallback_reason": None,
+                    }
+                ],
+                "fallback_years": [],
+            },
+            {
+                "approach": "naive",
+                "label": "Naive",
+                "description": "Naive baseline",
+                "metrics": {
+                    "monthly_mape_percent": 9.9,
+                    "monthly_mae_kwh": 15.0,
+                    "yearly_mape_percent": 6.1,
+                    "yearly_mae_kwh": 94.5,
+                    "bias_percent": -3.7,
+                    "bias_kwh": -43.7,
+                },
+                "yearly_results": [
+                    {
+                        "year": 2025,
+                        "actual_yearly_kwh": 1180.0,
+                        "predicted_yearly_kwh": 1128.0,
+                        "actual_monthly_kwh": [98.3] * 12,
+                        "predicted_monthly_kwh": [94.0] * 12,
+                        "yearly_mape_percent": 4.41,
+                        "yearly_mae_kwh": 52.0,
+                        "yearly_bias_kwh": -52.0,
+                        "model_type_used": "naive",
+                        "weather_reference_year": None,
+                        "training_years_used": [2022, 2023, 2024],
+                        "fallback_reason": None,
+                    }
+                ],
+                "fallback_years": [],
+            },
+        ],
+        "data_source": "live",
+        "demo_scenario_id": None,
+        "demo_scenario_name": None,
+    }
+
+
 def assert_validation_error(response, field_name: str) -> None:
     assert response.status_code == 422
     errors = response.json()["detail"]
@@ -193,11 +322,13 @@ class TestRequestModels:
         simulation_request = SimulationRequest(**payload)
         yearly_request = YearlyForecastRequest(**payload)
         accuracy_request = AccuracyEvaluationRequest(**payload)
+        benchmark_request = BenchmarkEvaluationRequest(**build_valid_benchmark_payload())
         comparison_request = ScenarioComparisonRequest(**comparison_payload)
 
         assert base_request.model_dump() == simulation_request.model_dump()
         assert yearly_request.year == 2026
         assert accuracy_request.currency == "USD"
+        assert benchmark_request.benchmark_years == 3
         assert comparison_request.context.model_type == "physical"
         assert comparison_request.scenarios[1].name == "Expanded Array"
 
@@ -218,6 +349,8 @@ class TestRequestModels:
             ("year", 2101),
             ("training_years", 0),
             ("training_years", 11),
+            ("benchmark_years", 0),
+            ("benchmark_years", 6),
         ],
     )
     def test_request_models_reject_invalid_numeric_bounds(
@@ -225,10 +358,17 @@ class TestRequestModels:
         field_name,
         value,
     ):
-        payload = build_valid_payload(**{field_name: value})
+        payload = (
+            build_valid_benchmark_payload(**{field_name: value})
+            if field_name == "benchmark_years"
+            else build_valid_payload(**{field_name: value})
+        )
 
         with pytest.raises(ValidationError) as exc_info:
-            BasePVRequest(**payload)
+            if field_name == "benchmark_years":
+                BenchmarkEvaluationRequest(**payload)
+            else:
+                BasePVRequest(**payload)
 
         errors = exc_info.value.errors()
         assert any(error["loc"][-1] == field_name for error in errors)
@@ -319,6 +459,16 @@ class TestApiValidation:
         assert response.json()["quality"] == "GOOD"
 
     @patch(
+        "app.routers.benchmark_router.evaluate_forecast_benchmark",
+        return_value=build_benchmark_response(),
+    )
+    def test_benchmark_accepts_valid_payload(self, _mock_evaluate):
+        response = client.post("/evaluation/benchmark", json=build_valid_benchmark_payload())
+
+        assert response.status_code == 200
+        assert len(response.json()["approaches"]) == 3
+
+    @patch(
         "app.routers.scenario_comparison_router.compare_yearly_scenarios",
         return_value=build_scenario_comparison_response(),
     )
@@ -348,6 +498,12 @@ class TestApiValidation:
                 build_valid_payload(currency="GBP"),
                 "currency",
                 "app.routers.accuracy_router.evaluate_yearly_accuracy",
+            ),
+            (
+                "/evaluation/benchmark",
+                build_valid_benchmark_payload(benchmark_years=9),
+                "benchmark_years",
+                "app.routers.benchmark_router.evaluate_forecast_benchmark",
             ),
             (
                 "/scenarios/compare",

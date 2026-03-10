@@ -94,6 +94,53 @@ class AccuracyEvaluationResponse(ApiResponseModel):
     demo_scenario_name: str | None = None
 
 
+BenchmarkApproachType = Literal["physical", "ml", "naive"]
+
+
+class BenchmarkMetrics(ApiResponseModel):
+    monthly_mape_percent: float
+    monthly_mae_kwh: float
+    yearly_mape_percent: float
+    yearly_mae_kwh: float
+    bias_percent: float
+    bias_kwh: float
+
+
+class BenchmarkYearResult(ApiResponseModel):
+    year: int
+    actual_yearly_kwh: float
+    predicted_yearly_kwh: float
+    actual_monthly_kwh: list[float]
+    predicted_monthly_kwh: list[float]
+    yearly_mape_percent: float
+    yearly_mae_kwh: float
+    yearly_bias_kwh: float
+    model_type_used: BenchmarkApproachType
+    weather_reference_year: int | None = None
+    training_years_used: list[int]
+    fallback_reason: str | None = None
+
+
+class BenchmarkApproachResult(ApiResponseModel):
+    approach: BenchmarkApproachType
+    label: str
+    description: str
+    metrics: BenchmarkMetrics
+    yearly_results: list[BenchmarkYearResult] = Field(min_length=1)
+    fallback_years: list[int] = Field(default_factory=list)
+
+
+class BenchmarkEvaluationResponse(ApiResponseModel):
+    evaluation_years: list[int] = Field(min_length=1)
+    benchmark_years_requested: int
+    training_window_years: int
+    reference_note: str
+    approaches: list[BenchmarkApproachResult] = Field(min_length=3, max_length=3)
+    data_source: Literal["live", "demo"] = "live"
+    demo_scenario_id: str | None = None
+    demo_scenario_name: str | None = None
+
+
 class ScenarioComparisonResult(ApiResponseModel):
     scenario: ScenarioComparisonScenario
     yearly_kwh: float

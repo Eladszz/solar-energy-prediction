@@ -3,8 +3,8 @@
 Solar energy forecasting project prepared for academic engineering submission.
 
 The system combines:
-- A FastAPI backend for weather retrieval, PV simulation, yearly forecasting, scenario comparison, and backtest accuracy analysis.
-- A Streamlit frontend for location selection, system configuration, forecast visualization, monetary estimation, and demo-ready what-if flows.
+- A FastAPI backend for weather retrieval, PV simulation, yearly forecasting, scenario comparison, benchmark evaluation, and backtest accuracy analysis.
+- A Streamlit frontend for location selection, system configuration, forecast visualization, monetary estimation, benchmark review, and demo-ready what-if flows.
 
 ## Alpha Scope
 
@@ -15,9 +15,10 @@ Implemented in this version:
   - `ml`: a lightweight trained regression model that forecasts hourly irradiance and temperature from historical weather patterns, then converts that forecast into energy
 - Monetary estimation from predicted kWh using a configurable tariff
 - Scenario comparison against a baseline system using a shared comparison context plus per-scenario system definitions
+- Forecast benchmark study comparing `physical`, `ml`, and `naive` baselines on historical periods
 - Accuracy backtest with monthly and yearly MAPE
 - Map-assisted roof area selection in the UI
-- Clear backend metadata for fallback behavior, reference years, and ML training years
+- Clear backend metadata for fallback behavior, reference years, ML training years, and benchmark methodology
 
 ## Main Endpoints
 
@@ -26,6 +27,7 @@ Implemented in this version:
 - `POST /simulate`
 - `POST /forecast/yearly`
 - `POST /scenarios/compare`
+- `POST /evaluation/benchmark`
 - `POST /evaluation/accuracy`
 
 Swagger is available at `http://127.0.0.1:8000/swagger`.
@@ -202,6 +204,35 @@ curl -X POST http://127.0.0.1:8000/evaluation/accuracy \
   }'
 ```
 
+### Benchmark evaluation
+
+Benchmark evaluation uses the same PV conversion stack for all approaches and compares:
+- `physical`: prior-year archived weather baseline
+- `ml`: trained weather-profile forecast
+- `naive`: simple historical climatology baseline
+
+The benchmark reference is a transparent production proxy built by replaying archived actual weather through the shared PV simulation layer. That keeps the comparison deterministic and academically honest even though this repository does not ship plant telemetry.
+
+```bash
+curl -X POST http://127.0.0.1:8000/evaluation/benchmark \
+  -H "Content-Type: application/json" \
+  -d '{
+    "latitude": 32.08,
+    "longitude": 34.78,
+    "year": 2025,
+    "benchmark_years": 3,
+    "tilt": 30,
+    "panel_area": 80.0,
+    "panel_efficiency": 0.20,
+    "cleanliness": "normal",
+    "shading": "low",
+    "ac_capacity_kw": 15.0,
+    "gamma": 0.004,
+    "noct": 45.0,
+    "training_years": 3
+  }'
+```
+
 ## Demo Flow
 
 Recommended Alpha demo:
@@ -209,8 +240,9 @@ Recommended Alpha demo:
 2. Resolve an address and optionally draw a roof rectangle to auto-fill panel area.
 3. Run a yearly forecast with `physical` mode.
 4. Switch to `ml` mode and rerun to show the alternative forecasting path.
-5. Open the Accuracy tab and run the backtest to show monthly/yearly MAPE.
-6. Add one or two system variants and compare them under the same shared weather/model/tariff context.
+5. Open the Benchmark Study tab to compare the physical, ML, and naive baselines on historical periods.
+6. Open the Accuracy tab and run the backtest to show monthly/yearly MAPE for the currently selected forecast path.
+7. Add one or two system variants and compare them under the same shared weather/model/tariff context.
 
 ## Testing
 
@@ -221,7 +253,7 @@ cd solar_backend
 pytest -q
 ```
 
-The automated suite covers request validation, route contracts, scenario comparison semantics, and core forecast services. Live-provider checks may be skipped automatically when internet access is unavailable.
+The automated suite covers request validation, route contracts, scenario comparison semantics, benchmark aggregation, and core forecast services. Live-provider checks may be skipped automatically when internet access is unavailable.
 
 ## Submission Documents
 

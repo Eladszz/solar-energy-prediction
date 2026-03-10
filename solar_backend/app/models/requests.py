@@ -42,6 +42,26 @@ class AccuracyEvaluationRequest(BasePVRequest):
     pass
 
 
+class BenchmarkEvaluationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    year: int | None = Field(default=None, ge=2000, le=2100)
+    benchmark_years: int = Field(default=3, ge=1, le=5)
+    tilt: float = Field(default=30.0, ge=0.0, le=90.0)
+    panel_area: float = Field(default=80.0, gt=0.0)
+    panel_efficiency: float = Field(default=0.20, gt=0.0, le=1.0)
+    cleanliness: CleanlinessLevel = "normal"
+    shading: ShadingLevel = "low"
+    ac_capacity_kw: float = Field(default=15.0, gt=0.0)
+    gamma: float = 0.004
+    noct: float = 45.0
+    training_years: int = Field(default=3, ge=1, le=10)
+    demo_mode: bool = False
+    demo_scenario_id: str | None = None
+
+
 class ScenarioComparisonContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
