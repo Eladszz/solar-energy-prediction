@@ -1,6 +1,6 @@
 # Solar Energy Prediction System
 
-Alpha version of a solar energy forecasting project for academic engineering submission.
+Solar energy forecasting project prepared for academic engineering submission.
 
 The system combines:
 - A FastAPI backend for weather retrieval, PV simulation, yearly forecasting, scenario comparison, and backtest accuracy analysis.
@@ -35,6 +35,9 @@ OpenAPI JSON is available at `http://127.0.0.1:8000/openapi.json`.
 
 ```text
 solar-energy-prediction/
+├── .env.example
+├── demo/
+│   └── catalog.json
 ├── solar_backend/
 │   ├── app/
 │   │   ├── main.py
@@ -45,16 +48,19 @@ solar-energy-prediction/
 │   └── tests/
 ├── solar_ui/
 │   ├── app.py
+│   ├── config.py
 │   ├── frontend_requirements.txt
 │   └── utils.py
 ├── architecture/
 ├── ARCHITECTURE.md
-├── IMPLEMENTATION_STATUS.md
-├── TESTING_STRATEGY.md
+├── DEMO.md
+├── Dockerfile
 └── README.md
 ```
 
 ## Quick Start
+
+Optional: copy `.env.example` to `.env` and adjust values if you want to change demo mode or frontend/backend URLs.
 
 ### 1. Backend setup
 
@@ -215,15 +221,12 @@ cd solar_backend
 pytest -q
 ```
 
-Current backend status: `176 passed, 1 skipped`
-
-The skipped test is the live weather API check, which is skipped when the test environment has no internet access.
+The automated suite covers request validation, route contracts, scenario comparison semantics, and core forecast services. Live-provider checks may be skipped automatically when internet access is unavailable.
 
 ## Submission Documents
 
 - `ARCHITECTURE.md`
-- `IMPLEMENTATION_STATUS.md`
-- `TESTING_STRATEGY.md`
+- `DEMO.md`
 - `architecture/*.puml`
 
 ## Notes
