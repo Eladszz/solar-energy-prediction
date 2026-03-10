@@ -1,0 +1,176 @@
+{
+  "default_scenario_id": "tel_aviv_rooftop",
+  "scenarios": [
+    {
+      "id": "tel_aviv_rooftop",
+      "name": "Tel Aviv Rooftop",
+      "address": "100 Dizengoff St, Tel Aviv-Yafo, Israel",
+      "country": "Israel",
+      "city": "Tel Aviv-Yafo",
+      "street": "Dizengoff St",
+      "number": "100",
+      "latitude": 32.0853,
+      "longitude": 34.7818,
+      "timezone": "Asia/Jerusalem",
+      "description": "Urban commercial rooftop with strong summer irradiance and mild winters.",
+      "system_defaults": {
+        "year": 2026,
+        "tilt": 22,
+        "panel_area": 82.0,
+        "panel_efficiency": 0.21,
+        "cleanliness": "normal",
+        "shading": "low",
+        "ac_capacity_kw": 16.5,
+        "gamma": 0.004,
+        "noct": 45.0,
+        "model_type": "physical",
+        "electricity_price_per_kwh": 0.17,
+        "currency": "USD",
+        "training_years": 3
+      },
+      "comparison_variants": [
+        {
+          "name": "High Density Upgrade",
+          "panel_area": 104.0,
+          "tilt": 18,
+          "ac_capacity_kw": 19.0,
+          "cleanliness": "clean",
+          "shading": "low"
+        },
+        {
+          "name": "Dust And Partial Shade",
+          "panel_area": 82.0,
+          "tilt": 22,
+          "ac_capacity_kw": 16.5,
+          "cleanliness": "dusty",
+          "shading": "medium"
+        }
+      ],
+      "weather_profile": {
+        "solar_scale": 1.05,
+        "seasonality": 0.20,
+        "cloudiness": 0.10,
+        "temperature_base_c": 22.0,
+        "temperature_seasonality": 7.5,
+        "daily_temp_swing": 5.0,
+        "sunrise_shift_hours": -0.15,
+        "year_solar_trend": 0.012,
+        "year_temperature_trend": 0.18
+      }
+    },
+    {
+      "id": "phoenix_distribution_center",
+      "name": "Phoenix Distribution Center",
+      "address": "3400 E Sky Harbor Blvd, Phoenix, Arizona, United States",
+      "country": "United States",
+      "city": "Phoenix",
+      "street": "E Sky Harbor Blvd",
+      "number": "3400",
+      "latitude": 33.4342,
+      "longitude": -112.0116,
+      "timezone": "America/Phoenix",
+      "description": "Large low-tilt warehouse array in a very high irradiance climate.",
+      "system_defaults": {
+        "year": 2026,
+        "tilt": 16,
+        "panel_area": 180.0,
+        "panel_efficiency": 0.22,
+        "cleanliness": "clean",
+        "shading": "none",
+        "ac_capacity_kw": 38.0,
+        "gamma": 0.004,
+        "noct": 46.0,
+        "model_type": "physical",
+        "electricity_price_per_kwh": 0.14,
+        "currency": "USD",
+        "training_years": 3
+      },
+      "comparison_variants": [
+        {
+          "name": "Expanded Array",
+          "panel_area": 235.0,
+          "tilt": 14,
+          "ac_capacity_kw": 44.0,
+          "cleanliness": "clean",
+          "shading": "none"
+        },
+        {
+          "name": "Constrained Inverter",
+          "panel_area": 180.0,
+          "tilt": 16,
+          "ac_capacity_kw": 28.0,
+          "cleanliness": "clean",
+          "shading": "low"
+        }
+      ],
+      "weather_profile": {
+        "solar_scale": 1.18,
+        "seasonality": 0.16,
+        "cloudiness": 0.05,
+        "temperature_base_c": 27.0,
+        "temperature_seasonality": 11.0,
+        "daily_temp_swing": 7.0,
+        "sunrise_shift_hours": -0.25,
+        "year_solar_trend": 0.009,
+        "year_temperature_trend": 0.22
+      }
+    },
+    {
+      "id": "berlin_school_campus",
+      "name": "Berlin School Campus",
+      "address": "10 Invalidenstrasse, Berlin, Germany",
+      "country": "Germany",
+      "city": "Berlin",
+      "street": "Invalidenstrasse",
+      "number": "10",
+      "latitude": 52.5317,
+      "longitude": 13.3827,
+      "timezone": "Europe/Berlin",
+      "description": "Mid-size educational rooftop with stronger winter seasonality and softer summer peaks.",
+      "system_defaults": {
+        "year": 2026,
+        "tilt": 32,
+        "panel_area": 96.0,
+        "panel_efficiency": 0.20,
+        "cleanliness": "normal",
+        "shading": "low",
+        "ac_capacity_kw": 18.5,
+        "gamma": 0.004,
+        "noct": 45.0,
+        "model_type": "physical",
+        "electricity_price_per_kwh": 0.29,
+        "currency": "EUR",
+        "training_years": 4
+      },
+      "comparison_variants": [
+        {
+          "name": "South-Facing Retrofit",
+          "panel_area": 96.0,
+          "tilt": 38,
+          "ac_capacity_kw": 18.5,
+          "cleanliness": "clean",
+          "shading": "none"
+        },
+        {
+          "name": "Courtyard Shade Case",
+          "panel_area": 96.0,
+          "tilt": 32,
+          "ac_capacity_kw": 18.5,
+          "cleanliness": "normal",
+          "shading": "medium"
+        }
+      ],
+      "weather_profile": {
+        "solar_scale": 0.84,
+        "seasonality": 0.33,
+        "cloudiness": 0.18,
+        "temperature_base_c": 11.5,
+        "temperature_seasonality": 12.0,
+        "daily_temp_swing": 5.5,
+        "sunrise_shift_hours": 0.20,
+        "year_solar_trend": 0.008,
+        "year_temperature_trend": 0.15
+      }
+    }
+  ]
+}

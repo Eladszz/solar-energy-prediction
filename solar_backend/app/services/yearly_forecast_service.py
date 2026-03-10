@@ -6,6 +6,11 @@ import logging
 import pandas as pd
 
 from app.services.finance_service import build_financial_summary
+from app.services.demo_mode_service import (
+    build_demo_response_metadata,
+    is_demo_mode_enabled,
+    resolve_demo_scenario,
+)
 from app.services.ml_forecast_service import (
     build_ml_metadata,
     build_hourly_time_index,
@@ -31,6 +36,9 @@ class WeatherProfileResult:
     training_years: list[int] = field(default_factory=list)
     fallback_reason: str | None = None
     ml_metadata: dict | None = None
+    data_source: str = "live"
+    demo_scenario_id: str | None = None
+    demo_scenario_name: str | None = None
 
 
 def normalize_model_type(model_type: str | None) -> str:
@@ -153,6 +161,8 @@ def prepare_physical_weather_profile(
     longitude: float,
     forecast_year: int,
     backtest_mode: bool = False,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
 ) -> WeatherProfileResult:
     last_complete_year = get_last_complete_year()
     if backtest_mode:
@@ -160,7 +170,13 @@ def prepare_physical_weather_profile(
     else:
         weather_reference_year = min(forecast_year, last_complete_year)
 
-    weather_df = get_year_archive(latitude, longitude, weather_reference_year)
+    weather_df = get_year_archive(
+        latitude,
+        longitude,
+        weather_reference_year,
+        demo_mode=demo_mode,
+        demo_scenario_id=demo_scenario_id,
+    )
     aligned_df = align_profile_to_year(weather_df, forecast_year)
     fallback_reason = None
     if weather_reference_year != forecast_year:
@@ -177,6 +193,20 @@ def prepare_physical_weather_profile(
                 "baseline profile."
             )
 
+    demo_metadata = {
+        "data_source": "live",
+        "demo_scenario_id": None,
+        "demo_scenario_name": None,
+    }
+    if is_demo_mode_enabled(demo_mode):
+        demo_metadata = build_demo_response_metadata(
+            resolve_demo_scenario(
+                latitude=latitude,
+                longitude=longitude,
+                demo_scenario_id=demo_scenario_id,
+            )
+        )
+
     return WeatherProfileResult(
         df=aligned_df,
         forecast_year=forecast_year,
@@ -184,6 +214,7 @@ def prepare_physical_weather_profile(
         model_type_used="physical",
         weather_reference_year=weather_reference_year,
         fallback_reason=fallback_reason,
+        **demo_metadata,
     )
 
 
@@ -192,6 +223,8 @@ def prepare_ml_weather_profile(
     longitude: float,
     forecast_year: int,
     training_years: int,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
 ) -> WeatherProfileResult:
     last_complete_year = get_last_complete_year()
     training_end_year = min(forecast_year - 1, last_complete_year)
@@ -202,7 +235,15 @@ def prepare_ml_weather_profile(
     years_used: list[int] = []
     for year in candidate_years:
         try:
-            history_frames.append(get_year_archive(latitude, longitude, year))
+            history_frames.append(
+                get_year_archive(
+                    latitude,
+                    longitude,
+                    year,
+                    demo_mode=demo_mode,
+                    demo_scenario_id=demo_scenario_id,
+                )
+            )
             years_used.append(year)
         except Exception as exc:
             logger.warning("Skipping ML training year %s: %s", year, exc)
@@ -214,6 +255,20 @@ def prepare_ml_weather_profile(
     model = train_weather_regression_model(history_df, years_used)
     predicted_weather_df = predict_weather_profile(model, forecast_year)
 
+    demo_metadata = {
+        "data_source": "live",
+        "demo_scenario_id": None,
+        "demo_scenario_name": None,
+    }
+    if is_demo_mode_enabled(demo_mode):
+        demo_metadata = build_demo_response_metadata(
+            resolve_demo_scenario(
+                latitude=latitude,
+                longitude=longitude,
+                demo_scenario_id=demo_scenario_id,
+            )
+        )
+
     return WeatherProfileResult(
         df=predicted_weather_df,
         forecast_year=forecast_year,
@@ -221,6 +276,7 @@ def prepare_ml_weather_profile(
         model_type_used="ml",
         training_years=years_used,
         ml_metadata=build_ml_metadata(model),
+        **demo_metadata,
     )
 
 
@@ -231,6 +287,8 @@ def build_forecast_weather_profile(
     model_type: str = "physical",
     training_years: int = 3,
     backtest_mode: bool = False,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
 ) -> WeatherProfileResult:
     target_year = resolve_forecast_year(forecast_year)
     normalized_model_type = normalize_model_type(model_type)
@@ -241,6 +299,8 @@ def build_forecast_weather_profile(
             longitude=longitude,
             forecast_year=target_year,
             backtest_mode=backtest_mode,
+            demo_mode=demo_mode,
+            demo_scenario_id=demo_scenario_id,
         )
 
     try:
@@ -249,6 +309,8 @@ def build_forecast_weather_profile(
             longitude=longitude,
             forecast_year=target_year,
             training_years=training_years,
+            demo_mode=demo_mode,
+            demo_scenario_id=demo_scenario_id,
         )
     except Exception as exc:
         logger.warning("ML forecast unavailable, falling back to physical baseline: %s", exc)
@@ -257,6 +319,8 @@ def build_forecast_weather_profile(
             longitude=longitude,
             forecast_year=target_year,
             backtest_mode=backtest_mode,
+            demo_mode=demo_mode,
+            demo_scenario_id=demo_scenario_id,
         )
         fallback_profile.model_type_requested = normalized_model_type
         fallback_profile.fallback_reason = (
@@ -315,6 +379,9 @@ def build_yearly_forecast_response(
         "financial_assumptions": finance["financial_assumptions"],
         "fallback_reason": weather_profile.fallback_reason,
         "ml_metadata": weather_profile.ml_metadata,
+        "data_source": weather_profile.data_source,
+        "demo_scenario_id": weather_profile.demo_scenario_id,
+        "demo_scenario_name": weather_profile.demo_scenario_name,
     }
     return response
 

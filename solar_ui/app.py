@@ -14,11 +14,26 @@ import requests
 import streamlit as st  # type: ignore
 from streamlit_folium import st_folium  # type: ignore
 
-from utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
-
-
-BACKEND_URL = "http://127.0.0.1:8000"
-REQUEST_TIMEOUT_SECONDS = 45
+try:
+    from solar_ui.config import (
+        BACKEND_URL,
+        DEMO_MODE_DEFAULT,
+        REQUEST_TIMEOUT_SECONDS,
+        get_default_demo_scenario_id,
+        get_demo_scenario_by_id,
+        get_demo_scenarios,
+    )
+    from solar_ui.utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
+except ModuleNotFoundError:
+    from config import (
+        BACKEND_URL,
+        DEMO_MODE_DEFAULT,
+        REQUEST_TIMEOUT_SECONDS,
+        get_default_demo_scenario_id,
+        get_demo_scenario_by_id,
+        get_demo_scenarios,
+    )
+    from utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
 MONTH_NAMES = [
     "Jan",
     "Feb",
@@ -70,6 +85,8 @@ class PVRequestPayload(TypedDict):
     electricity_price_per_kwh: float
     currency: str
     training_years: int
+    demo_mode: bool
+    demo_scenario_id: str | None
 
 
 ApiPayload: TypeAlias = (
@@ -93,6 +110,69 @@ def load_country_names() -> list[str]:
         if isinstance(getattr(country, "name", None), str)
     )
     return country_names or sorted(FALLBACK_COUNTRIES)
+
+
+DEMO_SCENARIOS = get_demo_scenarios()
+DEMO_SCENARIO_OPTIONS = {scenario["id"]: scenario for scenario in DEMO_SCENARIOS}
+
+
+def build_demo_option_label(scenario: dict[str, Any]) -> str:
+    return f"{scenario['name']} ({scenario['city']})"
+
+
+def apply_demo_scenario(scenario_id: str) -> dict[str, Any]:
+    scenario = get_demo_scenario_by_id(scenario_id)
+    defaults = scenario["system_defaults"]
+    st.session_state.lat = float(scenario["latitude"])
+    st.session_state.lon = float(scenario["longitude"])
+    st.session_state.address = scenario["address"]
+    st.session_state.location_notice = (
+        f"Demo scenario loaded: {scenario['name']}. Geocoding and weather now use bundled fixtures."
+    )
+    st.session_state.country_select = scenario["country"]
+    st.session_state.city_input = scenario["city"]
+    st.session_state.street_input = scenario["street"]
+    st.session_state.house_number_input = scenario["number"]
+    st.session_state.panel_area = float(defaults["panel_area"])
+    st.session_state.ac_capacity_kw_input = float(defaults["ac_capacity_kw"])
+    st.session_state.forecast_year_input = int(defaults["year"])
+    st.session_state.model_type_select = defaults["model_type"]
+    st.session_state.training_years_slider = int(defaults["training_years"])
+    st.session_state.tariff_input = float(defaults["electricity_price_per_kwh"])
+    st.session_state.currency_select = defaults["currency"]
+    st.session_state.panel_efficiency_slider = float(defaults["panel_efficiency"])
+    st.session_state.tilt_slider = int(defaults["tilt"])
+    st.session_state.cleanliness_select = defaults["cleanliness"]
+    st.session_state.shading_select = defaults["shading"]
+    st.session_state.gamma_input = float(defaults["gamma"])
+    st.session_state.noct_input = float(defaults["noct"])
+    st.session_state.last_applied_demo_scenario_id = scenario_id
+    return scenario
+
+
+def build_demo_variant_requests(base_payload: PVRequestPayload, scenario_id: str) -> list[dict[str, Any]]:
+    scenario = get_demo_scenario_by_id(scenario_id)
+    variants = []
+    for variant in scenario.get("comparison_variants", []):
+        variant_payload = dict(base_payload)
+        variant_payload.update(
+            {
+                "panel_area": float(variant["panel_area"]),
+                "tilt": int(variant["tilt"]),
+                "ac_capacity_kw": float(variant["ac_capacity_kw"]),
+                "cleanliness": variant["cleanliness"],
+                "shading": variant["shading"],
+            }
+        )
+        variants.append({"name": variant["name"], "payload": variant_payload})
+    return variants
+
+
+def render_data_source_notice(payload: Mapping[str, Any]) -> None:
+    if payload.get("data_source") != "demo":
+        return
+    scenario_name = payload.get("demo_scenario_name") or "bundled demo scenario"
+    st.info(f"Demo mode active. Results are coming from the bundled '{scenario_name}' dataset.")
 
 logger.remove()
 logger.add(
@@ -133,6 +213,9 @@ def initialize_session_state() -> None:
         "last_drawing_id": None,
         "auto_run_forecast": False,
         "last_run_payload": None,
+        "demo_mode": DEMO_MODE_DEFAULT,
+        "demo_scenario_id": get_default_demo_scenario_id(),
+        "last_applied_demo_scenario_id": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -208,6 +291,8 @@ def build_common_payload(
     electricity_price_per_kwh: float,
     currency: str,
     training_years: int,
+    demo_mode: bool,
+    demo_scenario_id: str | None,
 ) -> PVRequestPayload:
     return {
         "latitude": latitude,
@@ -225,6 +310,8 @@ def build_common_payload(
         "electricity_price_per_kwh": electricity_price_per_kwh,
         "currency": currency,
         "training_years": training_years,
+        "demo_mode": demo_mode,
+        "demo_scenario_id": demo_scenario_id,
     }
 
 
@@ -267,6 +354,7 @@ def render_metadata_table(rows: list[dict]) -> None:
 
 
 def render_overview_tab(forecast_data: dict) -> None:
+    render_data_source_notice(forecast_data)
     render_summary_cards(forecast_data)
 
     if forecast_data.get("fallback_reason"):
@@ -343,6 +431,7 @@ def render_overview_tab(forecast_data: dict) -> None:
 
 
 def render_daily_tab(daily_data: dict) -> None:
+    render_data_source_notice(daily_data)
     assumptions = daily_data["financial_assumptions"]
     metric_columns = st.columns(4)
     metric_columns[0].metric("Daily Energy", f"{daily_data['daily_kwh']} kWh")
@@ -406,6 +495,7 @@ def render_last_run_summary(last_run_payload: Mapping[str, Any]) -> None:
 
 
 def render_accuracy_tab(accuracy_data: dict) -> None:
+    render_data_source_notice(accuracy_data)
     assumptions = accuracy_data["financial_assumptions"]
     delta_percent = 0.0
     if accuracy_data["actual_yearly_kwh"] != 0:
@@ -501,6 +591,7 @@ def render_comparison_tab(
     comparison_data: dict,
     scenario_names: list[str],
 ) -> None:
+    render_data_source_notice(comparison_data)
     if comparison_data.get("fallback_reason"):
         st.warning(comparison_data["fallback_reason"])
 
@@ -558,25 +649,96 @@ default_country = "Israel" if "Israel" in countries else countries[0]
 current_year = date.today().year
 last_complete_year = current_year - 1
 
+if "country_select" not in st.session_state:
+    st.session_state.country_select = default_country
+if "city_input" not in st.session_state:
+    st.session_state.city_input = "Tel Aviv"
+if "street_input" not in st.session_state:
+    st.session_state.street_input = "Dizengoff"
+if "house_number_input" not in st.session_state:
+    st.session_state.house_number_input = "100"
+
+st.sidebar.header("Demo Controls")
+demo_mode_active = st.sidebar.checkbox(
+    "Enable Demo Mode",
+    key="demo_mode",
+    help="Uses bundled geocoding and deterministic weather fixtures instead of live third-party services.",
+)
+selected_demo_scenario_id = st.session_state.demo_scenario_id
+if demo_mode_active:
+    demo_scenario_ids = list(DEMO_SCENARIO_OPTIONS)
+    selected_demo_scenario_id = st.sidebar.selectbox(
+        "Demo Scenario",
+        options=demo_scenario_ids,
+        format_func=lambda scenario_id: build_demo_option_label(DEMO_SCENARIO_OPTIONS[scenario_id]),
+        key="demo_scenario_id",
+    )
+    scenario_changed = st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
+    if scenario_changed:
+        st.session_state.forecast_data = None
+        st.session_state.daily_simulation = None
+        st.session_state.accuracy_result = None
+        st.session_state.comparison_result = None
+        st.session_state.scenario_requests = []
+        st.session_state.last_run_payload = None
+    if scenario_changed or st.session_state.lat is None or st.session_state.lon is None:
+        selected_demo_scenario = apply_demo_scenario(selected_demo_scenario_id)
+    else:
+        selected_demo_scenario = get_demo_scenario_by_id(selected_demo_scenario_id)
+    st.sidebar.caption(selected_demo_scenario["description"])
+else:
+    st.session_state.demo_scenario_id = None
+    st.session_state.last_applied_demo_scenario_id = None
+    selected_demo_scenario = None
+
+if demo_mode_active and selected_demo_scenario is not None:
+    st.warning(
+        "Demo mode is active. Geocoding, forecast weather, yearly history, comparison, and "
+        f"backtest flows are using the bundled '{selected_demo_scenario['name']}' dataset."
+    )
+
 st.sidebar.header("Location")
+country_value = st.session_state.country_select
+if country_value not in countries:
+    countries = sorted(set(countries + [country_value]))
 country = st.sidebar.selectbox(
     "Country",
     countries,
-    index=countries.index(default_country),
+    index=countries.index(country_value),
     key="country_select",
 )
-city = st.sidebar.text_input("City", value="Tel Aviv", key="city_input")
-street = st.sidebar.text_input("Street", value="Dizengoff", key="street_input")
-number = st.sidebar.text_input("Number", value="100", key="house_number_input")
+city = st.sidebar.text_input(
+    "City",
+    value=st.session_state.get("city_input", "Tel Aviv"),
+    key="city_input",
+)
+street = st.sidebar.text_input(
+    "Street",
+    value=st.session_state.get("street_input", "Dizengoff"),
+    key="street_input",
+)
+number = st.sidebar.text_input(
+    "Number",
+    value=st.session_state.get("house_number_input", "100"),
+    key="house_number_input",
+)
 
 address = f"{street} {number}, {city}, {country}".strip()
 if st.sidebar.button("Locate Address", type="primary"):
-    location_lookup = geocode_address(address)
+    location_lookup = geocode_address(
+        address,
+        demo_mode=demo_mode_active,
+        demo_scenario_id=selected_demo_scenario_id,
+    )
     if location_lookup.is_success:
         st.session_state.lat = location_lookup.latitude
         st.session_state.lon = location_lookup.longitude
         st.session_state.address = location_lookup.address or address
-        st.session_state.location_notice = None
+        st.session_state.location_notice = (
+            "Using bundled geocoding for demo mode."
+            if demo_mode_active
+            else None
+        )
         st.success(
             f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}"
         )
@@ -602,8 +764,9 @@ forecast_year = st.sidebar.number_input(
     "Forecast Year",
     min_value=2020,
     max_value=current_year + 2,
-    value=current_year,
+    value=int(st.session_state.get("forecast_year_input", current_year)),
     step=1,
+    key="forecast_year_input",
 )
 panel_area = st.sidebar.number_input(
     "Panel Area (m²)",
@@ -621,42 +784,78 @@ model_type = st.sidebar.selectbox(
     "Forecast Model",
     options=["physical", "ml"],
     format_func=lambda value: "Physical baseline" if value == "physical" else "ML baseline",
+    index=["physical", "ml"].index(st.session_state.get("model_type_select", "physical")),
+    key="model_type_select",
 )
 training_years = st.sidebar.slider(
     "ML Training Window (years)",
     min_value=2,
     max_value=5,
-    value=3,
+    value=int(st.session_state.get("training_years_slider", 3)),
     disabled=model_type != "ml",
+    key="training_years_slider",
 )
 electricity_price_per_kwh = st.sidebar.number_input(
     "Electricity Price / Feed-in Tariff",
     min_value=0.0,
-    value=0.17,
+    value=float(st.session_state.get("tariff_input", 0.17)),
     step=0.01,
     format="%.2f",
+    key="tariff_input",
 )
-currency = st.sidebar.selectbox("Currency", options=["USD", "EUR", "ILS"], index=0)
+currency_options = ["USD", "EUR", "ILS"]
+currency = st.sidebar.selectbox(
+    "Currency",
+    options=currency_options,
+    index=currency_options.index(st.session_state.get("currency_select", "USD")),
+    key="currency_select",
+)
 
 with st.sidebar.expander("Advanced Settings", expanded=False):
-    panel_efficiency = st.slider("Panel Efficiency", 0.10, 0.30, 0.20)
-    tilt = st.slider("Tilt Angle (°)", 0, 60, 30)
-    cleanliness = st.selectbox("Panel Cleanliness", ["clean", "normal", "dusty"], index=1)
-    shading = st.selectbox("Shading Level", ["none", "low", "medium", "high"], index=1)
+    panel_efficiency = st.slider(
+        "Panel Efficiency",
+        0.10,
+        0.30,
+        float(st.session_state.get("panel_efficiency_slider", 0.20)),
+        key="panel_efficiency_slider",
+    )
+    tilt = st.slider(
+        "Tilt Angle (°)",
+        0,
+        60,
+        int(st.session_state.get("tilt_slider", 30)),
+        key="tilt_slider",
+    )
+    cleanliness_options = ["clean", "normal", "dusty"]
+    cleanliness = st.selectbox(
+        "Panel Cleanliness",
+        cleanliness_options,
+        index=cleanliness_options.index(st.session_state.get("cleanliness_select", "normal")),
+        key="cleanliness_select",
+    )
+    shading_options = ["none", "low", "medium", "high"]
+    shading = st.selectbox(
+        "Shading Level",
+        shading_options,
+        index=shading_options.index(st.session_state.get("shading_select", "low")),
+        key="shading_select",
+    )
     gamma = st.number_input(
         "Temperature Coefficient (gamma)",
         min_value=0.002,
         max_value=0.006,
-        value=0.004,
+        value=float(st.session_state.get("gamma_input", 0.004)),
         step=0.0001,
         format="%.4f",
+        key="gamma_input",
     )
     noct = st.number_input(
         "NOCT (°C)",
         min_value=35.0,
         max_value=60.0,
-        value=45.0,
+        value=float(st.session_state.get("noct_input", 45.0)),
         step=1.0,
+        key="noct_input",
     )
 
 run_forecast = st.sidebar.button(
@@ -675,20 +874,23 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         popup=st.session_state.address,
         icon=folium.Icon(icon="home"),
     ).add_to(map_object)
-    Draw(
-        draw_options={
-            "polyline": False,
-            "polygon": False,
-            "circle": False,
-            "circlemarker": False,
-            "marker": False,
-            "rectangle": True,
-        },
-        edit_options={"edit": True},
-    ).add_to(map_object)
+    if not demo_mode_active:
+        Draw(
+            draw_options={
+                "polyline": False,
+                "polygon": False,
+                "circle": False,
+                "circlemarker": False,
+                "marker": False,
+                "rectangle": True,
+            },
+            edit_options={"edit": True},
+        ).add_to(map_object)
     map_data = st_folium(map_object, height=360, use_container_width=True)
 
-    if map_data and map_data.get("all_drawings"):
+    if demo_mode_active:
+        st.caption("Map editing is disabled in demo mode so the bundled scenario stays deterministic.")
+    elif map_data and map_data.get("all_drawings"):
         last_shape = map_data["all_drawings"][-1]
         drawing_id = last_shape.get("id") or hash(str(last_shape))
 
@@ -705,7 +907,12 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
             st.session_state.pending_panel_area = round(roof_area, 1)
             st.session_state.lat = center_lat
             st.session_state.lon = center_lon
-            reverse_lookup = reverse_geocode(center_lat, center_lon)
+            reverse_lookup = reverse_geocode(
+                center_lat,
+                center_lon,
+                demo_mode=demo_mode_active,
+                demo_scenario_id=selected_demo_scenario_id,
+            )
             if reverse_lookup.address:
                 st.session_state.address = reverse_lookup.address
                 st.session_state.location_notice = None
@@ -738,6 +945,8 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         electricity_price_per_kwh=float(electricity_price_per_kwh),
         currency=currency,
         training_years=int(training_years),
+        demo_mode=demo_mode_active,
+        demo_scenario_id=selected_demo_scenario_id if demo_mode_active else None,
     )
 
 if run_forecast or st.session_state.auto_run_forecast:
@@ -783,11 +992,14 @@ with tab_daily:
 
 with tab_accuracy:
     evaluation_year = min(int(forecast_year), last_complete_year)
-    st.caption(
+    backtest_caption = (
         "Backtest compares the selected forecast model against archived actual weather "
         f"for {evaluation_year}."
     )
-    if forecast_year > last_complete_year:
+    if demo_mode_active:
+        backtest_caption += " In demo mode, the archived history is deterministic and bundled locally."
+    st.caption(backtest_caption)
+    if forecast_year > last_complete_year and not demo_mode_active:
         st.info(
             f"Archived actual weather is only complete through {last_complete_year}, "
             f"so the backtest uses {evaluation_year}."
@@ -803,6 +1015,7 @@ with tab_accuracy:
                 accuracy_response = api_post("/evaluation/accuracy", accuracy_payload)
                 if accuracy_response is not None:
                     st.session_state.accuracy_result = accuracy_response
+                    st.success("Accuracy backtest completed.")
 
         if st.session_state.accuracy_result is None:
             st.info("Run the backtest to compare predicted and actual yearly output.")
@@ -813,7 +1026,7 @@ with tab_scenarios:
     if base_payload is None or st.session_state.forecast_data is None:
         st.info("Run the baseline forecast first to unlock scenario comparison.")
     else:
-        top_columns = st.columns([2, 1])
+        top_columns = st.columns([2, 1, 1])
         with top_columns[0]:
             scenario_name = st.text_input(
                 "Scenario Name",
@@ -824,6 +1037,14 @@ with tab_scenarios:
                 st.session_state.scenario_requests = []
                 st.session_state.comparison_result = None
                 st.rerun()
+        with top_columns[2]:
+            if demo_mode_active and selected_demo_scenario_id and st.button("Load Demo Variants"):
+                st.session_state.scenario_requests = build_demo_variant_requests(
+                    base_payload,
+                    selected_demo_scenario_id,
+                )
+                st.session_state.comparison_result = None
+                st.success("Loaded the bundled comparison variants for this demo scenario.")
 
         config_columns = st.columns(3)
         with config_columns[0]:

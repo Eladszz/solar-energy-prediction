@@ -26,6 +26,8 @@ class BasePVRequest(BaseModel):
     electricity_price_per_kwh: float = Field(default=0.17, ge=0.0)
     currency: CurrencyCode = "USD"
     training_years: int = Field(default=3, ge=1, le=10)
+    demo_mode: bool = False
+    demo_scenario_id: str | None = None
 
 
 class SimulationRequest(BasePVRequest):

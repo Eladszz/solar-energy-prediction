@@ -111,6 +111,8 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
         forecast_year=2026,
         model_type="physical",
         training_years=3,
+        demo_mode=False,
+        demo_scenario_id=None,
     )
 
 
@@ -159,5 +161,44 @@ def test_compare_yearly_scenarios_uses_baseline_model_settings(
         forecast_year=2027,
         model_type="ml",
         training_years=4,
+        demo_mode=False,
+        demo_scenario_id=None,
     )
     assert result["results"][0]["financial_assumptions"]["currency"] == "EUR"
+
+
+@patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")
+@patch("app.services.scenario_comparison_service.compute_system_loss_factor")
+@patch("app.services.scenario_comparison_service.build_forecast_weather_profile")
+def test_compare_yearly_scenarios_preserves_demo_metadata(
+    mock_build_profile,
+    mock_loss_factor,
+    mock_compute_yearly,
+    sample_weather_profile,
+    base_scenario,
+):
+    mock_build_profile.return_value = WeatherProfileResult(
+        df=sample_weather_profile.df,
+        forecast_year=2026,
+        model_type_requested="physical",
+        model_type_used="physical",
+        weather_reference_year=2025,
+        data_source="demo",
+        demo_scenario_id="tel_aviv_rooftop",
+        demo_scenario_name="Tel Aviv Rooftop",
+    )
+    mock_loss_factor.return_value = 0.86
+    mock_compute_yearly.return_value = {
+        "yearly_kwh": 7200.0,
+        "monthly_kwh": [600.0] * 12,
+    }
+
+    result = compare_yearly_scenarios(
+        latitude=32.08,
+        longitude=34.78,
+        scenarios=[base_scenario],
+    )
+
+    assert result["data_source"] == "demo"
+    assert result["demo_scenario_id"] == "tel_aviv_rooftop"
+    assert result["demo_scenario_name"] == "Tel Aviv Rooftop"

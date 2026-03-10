@@ -35,6 +35,9 @@ class SimulationResponse(ApiResponseModel):
     financial_assumptions: FinancialAssumptions
     timezone: str
     hourly_time: list[str]
+    data_source: Literal["live", "demo"] = "live"
+    demo_scenario_id: str | None = None
+    demo_scenario_name: str | None = None
 
 
 class YearlyForecastResponse(ApiResponseModel):
@@ -54,6 +57,9 @@ class YearlyForecastResponse(ApiResponseModel):
     financial_assumptions: FinancialAssumptions
     fallback_reason: str | None = None
     ml_metadata: dict[str, Any] | None = None
+    data_source: Literal["live", "demo"] = "live"
+    demo_scenario_id: str | None = None
+    demo_scenario_name: str | None = None
 
 
 QualityLabel = Literal["EXCELLENT", "GOOD", "POOR"]
@@ -79,6 +85,9 @@ class AccuracyEvaluationResponse(ApiResponseModel):
     quality: QualityLabel
     financial_assumptions: FinancialAssumptions
     ml_metadata: dict[str, Any] | None = None
+    data_source: Literal["live", "demo"] = "live"
+    demo_scenario_id: str | None = None
+    demo_scenario_name: str | None = None
 
 
 class ScenarioComparisonResult(ApiResponseModel):
@@ -102,3 +111,6 @@ class ScenarioComparisonResponse(ApiResponseModel):
     baseline_yearly_kwh: float
     baseline_yearly_estimated_value: float
     results: list[ScenarioComparisonResult]
+    data_source: Literal["live", "demo"] = "live"
+    demo_scenario_id: str | None = None
+    demo_scenario_name: str | None = None

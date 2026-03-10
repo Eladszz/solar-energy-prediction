@@ -26,6 +26,8 @@ def compare_yearly_scenarios(
         forecast_year=baseline_request.year,
         model_type=baseline_request.model_type,
         training_years=baseline_request.training_years,
+        demo_mode=baseline_request.demo_mode,
+        demo_scenario_id=baseline_request.demo_scenario_id,
     )
 
     results = []
@@ -95,4 +97,7 @@ def compare_yearly_scenarios(
         "baseline_yearly_kwh": baseline,
         "baseline_yearly_estimated_value": baseline_value,
         "results": results,
+        "data_source": weather_profile.data_source,
+        "demo_scenario_id": weather_profile.demo_scenario_id,
+        "demo_scenario_name": weather_profile.demo_scenario_name,
     }

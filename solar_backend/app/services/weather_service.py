@@ -8,16 +8,31 @@ from app.services.external_service import (
     fetch_json_from_provider,
     require_list_fields,
 )
+from app.services.demo_mode_service import build_demo_forecast, is_demo_mode_enabled
 
 logger = logging.getLogger(__name__)
 WEATHER_FORECAST_PROVIDER = "Weather forecast provider"
 WEATHER_FORECAST_TIMEOUT_SECONDS = DEFAULT_EXTERNAL_TIMEOUT_SECONDS
 
 
-def get_weather_forecast(lat: float, lon: float, days: int = 1):
+def get_weather_forecast(
+    lat: float,
+    lon: float,
+    days: int = 1,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
+):
     """
     Retrieve hourly shortwave radiation and temperature forecast.
     """
+    if is_demo_mode_enabled(demo_mode):
+        return build_demo_forecast(
+            latitude=lat,
+            longitude=lon,
+            days=days,
+            demo_scenario_id=demo_scenario_id,
+        )
+
     url = (
         WEATHER_API_URL + f"?latitude={lat}&longitude={lon}"
         "&hourly=shortwave_radiation,temperature_2m"

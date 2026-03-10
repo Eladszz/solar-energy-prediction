@@ -24,6 +24,8 @@ def yearly(req: YearlyForecastRequest):
             forecast_year=req.year,
             model_type=req.model_type,
             training_years=req.training_years,
+            demo_mode=req.demo_mode,
+            demo_scenario_id=req.demo_scenario_id,
         )
         system_loss_factor = compute_system_loss_factor(
             cleanliness=req.cleanliness,

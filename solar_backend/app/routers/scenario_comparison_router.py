@@ -54,6 +54,16 @@ def compare_scenarios(
                 status_code=400,
                 detail="All scenarios must use the same tariff assumption for financial comparison.",
             )
+        if s.demo_mode != scenarios[0].demo_mode:
+            raise HTTPException(
+                status_code=400,
+                detail="All scenarios must use the same demo mode setting.",
+            )
+        if s.demo_scenario_id != scenarios[0].demo_scenario_id:
+            raise HTTPException(
+                status_code=400,
+                detail="All scenarios must use the same demo scenario in demo mode.",
+            )
 
     try:
         return compare_yearly_scenarios(

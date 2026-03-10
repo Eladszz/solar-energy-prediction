@@ -12,6 +12,22 @@ from app.services.weather_archive_service import get_year_archive
 class TestGetYearArchive:
     """Test suite for weather archive service."""
 
+    @patch("app.services.weather_archive_service.requests.get")
+    def test_get_year_archive_demo_mode_uses_bundled_fixture(self, mock_get):
+        result = get_year_archive(
+            52.5317,
+            13.3827,
+            2026,
+            demo_mode=True,
+            demo_scenario_id="berlin_school_campus",
+        )
+
+        assert isinstance(result, pd.DataFrame)
+        assert list(result.columns) == ["time", "irr", "temp"]
+        assert len(result) == 8760
+        assert result["irr"].max() > 0
+        mock_get.assert_not_called()
+
     @pytest.fixture
     def mock_archive_response(self):
         """Create a mock successful archive API response for a full year."""

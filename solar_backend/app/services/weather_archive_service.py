@@ -8,6 +8,7 @@ from app.services.external_service import (
     fetch_json_from_provider,
     require_list_fields,
 )
+from app.services.demo_mode_service import build_demo_archive, is_demo_mode_enabled
 
 logger = logging.getLogger(__name__)
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -15,7 +16,21 @@ WEATHER_ARCHIVE_PROVIDER = "Historical weather provider"
 WEATHER_ARCHIVE_TIMEOUT_SECONDS = DEFAULT_EXTERNAL_TIMEOUT_SECONDS
 
 
-def get_year_archive(lat, lon, year):
+def get_year_archive(
+    lat,
+    lon,
+    year,
+    demo_mode: bool = False,
+    demo_scenario_id: str | None = None,
+):
+    if is_demo_mode_enabled(demo_mode):
+        return build_demo_archive(
+            latitude=lat,
+            longitude=lon,
+            year=year,
+            demo_scenario_id=demo_scenario_id,
+        )
+
     start = f"{year}-01-01"
     end = f"{year}-12-31"
     logger.info(
