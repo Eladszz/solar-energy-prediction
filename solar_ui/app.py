@@ -1,233 +1,84 @@
 from __future__ import annotations
 
 from datetime import date
-from importlib import import_module
 import sys
-from typing import Any, Mapping, TypeAlias, TypedDict
+from typing import Any, Mapping
 
 import folium  # type: ignore
 from folium.plugins import Draw  # type: ignore
 from loguru import logger
-import pandas as pd
-import plotly.express as px
-import requests
 import streamlit as st  # type: ignore
 from streamlit_folium import st_folium  # type: ignore
 
 try:
-    from solar_ui.config import (
-        BACKEND_URL,
-        DEMO_MODE_DEFAULT,
-        REQUEST_TIMEOUT_SECONDS,
-        get_default_demo_scenario_id,
-        get_demo_scenario_by_id,
-        get_demo_scenarios,
+    from solar_ui.api_client import api_post
+    from solar_ui.config import get_default_demo_scenario_id, get_demo_scenario_by_id, get_demo_scenarios
+    from solar_ui.payloads import (
+        BenchmarkEvaluationPayload,
+        PVRequestPayload,
+        build_benchmark_payload,
+        build_common_payload,
+        build_demo_option_label,
+        build_demo_variant_requests,
+        build_scenario_comparison_payload,
+    )
+    from solar_ui.ui_sections import (
+        render_accuracy_tab,
+        render_benchmark_tab,
+        render_comparison_tab,
+        render_daily_tab,
+        render_last_benchmark_summary,
+        render_last_run_summary,
+        render_overview_tab,
+        render_section_intro,
+    )
+    from solar_ui.ui_state import (
+        apply_demo_scenario,
+        build_scenario_table,
+        clear_scenario_editor,
+        duplicate_scenario_request,
+        initialize_session_state,
+        load_country_names,
+        remove_scenario_request,
+        seed_scenario_form,
+        upsert_scenario_request,
     )
     from solar_ui.utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
 except ModuleNotFoundError:
-    from config import (
-        BACKEND_URL,
-        DEMO_MODE_DEFAULT,
-        REQUEST_TIMEOUT_SECONDS,
-        get_default_demo_scenario_id,
-        get_demo_scenario_by_id,
-        get_demo_scenarios,
+    from api_client import api_post
+    from config import get_default_demo_scenario_id, get_demo_scenario_by_id, get_demo_scenarios
+    from payloads import (
+        BenchmarkEvaluationPayload,
+        PVRequestPayload,
+        build_benchmark_payload,
+        build_common_payload,
+        build_demo_option_label,
+        build_demo_variant_requests,
+        build_scenario_comparison_payload,
+    )
+    from ui_sections import (
+        render_accuracy_tab,
+        render_benchmark_tab,
+        render_comparison_tab,
+        render_daily_tab,
+        render_last_benchmark_summary,
+        render_last_run_summary,
+        render_overview_tab,
+        render_section_intro,
+    )
+    from ui_state import (
+        apply_demo_scenario,
+        build_scenario_table,
+        clear_scenario_editor,
+        duplicate_scenario_request,
+        initialize_session_state,
+        load_country_names,
+        remove_scenario_request,
+        seed_scenario_form,
+        upsert_scenario_request,
     )
     from utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
-MONTH_NAMES = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-]
 
-FALLBACK_COUNTRIES = (
-    "Australia",
-    "Brazil",
-    "Canada",
-    "China",
-    "France",
-    "Germany",
-    "India",
-    "Israel",
-    "Italy",
-    "Japan",
-    "Netherlands",
-    "South Africa",
-    "Spain",
-    "United Arab Emirates",
-    "United Kingdom",
-    "United States",
-)
-
-
-class PVRequestPayload(TypedDict):
-    latitude: float
-    longitude: float
-    year: int
-    tilt: int
-    panel_area: float
-    panel_efficiency: float
-    cleanliness: str
-    shading: str
-    ac_capacity_kw: float
-    gamma: float
-    noct: float
-    model_type: str
-    electricity_price_per_kwh: float
-    currency: str
-    system_capex: float
-    training_years: int
-    demo_mode: bool
-    demo_scenario_id: str | None
-
-
-class ScenarioComparisonContextPayload(TypedDict):
-    latitude: float
-    longitude: float
-    year: int
-    model_type: str
-    training_years: int
-    electricity_price_per_kwh: float
-    currency: str
-    demo_mode: bool
-    demo_scenario_id: str | None
-
-
-class ScenarioComparisonScenarioPayload(TypedDict):
-    name: str
-    tilt: int
-    panel_area: float
-    panel_efficiency: float
-    cleanliness: str
-    shading: str
-    ac_capacity_kw: float
-    gamma: float
-    noct: float
-    system_capex: float
-
-
-class ScenarioComparisonRequestPayload(TypedDict):
-    context: ScenarioComparisonContextPayload
-    scenarios: list[ScenarioComparisonScenarioPayload]
-
-
-class BenchmarkEvaluationPayload(TypedDict):
-    latitude: float
-    longitude: float
-    year: int
-    benchmark_years: int
-    tilt: int
-    panel_area: float
-    panel_efficiency: float
-    cleanliness: str
-    shading: str
-    ac_capacity_kw: float
-    gamma: float
-    noct: float
-    training_years: int
-    demo_mode: bool
-    demo_scenario_id: str | None
-
-
-ApiPayload: TypeAlias = (
-    PVRequestPayload
-    | BenchmarkEvaluationPayload
-    | ScenarioComparisonRequestPayload
-    | dict[str, Any]
-    | list[PVRequestPayload]
-    | list[dict[str, Any]]
-)
-
-
-def load_country_names() -> list[str]:
-    try:
-        countries_module = import_module("pycountry")
-    except ModuleNotFoundError:
-        logger.warning("pycountry is not installed; using fallback country list.")
-        return sorted(FALLBACK_COUNTRIES)
-
-    country_names = sorted(
-        country.name
-        for country in getattr(countries_module, "countries", ())
-        if isinstance(getattr(country, "name", None), str)
-    )
-    return country_names or sorted(FALLBACK_COUNTRIES)
-
-
-DEMO_SCENARIOS = get_demo_scenarios()
-DEMO_SCENARIO_OPTIONS = {scenario["id"]: scenario for scenario in DEMO_SCENARIOS}
-
-
-def build_demo_option_label(scenario: dict[str, Any]) -> str:
-    return f"{scenario['name']} ({scenario['city']})"
-
-
-def apply_demo_scenario(scenario_id: str) -> dict[str, Any]:
-    scenario = get_demo_scenario_by_id(scenario_id)
-    defaults = scenario["system_defaults"]
-    st.session_state.lat = float(scenario["latitude"])
-    st.session_state.lon = float(scenario["longitude"])
-    st.session_state.address = scenario["address"]
-    st.session_state.location_notice = (
-        f"Demo scenario loaded: {scenario['name']}. Geocoding and weather now use bundled fixtures."
-    )
-    st.session_state.country_select = scenario["country"]
-    st.session_state.city_input = scenario["city"]
-    st.session_state.street_input = scenario["street"]
-    st.session_state.house_number_input = scenario["number"]
-    st.session_state.panel_area = float(defaults["panel_area"])
-    st.session_state.ac_capacity_kw_input = float(defaults["ac_capacity_kw"])
-    st.session_state.forecast_year_input = int(defaults["year"])
-    st.session_state.model_type_select = defaults["model_type"]
-    st.session_state.training_years_slider = int(defaults["training_years"])
-    st.session_state.tariff_input = float(defaults["electricity_price_per_kwh"])
-    st.session_state.currency_select = defaults["currency"]
-    st.session_state.system_capex_input = float(defaults["system_capex"])
-    st.session_state.panel_efficiency_slider = float(defaults["panel_efficiency"])
-    st.session_state.tilt_slider = int(defaults["tilt"])
-    st.session_state.cleanliness_select = defaults["cleanliness"]
-    st.session_state.shading_select = defaults["shading"]
-    st.session_state.gamma_input = float(defaults["gamma"])
-    st.session_state.noct_input = float(defaults["noct"])
-    st.session_state.last_applied_demo_scenario_id = scenario_id
-    return scenario
-
-
-def build_demo_variant_requests(base_payload: PVRequestPayload, scenario_id: str) -> list[dict[str, Any]]:
-    scenario = get_demo_scenario_by_id(scenario_id)
-    variants = []
-    for variant in scenario.get("comparison_variants", []):
-        variant_payload = dict(base_payload)
-        variant_payload.update(
-            {
-                "panel_area": float(variant["panel_area"]),
-                "tilt": int(variant["tilt"]),
-                "ac_capacity_kw": float(variant["ac_capacity_kw"]),
-                "cleanliness": variant["cleanliness"],
-                "shading": variant["shading"],
-                "system_capex": float(
-                    variant.get("system_capex", base_payload["system_capex"])
-                ),
-            }
-        )
-        variants.append({"name": variant["name"], "payload": variant_payload})
-    return variants
-
-
-def render_data_source_notice(payload: Mapping[str, Any]) -> None:
-    if payload.get("data_source") != "demo":
-        return
-    scenario_name = payload.get("demo_scenario_name") or "bundled demo scenario"
-    st.info(f"Demo mode active. Results are coming from the bundled '{scenario_name}' dataset.")
 
 logger.remove()
 logger.add(
@@ -248,399 +99,17 @@ logger.add(
 st.set_page_config(page_title="Solar Energy Forecast", layout="wide")
 st.title("Solar Energy Prediction System")
 st.caption(
-    "Alpha demo with physical and ML yearly forecasting, tariff-based value estimation, "
-    "scenario comparison, benchmark evaluation, and backtest accuracy analysis."
+    "Demo-ready solar forecasting with physical and ML yearly forecasts, benchmark evaluation, "
+    "backtest accuracy analysis, and scenario comparison."
+)
+st.info(
+    "Recommended flow: locate a site, confirm the baseline system, run the forecast, then use "
+    "comparison, backtest, and benchmark tabs to explore alternatives."
 )
 
 
-def initialize_session_state() -> None:
-    defaults = {
-        "lat": None,
-        "lon": None,
-        "address": None,
-        "location_notice": None,
-        "forecast_data": None,
-        "daily_simulation": None,
-        "comparison_result": None,
-        "accuracy_result": None,
-        "benchmark_result": None,
-        "scenario_requests": [],
-        "pending_panel_area": None,
-        "last_drawing_id": None,
-        "auto_run_forecast": False,
-        "last_run_payload": None,
-        "last_benchmark_payload": None,
-        "demo_mode": DEMO_MODE_DEFAULT,
-        "demo_scenario_id": get_default_demo_scenario_id(),
-        "last_applied_demo_scenario_id": None,
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-
-def parse_api_error(response: requests.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        payload = {}
-    return payload.get("detail") or response.text or "Unknown backend error"
-
-
-def format_request_exception(exc: requests.RequestException) -> str:
-    if isinstance(exc, requests.Timeout):
-        return (
-            "The backend request timed out. A weather or geocoding provider may be slow right now. "
-            "Please try again."
-        )
-    if isinstance(exc, requests.ConnectionError):
-        return (
-            f"Could not reach the backend at {BACKEND_URL}. "
-            "Make sure the FastAPI server is running and try again."
-        )
-    return f"Request to backend failed: {exc}"
-
-
-def api_post(path: str, payload: ApiPayload) -> dict[str, Any] | None:
-    try:
-        response = requests.post(
-            f"{BACKEND_URL}{path}",
-            json=payload,
-            timeout=REQUEST_TIMEOUT_SECONDS,
-        )
-    except requests.RequestException as exc:
-        logger.error("Frontend request to {} failed: {}", path, exc)
-        st.error(format_request_exception(exc))
-        return None
-
-    if response.status_code != 200:
-        error_message = parse_api_error(response)
-        logger.error(
-            "Backend request {} returned status {}: {}",
-            path,
-            response.status_code,
-            error_message,
-        )
-        st.error(error_message)
-        return None
-
-    try:
-        return response.json()
-    except ValueError:
-        logger.error("Backend response for {} was not valid JSON.", path)
-        st.error("Backend response was not valid JSON.")
-        return None
-
-
-def build_common_payload(
-    latitude: float,
-    longitude: float,
-    year: int,
-    tilt: int,
-    panel_area: float,
-    panel_efficiency: float,
-    cleanliness: str,
-    shading: str,
-    ac_capacity_kw: float,
-    gamma: float,
-    noct: float,
-    model_type: str,
-    electricity_price_per_kwh: float,
-    currency: str,
-    system_capex: float,
-    training_years: int,
-    demo_mode: bool,
-    demo_scenario_id: str | None,
-    ) -> PVRequestPayload:
-    return {
-        "latitude": latitude,
-        "longitude": longitude,
-        "year": year,
-        "tilt": tilt,
-        "panel_area": panel_area,
-        "panel_efficiency": panel_efficiency,
-        "cleanliness": cleanliness,
-        "shading": shading,
-        "ac_capacity_kw": ac_capacity_kw,
-        "gamma": gamma,
-        "noct": noct,
-        "model_type": model_type,
-        "electricity_price_per_kwh": electricity_price_per_kwh,
-        "currency": currency,
-        "system_capex": system_capex,
-        "training_years": training_years,
-        "demo_mode": demo_mode,
-        "demo_scenario_id": demo_scenario_id,
-    }
-
-
-def build_scenario_comparison_context(
-    base_payload: PVRequestPayload,
-) -> ScenarioComparisonContextPayload:
-    return {
-        "latitude": base_payload["latitude"],
-        "longitude": base_payload["longitude"],
-        "year": base_payload["year"],
-        "model_type": base_payload["model_type"],
-        "training_years": base_payload["training_years"],
-        "electricity_price_per_kwh": base_payload["electricity_price_per_kwh"],
-        "currency": base_payload["currency"],
-        "demo_mode": base_payload["demo_mode"],
-        "demo_scenario_id": base_payload["demo_scenario_id"],
-    }
-
-
-def build_scenario_comparison_scenario(
-    name: str,
-    payload: Mapping[str, Any],
-) -> ScenarioComparisonScenarioPayload:
-    return {
-        "name": name,
-        "tilt": int(payload["tilt"]),
-        "panel_area": float(payload["panel_area"]),
-        "panel_efficiency": float(payload["panel_efficiency"]),
-        "cleanliness": str(payload["cleanliness"]),
-        "shading": str(payload["shading"]),
-        "ac_capacity_kw": float(payload["ac_capacity_kw"]),
-        "gamma": float(payload["gamma"]),
-        "noct": float(payload["noct"]),
-        "system_capex": float(payload["system_capex"]),
-    }
-
-
-def build_scenario_comparison_payload(
-    base_payload: PVRequestPayload,
-    scenario_requests: list[dict[str, Any]],
-) -> ScenarioComparisonRequestPayload:
-    scenarios = [
-        build_scenario_comparison_scenario("Base System", base_payload),
-        *[
-            build_scenario_comparison_scenario(scenario["name"], scenario["payload"])
-            for scenario in scenario_requests
-        ],
-    ]
-    return {
-        "context": build_scenario_comparison_context(base_payload),
-        "scenarios": scenarios,
-    }
-
-
-def build_benchmark_payload(
-    base_payload: PVRequestPayload,
-    benchmark_years: int,
-    evaluation_year: int,
-) -> BenchmarkEvaluationPayload:
-    return {
-        "latitude": base_payload["latitude"],
-        "longitude": base_payload["longitude"],
-        "year": evaluation_year,
-        "benchmark_years": benchmark_years,
-        "tilt": base_payload["tilt"],
-        "panel_area": base_payload["panel_area"],
-        "panel_efficiency": base_payload["panel_efficiency"],
-        "cleanliness": base_payload["cleanliness"],
-        "shading": base_payload["shading"],
-        "ac_capacity_kw": base_payload["ac_capacity_kw"],
-        "gamma": base_payload["gamma"],
-        "noct": base_payload["noct"],
-        "training_years": base_payload["training_years"],
-        "demo_mode": base_payload["demo_mode"],
-        "demo_scenario_id": base_payload["demo_scenario_id"],
-    }
-
-
-def format_payback_years(payback_years: float | None) -> str:
-    if payback_years is None or pd.isna(payback_years):
-        return "Not viable"
-    return f"{payback_years} years"
-
-
-def render_summary_cards(forecast_data: dict) -> None:
-    assumptions = forecast_data["financial_assumptions"]
-    value_label = f"{forecast_data['yearly_estimated_value']} {assumptions['currency']}"
-
-    metric_columns = st.columns(3)
-    metric_columns[0].metric("Yearly Energy", f"{forecast_data['yearly_kwh']} kWh")
-    metric_columns[1].metric("Yearly Value", value_label)
-    metric_columns[2].metric(
-        "Annual Savings",
-        f"{forecast_data['annual_savings']} {assumptions['currency']}",
-    )
-
-    performance_columns = st.columns(3)
-    performance_columns[0].metric(
-        "Simple Payback",
-        format_payback_years(forecast_data.get("simple_payback_years")),
-    )
-    performance_columns[1].metric(
-        "Specific Yield",
-        f"{forecast_data['specific_yield_kwh_per_kwp']} kWh/kWp",
-    )
-    performance_columns[2].metric(
-        "Average Daily Energy",
-        f"{forecast_data['avg_daily_kwh']} kWh",
-    )
-
-    info_columns = st.columns(5)
-    info_columns[0].metric("Forecast Year", forecast_data["forecast_year"])
-    info_columns[1].metric("Model Used", forecast_data["model_type_used"].upper())
-    reference_year = forecast_data.get("weather_reference_year")
-    if reference_year is None:
-        reference_value = "ML profile"
-    else:
-        reference_value = str(reference_year)
-    info_columns[2].metric("Weather Basis", reference_value)
-    info_columns[3].metric(
-        "Tariff Assumption",
-        f"{assumptions['electricity_price_per_kwh']} {assumptions['currency']}/kWh",
-    )
-    info_columns[4].metric(
-        "System CAPEX",
-        f"{assumptions['system_capex']} {assumptions['currency']}",
-    )
-
-
-def render_metadata_table(rows: list[dict]) -> None:
-    metadata_df = pd.DataFrame(rows)
-    for column in metadata_df.columns:
-        metadata_df[column] = metadata_df[column].astype(str)
-    st.dataframe(metadata_df, width="stretch", hide_index=True)
-
-
-def render_overview_tab(forecast_data: dict) -> None:
-    render_data_source_notice(forecast_data)
-    render_summary_cards(forecast_data)
-
-    if forecast_data.get("fallback_reason"):
-        st.warning(forecast_data["fallback_reason"])
-
-    monthly_df = pd.DataFrame(
-        {
-            "Month": MONTH_NAMES,
-            "Energy (kWh)": forecast_data["monthly_kwh"],
-            "Estimated Value": forecast_data["monthly_estimated_value"],
-        }
-    )
-
-    chart_columns = st.columns(2)
-    with chart_columns[0]:
-        energy_chart = px.bar(
-            monthly_df,
-            x="Month",
-            y="Energy (kWh)",
-            title="Monthly Energy Forecast",
-            color="Energy (kWh)",
-            color_continuous_scale="YlOrBr",
-        )
-        energy_chart.update_layout(coloraxis_showscale=False)
-        st.plotly_chart(energy_chart, width="stretch")
-
-    with chart_columns[1]:
-        value_chart = px.line(
-            monthly_df,
-            x="Month",
-            y="Estimated Value",
-            markers=True,
-            title="Monthly Estimated Financial Value",
-        )
-        value_chart.update_layout(hovermode="x unified")
-        st.plotly_chart(value_chart, width="stretch")
-
-    with st.expander("Forecast Metadata and Assumptions", expanded=False):
-        metadata_rows = [
-            {
-                "Field": "Requested model",
-                "Value": forecast_data["model_type_requested"],
-            },
-            {
-                "Field": "Model used",
-                "Value": forecast_data["model_type_used"],
-            },
-            {
-                "Field": "Forecast year",
-                "Value": forecast_data["forecast_year"],
-            },
-            {
-                "Field": "Archived weather reference year",
-                "Value": forecast_data.get("weather_reference_year") or "Not used",
-            },
-            {
-                "Field": "ML training years",
-                "Value": ", ".join(map(str, forecast_data.get("training_years_used", [])))
-                or "Not used",
-            },
-            {
-                "Field": "Tariff assumption",
-                "Value": (
-                    f"{forecast_data['financial_assumptions']['electricity_price_per_kwh']} "
-                    f"{forecast_data['financial_assumptions']['currency']}/kWh"
-                ),
-            },
-            {
-                "Field": "System CAPEX",
-                "Value": (
-                    f"{forecast_data['financial_assumptions']['system_capex']} "
-                    f"{forecast_data['financial_assumptions']['currency']}"
-                ),
-            },
-            {
-                "Field": "Annual savings assumption",
-                "Value": forecast_data["financial_assumptions"]["annual_savings_basis"],
-            },
-            {
-                "Field": "Payback assumption",
-                "Value": forecast_data["financial_assumptions"]["payback_basis"],
-            },
-        ]
-        render_metadata_table(metadata_rows)
-
-        if forecast_data.get("ml_metadata"):
-            st.markdown("**ML training diagnostics**")
-            st.json(forecast_data["ml_metadata"])
-
-
-def render_daily_tab(daily_data: dict) -> None:
-    render_data_source_notice(daily_data)
-    assumptions = daily_data["financial_assumptions"]
-    metric_columns = st.columns(4)
-    metric_columns[0].metric("Daily Energy", f"{daily_data['daily_kwh']} kWh")
-    metric_columns[1].metric(
-        "Estimated Daily Value",
-        f"{daily_data['estimated_daily_value']} {assumptions['currency']}",
-    )
-    metric_columns[2].metric("Average Power", f"{daily_data['avg_kw']} kW")
-    metric_columns[3].metric("System Loss Factor", daily_data["system_loss_factor"])
-
-    if daily_data.get("hourly_time"):
-        time_labels = [
-            timestamp.split("T")[1][:5] if "T" in timestamp else timestamp
-            for timestamp in daily_data["hourly_time"]
-        ]
-    else:
-        time_labels = [f"{hour:02d}:00" for hour in range(len(daily_data["hourly_ac_kw"]))]
-
-    daily_df = pd.DataFrame(
-        {
-            "Time": time_labels,
-            "AC Power (kW)": daily_data["hourly_ac_kw"],
-        }
-    )
-    power_chart = px.line(
-        daily_df,
-        x="Time",
-        y="AC Power (kW)",
-        title=f"Hourly Production ({daily_data.get('timezone', 'UTC')})",
-        markers=True,
-    )
-    power_chart.update_layout(hovermode="x unified")
-    st.plotly_chart(power_chart, width="stretch")
-
-    with st.expander("Daily Simulation Details", expanded=False):
-        st.caption(
-            f"Tariff: {assumptions['electricity_price_per_kwh']} {assumptions['currency']}/kWh | "
-            f"System CAPEX: {assumptions['system_capex']} {assumptions['currency']}"
-        )
-        st.dataframe(daily_df, width="stretch", hide_index=True)
+DEMO_SCENARIOS = get_demo_scenarios()
+DEMO_SCENARIO_OPTIONS = {scenario["id"]: scenario for scenario in DEMO_SCENARIOS}
 
 
 def payload_changed(
@@ -652,344 +121,293 @@ def payload_changed(
     return current_payload != previous_payload
 
 
-def render_last_run_summary(last_run_payload: Mapping[str, Any]) -> None:
-    run_rows = [
-        {"Parameter": "Panel Area (m²)", "Value": str(last_run_payload["panel_area"])},
-        {
-            "Parameter": "Inverter AC Capacity (kW)",
-            "Value": str(last_run_payload["ac_capacity_kw"]),
-        },
-        {"Parameter": "System CAPEX", "Value": str(last_run_payload["system_capex"])},
-        {"Parameter": "Panel Efficiency", "Value": str(last_run_payload["panel_efficiency"])},
-        {"Parameter": "Tilt (°)", "Value": str(last_run_payload["tilt"])},
-        {"Parameter": "Model Type", "Value": str(last_run_payload["model_type"])},
-    ]
-    st.caption("Displayed results are based on the last executed forecast payload.")
-    st.dataframe(pd.DataFrame(run_rows), width="stretch", hide_index=True)
+def clear_analysis_results() -> None:
+    st.session_state.forecast_data = None
+    st.session_state.daily_simulation = None
+    st.session_state.comparison_result = None
+    st.session_state.accuracy_result = None
+    st.session_state.benchmark_result = None
+    st.session_state.last_run_payload = None
+    st.session_state.last_accuracy_payload = None
+    st.session_state.last_benchmark_payload = None
+    st.session_state.last_comparison_payload = None
 
 
-def render_last_benchmark_summary(last_benchmark_payload: Mapping[str, Any]) -> None:
-    run_rows = [
-        {"Parameter": "Benchmark End Year", "Value": str(last_benchmark_payload["year"])},
-        {"Parameter": "Benchmark Window (years)", "Value": str(last_benchmark_payload["benchmark_years"])},
-        {"Parameter": "Panel Area (m²)", "Value": str(last_benchmark_payload["panel_area"])},
-        {"Parameter": "Inverter AC Capacity (kW)", "Value": str(last_benchmark_payload["ac_capacity_kw"])},
-        {"Parameter": "ML Training Window", "Value": str(last_benchmark_payload["training_years"])},
-    ]
-    st.caption("Displayed benchmark results are based on the last executed benchmark payload.")
-    st.dataframe(pd.DataFrame(run_rows), width="stretch", hide_index=True)
+def clear_comparison_results() -> None:
+    st.session_state.comparison_result = None
+    st.session_state.last_comparison_payload = None
 
 
-def render_accuracy_tab(accuracy_data: dict) -> None:
-    render_data_source_notice(accuracy_data)
-    assumptions = accuracy_data["financial_assumptions"]
-    delta_percent = 0.0
-    if accuracy_data["actual_yearly_kwh"] != 0:
-        delta_percent = round(
-            100
-            * (
-                accuracy_data["predicted_yearly_kwh"]
-                - accuracy_data["actual_yearly_kwh"]
+def render_location_map(
+    *,
+    demo_mode_active: bool,
+    selected_demo_scenario_id: str | None,
+) -> None:
+    if st.session_state.lat is None or st.session_state.lon is None:
+        st.info("Resolve an address first to unlock the site map and optional roof-area selection.")
+        return
+
+    map_object = folium.Map(
+        location=[st.session_state.lat, st.session_state.lon],
+        zoom_start=18,
+    )
+    folium.Marker(
+        [st.session_state.lat, st.session_state.lon],
+        popup=st.session_state.address,
+        icon=folium.Icon(icon="home"),
+    ).add_to(map_object)
+    if not demo_mode_active:
+        Draw(
+            draw_options={
+                "polyline": False,
+                "polygon": False,
+                "circle": False,
+                "circlemarker": False,
+                "marker": False,
+                "rectangle": True,
+            },
+            edit_options={"edit": True},
+        ).add_to(map_object)
+    map_data = st_folium(map_object, height=360, use_container_width=True)
+
+    if demo_mode_active:
+        st.caption(
+            "Map editing is disabled in demo mode so the bundled scenario stays deterministic."
+        )
+        return
+
+    if not map_data or not map_data.get("all_drawings"):
+        st.caption("Draw a roof rectangle to estimate usable panel area from the selected site.")
+        return
+
+    last_shape = map_data["all_drawings"][-1]
+    drawing_id = last_shape.get("id") or hash(str(last_shape))
+    if drawing_id == st.session_state.last_drawing_id:
+        return
+
+    st.session_state.last_drawing_id = drawing_id
+    coordinates = last_shape["geometry"]["coordinates"][0]
+    latitudes = [coordinate[1] for coordinate in coordinates]
+    longitudes = [coordinate[0] for coordinate in coordinates]
+    bounds = [[min(latitudes), min(longitudes)], [max(latitudes), max(longitudes)]]
+    roof_area = estimate_area_m2_from_bounds(bounds)
+    center_lat = sum(latitudes) / len(latitudes)
+    center_lon = sum(longitudes) / len(longitudes)
+
+    st.session_state.pending_panel_area = round(roof_area, 1)
+    st.session_state.lat = center_lat
+    st.session_state.lon = center_lon
+
+    reverse_lookup = reverse_geocode(
+        center_lat,
+        center_lon,
+        demo_mode=demo_mode_active,
+        demo_scenario_id=selected_demo_scenario_id,
+    )
+    if reverse_lookup.address:
+        st.session_state.address = reverse_lookup.address
+        st.session_state.location_notice = None
+    else:
+        st.session_state.address = f"{center_lat:.5f}, {center_lon:.5f}"
+        st.session_state.location_notice = reverse_lookup.error_message
+
+    st.session_state.auto_run_forecast = True
+    st.success(f"Roof area detected: {roof_area:.1f} m². Location and panel area were updated.")
+    st.rerun()
+
+
+def build_scenario_preview_payload(base_payload: PVRequestPayload) -> dict[str, Any]:
+    scenario_payload = dict(base_payload)
+    scenario_payload["panel_area"] = float(st.session_state.scenario_form_panel_area)
+    scenario_payload["tilt"] = int(st.session_state.scenario_form_tilt)
+    scenario_payload["ac_capacity_kw"] = float(st.session_state.scenario_form_ac_capacity)
+    scenario_payload["system_capex"] = float(st.session_state.scenario_form_capex)
+    scenario_payload["cleanliness"] = str(st.session_state.scenario_form_cleanliness)
+    scenario_payload["shading"] = str(st.session_state.scenario_form_shading)
+    return scenario_payload
+
+
+def render_scenario_editor(base_payload: PVRequestPayload) -> None:
+    render_section_intro(
+        "Scenario Comparison",
+        "Create alternative system designs against the current baseline. Scenarios inherit the "
+        "baseline location, year, model choice, tariff, currency, and demo settings.",
+        "Use the editor below to tune one scenario at a time, then run the comparison when the "
+        "saved list looks right.",
+    )
+
+    if st.session_state.editing_scenario_index is not None and (
+        st.session_state.editing_scenario_index >= len(st.session_state.scenario_requests)
+    ):
+        clear_scenario_editor(base_payload)
+
+    if (
+        not st.session_state.scenario_form_name
+        or st.session_state.scenario_form_panel_area <= 0
+        or st.session_state.scenario_form_ac_capacity <= 0
+    ):
+        clear_scenario_editor(base_payload)
+
+    base_columns = st.columns(4)
+    base_columns[0].metric("Baseline Area", f"{base_payload['panel_area']} m²")
+    base_columns[1].metric("Baseline Tilt", f"{base_payload['tilt']}°")
+    base_columns[2].metric("Baseline AC Capacity", f"{base_payload['ac_capacity_kw']} kW")
+    base_columns[3].metric("Baseline CAPEX", f"{base_payload['system_capex']} {base_payload['currency']}")
+
+    if st.session_state.scenario_requests:
+        selected_index = st.session_state.selected_scenario_index
+        if selected_index >= len(st.session_state.scenario_requests):
+            st.session_state.selected_scenario_index = len(st.session_state.scenario_requests) - 1
+
+        manager_columns = st.columns([2.4, 1, 1, 1])
+        selected_index = manager_columns[0].selectbox(
+            "Saved Scenario",
+            options=list(range(len(st.session_state.scenario_requests))),
+            format_func=lambda index: st.session_state.scenario_requests[index]["name"],
+            key="selected_scenario_index",
+        )
+        if manager_columns[1].button("Edit", use_container_width=True):
+            selected = st.session_state.scenario_requests[selected_index]
+            seed_scenario_form(
+                base_payload,
+                name=selected["name"],
+                payload=selected["payload"],
+                editing_index=selected_index,
             )
-            / accuracy_data["actual_yearly_kwh"],
-            2,
-        )
-
-    metrics = st.columns(4)
-    metrics[0].metric("Monthly MAPE", f"{accuracy_data['mape_percent']}%")
-    metrics[1].metric("Yearly MAPE", f"{accuracy_data['yearly_mape_percent']}%")
-    metrics[2].metric("Quality", accuracy_data["quality"])
-    metrics[3].metric("Energy Bias", f"{delta_percent:+.2f}%")
-
-    monthly_df = pd.DataFrame(
-        {
-            "Month": MONTH_NAMES,
-            "Predicted Energy (kWh)": accuracy_data["predicted_monthly_kwh"],
-            "Actual Energy (kWh)": accuracy_data["actual_monthly_kwh"],
-        }
-    )
-    monthly_long = monthly_df.melt(
-        id_vars="Month",
-        value_vars=["Predicted Energy (kWh)", "Actual Energy (kWh)"],
-        var_name="Series",
-        value_name="Energy (kWh)",
-    )
-    energy_chart = px.bar(
-        monthly_long,
-        x="Month",
-        y="Energy (kWh)",
-        color="Series",
-        barmode="group",
-        title="Predicted vs Actual Monthly Energy",
-    )
-    st.plotly_chart(energy_chart, width="stretch")
-
-    value_df = pd.DataFrame(
-        {
-            "Month": MONTH_NAMES,
-            "Predicted Value": accuracy_data["predicted_monthly_estimated_value"],
-            "Actual Value": accuracy_data["actual_monthly_estimated_value"],
-        }
-    )
-    value_long = value_df.melt(
-        id_vars="Month",
-        value_vars=["Predicted Value", "Actual Value"],
-        var_name="Series",
-        value_name=f"Value ({assumptions['currency']})",
-    )
-    value_chart = px.line(
-        value_long,
-        x="Month",
-        y=f"Value ({assumptions['currency']})",
-        color="Series",
-        markers=True,
-        title="Predicted vs Actual Monthly Value",
-    )
-    value_chart.update_layout(hovermode="x unified")
-    st.plotly_chart(value_chart, width="stretch")
-
-    if accuracy_data.get("fallback_reason"):
-        st.warning(accuracy_data["fallback_reason"])
-
-    with st.expander("Backtest Metadata", expanded=False):
-        metadata_rows = [
-            {"Field": "Evaluation year", "Value": accuracy_data["year"]},
-            {"Field": "Requested model", "Value": accuracy_data["model_type_requested"]},
-            {"Field": "Model used", "Value": accuracy_data["model_type_used"]},
-            {
-                "Field": "Weather reference year",
-                "Value": accuracy_data.get("weather_reference_year") or "ML profile",
-            },
-            {
-                "Field": "ML training years",
-                "Value": ", ".join(map(str, accuracy_data.get("training_years_used", [])))
-                or "Not used",
-            },
-            {
-                "Field": "Predicted annual savings",
-                "Value": (
-                    f"{accuracy_data['predicted_annual_savings']} "
-                    f"{accuracy_data['financial_assumptions']['currency']}"
-                ),
-            },
-            {
-                "Field": "Predicted simple payback",
-                "Value": format_payback_years(accuracy_data.get("predicted_simple_payback_years")),
-            },
-            {
-                "Field": "System CAPEX",
-                "Value": (
-                    f"{accuracy_data['financial_assumptions']['system_capex']} "
-                    f"{accuracy_data['financial_assumptions']['currency']}"
-                ),
-            },
-        ]
-        render_metadata_table(metadata_rows)
-
-        if accuracy_data.get("ml_metadata"):
-            st.markdown("**ML diagnostics**")
-            st.json(accuracy_data["ml_metadata"])
-
-
-def render_benchmark_tab(benchmark_data: dict) -> None:
-    render_data_source_notice(benchmark_data)
-    st.info(benchmark_data["reference_note"])
-
-    explanation_columns = st.columns(len(benchmark_data["approaches"]))
-    for index, approach in enumerate(benchmark_data["approaches"]):
-        explanation_columns[index].markdown(f"**{approach['label']}**")
-        explanation_columns[index].caption(approach["description"])
-
-    summary_rows = []
-    metric_chart_rows: list[dict[str, Any]] = []
-    yearly_chart_rows: list[dict[str, Any]] = []
-    detail_rows: list[dict[str, Any]] = []
-
-    actual_series = benchmark_data["approaches"][0]["yearly_results"]
-    for result in actual_series:
-        yearly_chart_rows.append(
-            {
-                "Year": result["year"],
-                "Series": "Actual reference",
-                "Yearly Energy (kWh)": result["actual_yearly_kwh"],
-            }
-        )
-
-    for approach in benchmark_data["approaches"]:
-        metrics = approach["metrics"]
-        fallback_years = ", ".join(map(str, approach["fallback_years"])) or "None"
-        summary_rows.append(
-            {
-                "Approach": approach["label"],
-                "Monthly MAPE (%)": metrics["monthly_mape_percent"],
-                "Monthly MAE (kWh)": metrics["monthly_mae_kwh"],
-                "Yearly MAPE (%)": metrics["yearly_mape_percent"],
-                "Yearly MAE (kWh)": metrics["yearly_mae_kwh"],
-                "Bias (%)": metrics["bias_percent"],
-                "Bias (kWh/year)": metrics["bias_kwh"],
-                "Fallback Years": fallback_years,
-            }
-        )
-        metric_chart_rows.extend(
-            [
-                {
-                    "Approach": approach["label"],
-                    "Metric": "Monthly MAPE (%)",
-                    "Value": metrics["monthly_mape_percent"],
-                },
-                {
-                    "Approach": approach["label"],
-                    "Metric": "Yearly MAPE (%)",
-                    "Value": metrics["yearly_mape_percent"],
-                },
-                {
-                    "Approach": approach["label"],
-                    "Metric": "Bias (%)",
-                    "Value": metrics["bias_percent"],
-                },
-            ]
-        )
-        for result in approach["yearly_results"]:
-            yearly_chart_rows.append(
-                {
-                    "Year": result["year"],
-                    "Series": approach["label"],
-                    "Yearly Energy (kWh)": result["predicted_yearly_kwh"],
-                }
+        if manager_columns[2].button("Duplicate", use_container_width=True):
+            st.session_state.scenario_requests = duplicate_scenario_request(
+                st.session_state.scenario_requests,
+                selected_index,
             )
-            detail_rows.append(
-                {
-                    "Approach": approach["label"],
-                    "Year": result["year"],
-                    "Actual Energy (kWh)": result["actual_yearly_kwh"],
-                    "Predicted Energy (kWh)": result["predicted_yearly_kwh"],
-                    "Yearly MAPE (%)": result["yearly_mape_percent"],
-                    "Bias (kWh)": result["yearly_bias_kwh"],
-                    "Model Used": result["model_type_used"],
-                    "Reference Year": result["weather_reference_year"] or "Climatology / ML",
-                    "Fallback": result["fallback_reason"] or "",
-                }
+            st.session_state.selected_scenario_index = len(st.session_state.scenario_requests) - 1
+            clear_comparison_results()
+        if manager_columns[3].button("Remove", use_container_width=True):
+            st.session_state.scenario_requests = remove_scenario_request(
+                st.session_state.scenario_requests,
+                selected_index,
             )
-
-    st.dataframe(pd.DataFrame(summary_rows), width="stretch", hide_index=True)
-
-    chart_columns = st.columns(2)
-    with chart_columns[0]:
-        yearly_chart = px.line(
-            pd.DataFrame(yearly_chart_rows),
-            x="Year",
-            y="Yearly Energy (kWh)",
-            color="Series",
-            markers=True,
-            title="Historical Benchmark: Actual Reference vs Forecasted Energy",
-        )
-        yearly_chart.update_layout(hovermode="x unified")
-        st.plotly_chart(yearly_chart, width="stretch")
-
-    with chart_columns[1]:
-        metric_chart = px.bar(
-            pd.DataFrame(metric_chart_rows),
-            x="Approach",
-            y="Value",
-            color="Metric",
-            barmode="group",
-            title="Benchmark Error Profile",
-        )
-        st.plotly_chart(metric_chart, width="stretch")
-
-    with st.expander("Year-by-Year Benchmark Details", expanded=False):
-        st.dataframe(pd.DataFrame(detail_rows), width="stretch", hide_index=True)
-
-
-def render_comparison_tab(comparison_data: dict) -> None:
-    render_data_source_notice(comparison_data)
-    if comparison_data.get("fallback_reason"):
-        st.warning(comparison_data["fallback_reason"])
-
-    assumptions = comparison_data["results"][0]["financial_assumptions"]
-    monthly_chart_rows: list[dict] = []
-    for result in comparison_data["results"]:
-        scenario_label = result["scenario"]["name"]
-        for month_name, monthly_value in zip(MONTH_NAMES, result["monthly_kwh"]):
-            monthly_chart_rows.append(
-                {
-                    "Month": month_name,
-                    "Scenario": scenario_label,
-                    "Energy (kWh)": monthly_value,
-                }
+            st.session_state.selected_scenario_index = max(
+                0,
+                min(selected_index, len(st.session_state.scenario_requests) - 1),
             )
-    monthly_chart_df = pd.DataFrame(monthly_chart_rows)
-    monthly_chart = px.line(
-        monthly_chart_df,
-        x="Month",
-        y="Energy (kWh)",
-        color="Scenario",
-        markers=True,
-        title="Scenario Comparison by Month",
+            clear_comparison_results()
+            if st.session_state.editing_scenario_index == selected_index:
+                clear_scenario_editor(base_payload)
+
+    utility_columns = st.columns([1, 1, 1])
+    if utility_columns[0].button("New From Baseline", use_container_width=True):
+        clear_scenario_editor(base_payload)
+    if utility_columns[1].button("Clear All Scenarios", use_container_width=True):
+        st.session_state.scenario_requests = []
+        st.session_state.selected_scenario_index = 0
+        clear_scenario_editor(base_payload)
+        clear_comparison_results()
+    if utility_columns[2].button("Reset Form", use_container_width=True):
+        clear_scenario_editor(base_payload)
+
+    st.markdown(
+        f"**{'Edit scenario' if st.session_state.editing_scenario_index is not None else 'Create scenario'}**"
     )
-    monthly_chart.update_layout(hovermode="x unified")
-    summary_rows = []
-    financial_chart_rows: list[dict[str, Any]] = []
-    for result in comparison_data["results"]:
-        scenario_label = result["scenario"]["name"]
-        summary_rows.append(
-            {
-                "Scenario": scenario_label,
-                "Yearly Energy (kWh)": result["yearly_kwh"],
-                "Energy Change (%)": result["deviation_percent"],
-                "Yearly Value": result["yearly_estimated_value"],
-                "Annual Savings": result["annual_savings"],
-                "Simple Payback (years)": result["simple_payback_years"],
-                "Payback Delta (years)": result["payback_delta_years"],
-                "Value Change (%)": result["value_deviation_percent"],
-            }
-        )
-        financial_chart_rows.append(
-            {
-                "Scenario": scenario_label,
-                "Metric": "Yearly Value",
-                "Value": result["yearly_estimated_value"],
-            }
-        )
-        financial_chart_rows.append(
-            {
-                "Scenario": scenario_label,
-                "Metric": "Annual Savings",
-                "Value": result["annual_savings"],
-            }
-        )
+    name = st.text_input("Scenario Name", key="scenario_form_name")
 
-    chart_columns = st.columns(2)
-    with chart_columns[0]:
-        st.plotly_chart(monthly_chart, width="stretch")
-
-    with chart_columns[1]:
-        financial_chart = px.bar(
-            pd.DataFrame(financial_chart_rows),
-            x="Scenario",
-            y="Value",
-            color="Metric",
-            barmode="group",
-            title=f"Scenario Financial Outcome ({assumptions['currency']})",
-        )
-        st.plotly_chart(financial_chart, width="stretch")
-
-    metric_columns = st.columns(len(summary_rows))
-    for index, row in enumerate(summary_rows):
-        metric_columns[index].metric(
-            row["Scenario"],
-            f"{row['Yearly Value']} {assumptions['currency']}",
-            f"{row['Value Change (%)']:+.2f}%",
-        )
-
-    summary_df = pd.DataFrame(summary_rows)
-    summary_df["Simple Payback (years)"] = summary_df["Simple Payback (years)"].apply(
-        format_payback_years
+    config_columns = st.columns(4)
+    panel_area = config_columns[0].number_input(
+        "Panel Area (m²)",
+        min_value=0.1,
+        value=float(st.session_state.scenario_form_panel_area),
+        key="scenario_form_panel_area",
     )
-    summary_df["Payback Delta (years)"] = summary_df["Payback Delta (years)"].apply(
-        lambda value: "N/A" if pd.isna(value) else value
+    tilt = config_columns[1].slider(
+        "Tilt (°)",
+        min_value=0,
+        max_value=60,
+        value=int(st.session_state.scenario_form_tilt),
+        key="scenario_form_tilt",
     )
-    st.dataframe(summary_df, width="stretch", hide_index=True)
+    ac_capacity = config_columns[2].number_input(
+        "AC Capacity (kW)",
+        min_value=0.1,
+        value=float(st.session_state.scenario_form_ac_capacity),
+        key="scenario_form_ac_capacity",
+    )
+    capex = config_columns[3].number_input(
+        "System CAPEX",
+        min_value=0.0,
+        value=float(st.session_state.scenario_form_capex),
+        step=500.0,
+        key="scenario_form_capex",
+    )
+
+    quality_columns = st.columns(2)
+    cleanliness = quality_columns[0].selectbox(
+        "Panel Cleanliness",
+        options=["clean", "normal", "dusty"],
+        index=["clean", "normal", "dusty"].index(st.session_state.scenario_form_cleanliness),
+        key="scenario_form_cleanliness",
+    )
+    shading = quality_columns[1].selectbox(
+        "Shading Level",
+        options=["none", "low", "medium", "high"],
+        index=["none", "low", "medium", "high"].index(st.session_state.scenario_form_shading),
+        key="scenario_form_shading",
+    )
+
+    preview_columns = st.columns(4)
+    preview_columns[0].metric(
+        "Area Delta",
+        f"{panel_area:.1f} m²",
+        f"{panel_area - base_payload['panel_area']:+.1f} m²",
+    )
+    preview_columns[1].metric(
+        "Tilt Delta",
+        f"{tilt}°",
+        f"{tilt - base_payload['tilt']:+d}°",
+    )
+    preview_columns[2].metric(
+        "AC Delta",
+        f"{ac_capacity:.1f} kW",
+        f"{ac_capacity - base_payload['ac_capacity_kw']:+.1f} kW",
+    )
+    preview_columns[3].metric(
+        "CAPEX Delta",
+        f"{capex:.0f} {base_payload['currency']}",
+        f"{capex - base_payload['system_capex']:+.0f} {base_payload['currency']}",
+    )
+
+    button_label = (
+        "Update Scenario" if st.session_state.editing_scenario_index is not None else "Add Scenario"
+    )
+    if st.button(button_label, type="primary"):
+        if not name.strip():
+            st.error("Scenario name is required.")
+        else:
+            scenario_payload = build_scenario_preview_payload(base_payload)
+            editing_index = st.session_state.editing_scenario_index
+            st.session_state.scenario_requests = upsert_scenario_request(
+                st.session_state.scenario_requests,
+                name=name.strip(),
+                payload=scenario_payload,
+                editing_index=editing_index,
+            )
+            saved_index = (
+                editing_index
+                if editing_index is not None
+                else len(st.session_state.scenario_requests) - 1
+            )
+            st.session_state.selected_scenario_index = saved_index
+            seed_scenario_form(
+                base_payload,
+                name=name.strip(),
+                payload=scenario_payload,
+                editing_index=saved_index,
+            )
+            clear_comparison_results()
+            st.success(f"Scenario '{name.strip()}' saved.")
+
+    st.caption(
+        "Scenario-specific fields are limited to system design assumptions. Location, forecast year, "
+        "tariff, currency, model selection, and demo settings remain shared baseline context."
+    )
 
 
 initialize_session_state()
@@ -1008,6 +426,9 @@ if "street_input" not in st.session_state:
 if "house_number_input" not in st.session_state:
     st.session_state.house_number_input = "100"
 
+demo_scenario_reset_requested = False
+selected_demo_scenario: Mapping[str, Any] | None = None
+
 st.sidebar.header("Demo Controls")
 demo_mode_active = st.sidebar.checkbox(
     "Enable Demo Mode",
@@ -1016,36 +437,33 @@ demo_mode_active = st.sidebar.checkbox(
 )
 selected_demo_scenario_id = st.session_state.demo_scenario_id
 if demo_mode_active:
-    demo_scenario_ids = list(DEMO_SCENARIO_OPTIONS)
+    if selected_demo_scenario_id not in DEMO_SCENARIO_OPTIONS:
+        selected_demo_scenario_id = get_default_demo_scenario_id()
+        st.session_state.demo_scenario_id = selected_demo_scenario_id
+
     selected_demo_scenario_id = st.sidebar.selectbox(
         "Demo Scenario",
-        options=demo_scenario_ids,
+        options=list(DEMO_SCENARIO_OPTIONS),
         format_func=lambda scenario_id: build_demo_option_label(DEMO_SCENARIO_OPTIONS[scenario_id]),
         key="demo_scenario_id",
     )
-    scenario_changed = st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
-    if scenario_changed:
-        st.session_state.forecast_data = None
-        st.session_state.daily_simulation = None
-        st.session_state.accuracy_result = None
-        st.session_state.benchmark_result = None
-        st.session_state.comparison_result = None
+    demo_scenario_reset_requested = (
+        st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
+    )
+    selected_demo_scenario = get_demo_scenario_by_id(selected_demo_scenario_id)
+    if demo_scenario_reset_requested or st.session_state.lat is None or st.session_state.lon is None:
+        selected_demo_scenario = apply_demo_scenario(selected_demo_scenario)
         st.session_state.scenario_requests = []
-        st.session_state.last_run_payload = None
-        st.session_state.last_benchmark_payload = None
-    if scenario_changed or st.session_state.lat is None or st.session_state.lon is None:
-        selected_demo_scenario = apply_demo_scenario(selected_demo_scenario_id)
-    else:
-        selected_demo_scenario = get_demo_scenario_by_id(selected_demo_scenario_id)
+        st.session_state.selected_scenario_index = 0
+        clear_analysis_results()
     st.sidebar.caption(selected_demo_scenario["description"])
 else:
     st.session_state.demo_scenario_id = None
     st.session_state.last_applied_demo_scenario_id = None
-    selected_demo_scenario = None
 
 if demo_mode_active and selected_demo_scenario is not None:
     st.warning(
-        "Demo mode is active. Geocoding, forecast weather, yearly history, comparison, and "
+        "Demo mode is active. Geocoding, forecast weather, scenario comparison, benchmark, and "
         f"backtest flows are using the bundled '{selected_demo_scenario['name']}' dataset."
     )
 
@@ -1059,11 +477,7 @@ country = st.sidebar.selectbox(
     index=countries.index(country_value),
     key="country_select",
 )
-city = st.sidebar.text_input(
-    "City",
-    value=st.session_state.get("city_input", "Tel Aviv"),
-    key="city_input",
-)
+city = st.sidebar.text_input("City", value=st.session_state.get("city_input", "Tel Aviv"), key="city_input")
 street = st.sidebar.text_input(
     "Street",
     value=st.session_state.get("street_input", "Dizengoff"),
@@ -1087,13 +501,9 @@ if st.sidebar.button("Locate Address", type="primary"):
         st.session_state.lon = location_lookup.longitude
         st.session_state.address = location_lookup.address or address
         st.session_state.location_notice = (
-            "Using bundled geocoding for demo mode."
-            if demo_mode_active
-            else None
+            "Using bundled geocoding for demo mode." if demo_mode_active else None
         )
-        st.success(
-            f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}"
-        )
+        st.success(f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}")
     else:
         st.session_state.location_notice = location_lookup.error_message
         st.error(location_lookup.error_message or "Address lookup failed.")
@@ -1185,18 +595,20 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
         int(st.session_state.get("tilt_slider", 30)),
         key="tilt_slider",
     )
-    cleanliness_options = ["clean", "normal", "dusty"]
     cleanliness = st.selectbox(
         "Panel Cleanliness",
-        cleanliness_options,
-        index=cleanliness_options.index(st.session_state.get("cleanliness_select", "normal")),
+        options=["clean", "normal", "dusty"],
+        index=["clean", "normal", "dusty"].index(
+            st.session_state.get("cleanliness_select", "normal")
+        ),
         key="cleanliness_select",
     )
-    shading_options = ["none", "low", "medium", "high"]
     shading = st.selectbox(
         "Shading Level",
-        shading_options,
-        index=shading_options.index(st.session_state.get("shading_select", "low")),
+        options=["none", "low", "medium", "high"],
+        index=["none", "low", "medium", "high"].index(
+            st.session_state.get("shading_select", "low")
+        ),
         key="shading_select",
     )
     gamma = st.number_input(
@@ -1218,75 +630,18 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
     )
 
 run_forecast = st.sidebar.button(
-    "Run Alpha Forecast",
+    "Run Baseline Forecast",
     type="primary",
     disabled=st.session_state.lat is None or st.session_state.lon is None,
+    help="Runs the yearly baseline forecast and the daily simulation for the current site and system.",
 )
 
-if st.session_state.lat is not None and st.session_state.lon is not None:
-    map_object = folium.Map(
-        location=[st.session_state.lat, st.session_state.lon],
-        zoom_start=18,
-    )
-    folium.Marker(
-        [st.session_state.lat, st.session_state.lon],
-        popup=st.session_state.address,
-        icon=folium.Icon(icon="home"),
-    ).add_to(map_object)
-    if not demo_mode_active:
-        Draw(
-            draw_options={
-                "polyline": False,
-                "polygon": False,
-                "circle": False,
-                "circlemarker": False,
-                "marker": False,
-                "rectangle": True,
-            },
-            edit_options={"edit": True},
-        ).add_to(map_object)
-    map_data = st_folium(map_object, height=360, use_container_width=True)
+render_location_map(
+    demo_mode_active=demo_mode_active,
+    selected_demo_scenario_id=selected_demo_scenario_id,
+)
 
-    if demo_mode_active:
-        st.caption("Map editing is disabled in demo mode so the bundled scenario stays deterministic.")
-    elif map_data and map_data.get("all_drawings"):
-        last_shape = map_data["all_drawings"][-1]
-        drawing_id = last_shape.get("id") or hash(str(last_shape))
-
-        if drawing_id != st.session_state.last_drawing_id:
-            st.session_state.last_drawing_id = drawing_id
-            coordinates = last_shape["geometry"]["coordinates"][0]
-            latitudes = [coordinate[1] for coordinate in coordinates]
-            longitudes = [coordinate[0] for coordinate in coordinates]
-            bounds = [[min(latitudes), min(longitudes)], [max(latitudes), max(longitudes)]]
-            roof_area = estimate_area_m2_from_bounds(bounds)
-            center_lat = sum(latitudes) / len(latitudes)
-            center_lon = sum(longitudes) / len(longitudes)
-
-            st.session_state.pending_panel_area = round(roof_area, 1)
-            st.session_state.lat = center_lat
-            st.session_state.lon = center_lon
-            reverse_lookup = reverse_geocode(
-                center_lat,
-                center_lon,
-                demo_mode=demo_mode_active,
-                demo_scenario_id=selected_demo_scenario_id,
-            )
-            if reverse_lookup.address:
-                st.session_state.address = reverse_lookup.address
-                st.session_state.location_notice = None
-            else:
-                st.session_state.address = f"{center_lat:.5f}, {center_lon:.5f}"
-                st.session_state.location_notice = reverse_lookup.error_message
-            st.session_state.auto_run_forecast = True
-            st.success(
-                f"Roof area detected: {roof_area:.1f} m². Location and panel area were updated."
-            )
-            st.rerun()
-else:
-    st.info("Enter an address to show the map and enable roof selection.")
-
-base_payload = None
+base_payload: PVRequestPayload | None = None
 if st.session_state.lat is not None and st.session_state.lon is not None:
     base_payload = build_common_payload(
         latitude=float(st.session_state.lat),
@@ -1309,6 +664,9 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         demo_scenario_id=selected_demo_scenario_id if demo_mode_active else None,
     )
 
+if base_payload is not None and demo_scenario_reset_requested:
+    clear_scenario_editor(base_payload)
+
 if run_forecast or st.session_state.auto_run_forecast:
     st.session_state.auto_run_forecast = False
     if base_payload is None:
@@ -1316,19 +674,21 @@ if run_forecast or st.session_state.auto_run_forecast:
     elif base_payload["panel_area"] <= 0:
         st.error("Panel area must be greater than zero.")
     else:
-        with st.spinner("Running yearly forecast and daily simulation..."):
+        with st.spinner("Running baseline yearly forecast and daily simulation..."):
             forecast_response = api_post("/forecast/yearly", base_payload)
             simulation_response = api_post("/simulate", base_payload)
-            if forecast_response is not None:
-                st.session_state.forecast_data = forecast_response
-            if simulation_response is not None:
-                st.session_state.daily_simulation = simulation_response
-            if forecast_response is not None or simulation_response is not None:
-                st.session_state.last_run_payload = dict(base_payload)
-            st.session_state.comparison_result = None
+        if forecast_response is not None:
+            st.session_state.forecast_data = forecast_response
+        if simulation_response is not None:
+            st.session_state.daily_simulation = simulation_response
+        if forecast_response is not None or simulation_response is not None:
+            st.session_state.last_run_payload = dict(base_payload)
+            st.session_state.last_accuracy_payload = None
+            st.session_state.last_benchmark_payload = None
+            st.session_state.last_comparison_payload = None
             st.session_state.accuracy_result = None
             st.session_state.benchmark_result = None
-            st.session_state.last_benchmark_payload = None
+            st.session_state.comparison_result = None
 
 tab_overview, tab_daily, tab_accuracy, tab_benchmark, tab_scenarios = st.tabs(
     [
@@ -1341,57 +701,81 @@ tab_overview, tab_daily, tab_accuracy, tab_benchmark, tab_scenarios = st.tabs(
 )
 
 with tab_overview:
+    render_section_intro(
+        "Baseline Forecast",
+        "Start here for the main yearly forecast and finance summary of the selected site and system.",
+        "Re-run the baseline forecast whenever the location or system assumptions change.",
+    )
     if st.session_state.forecast_data is None:
-        st.info("Run the forecast to see yearly energy, value, and model metadata.")
+        st.info("Run the baseline forecast to see yearly energy, finance, and model diagnostics.")
     else:
         if payload_changed(base_payload, st.session_state.last_run_payload):
-            st.warning("Inputs changed after the last run. Click 'Run Alpha Forecast' to refresh the results.")
+            st.warning("Inputs changed after the last forecast run. Refresh the baseline forecast.")
             render_last_run_summary(st.session_state.last_run_payload)
         render_overview_tab(st.session_state.forecast_data)
 
 with tab_daily:
+    render_section_intro(
+        "Daily Simulation",
+        "Inspect the expected hourly production profile for the current baseline system.",
+        "This uses the same assumptions as the last baseline forecast run.",
+    )
     if st.session_state.daily_simulation is None:
-        st.info("Run the forecast to generate the daily production simulation.")
+        st.info("Run the baseline forecast to generate the daily production simulation.")
     else:
         if payload_changed(base_payload, st.session_state.last_run_payload):
-            st.warning("Inputs changed after the last run. Click 'Run Alpha Forecast' to refresh the simulation.")
+            st.warning("Inputs changed after the last forecast run. Refresh the daily simulation.")
             render_last_run_summary(st.session_state.last_run_payload)
         render_daily_tab(st.session_state.daily_simulation)
 
 with tab_accuracy:
     evaluation_year = min(int(forecast_year), last_complete_year)
-    backtest_caption = (
-        "Backtest compares the selected forecast model against archived actual weather "
-        f"for {evaluation_year}."
+    render_section_intro(
+        "Accuracy Backtest",
+        "Compare the selected forecast configuration against archived weather for a completed year.",
+        (
+            "Demo mode keeps this deterministic. Live mode uses the latest archived weather that is "
+            f"fully available through {last_complete_year}."
+        ),
     )
-    if demo_mode_active:
-        backtest_caption += " In demo mode, the archived history is deterministic and bundled locally."
-    st.caption(backtest_caption)
     if forecast_year > last_complete_year and not demo_mode_active:
         st.info(
-            f"Archived actual weather is only complete through {last_complete_year}, "
-            f"so the backtest uses {evaluation_year}."
+            f"Archived actual weather is only complete through {last_complete_year}, so the backtest "
+            f"uses {evaluation_year}."
         )
+
+    accuracy_payload: PVRequestPayload | None = None
+    if base_payload is not None:
+        accuracy_payload = dict(base_payload)
+        accuracy_payload["year"] = evaluation_year
 
     if base_payload is None:
         st.info("Select a location and system configuration first.")
     else:
         if st.button("Run Accuracy Backtest", type="primary"):
-            accuracy_payload = dict(base_payload)
-            accuracy_payload["year"] = evaluation_year
-            with st.spinner("Evaluating forecast accuracy against archived data..."):
+            with st.spinner("Evaluating baseline accuracy against archived weather..."):
                 accuracy_response = api_post("/evaluation/accuracy", accuracy_payload)
-                if accuracy_response is not None:
-                    st.session_state.accuracy_result = accuracy_response
-                    st.success("Accuracy backtest completed.")
+            if accuracy_response is not None:
+                st.session_state.accuracy_result = accuracy_response
+                st.session_state.last_accuracy_payload = dict(accuracy_payload)
+                st.success("Accuracy backtest completed.")
 
         if st.session_state.accuracy_result is None:
-            st.info("Run the backtest to compare predicted and actual yearly output.")
+            st.info("Run the backtest to compare predicted and archived yearly output.")
         else:
+            if payload_changed(accuracy_payload, st.session_state.last_accuracy_payload):
+                st.warning("Inputs changed after the last backtest run. Re-run the backtest to refresh the evaluation.")
+                if st.session_state.last_accuracy_payload is not None:
+                    render_last_run_summary(st.session_state.last_accuracy_payload)
             render_accuracy_tab(st.session_state.accuracy_result)
 
 with tab_benchmark:
     evaluation_year = min(int(forecast_year), last_complete_year)
+    render_section_intro(
+        "Benchmark Study",
+        "Compare physical, ML, and naive baselines across multiple historical years.",
+        "This is useful for reviewer-facing evidence that the project is evaluating multiple forecast approaches.",
+    )
     benchmark_years = st.slider(
         "Benchmark Window (years)",
         min_value=1,
@@ -1399,23 +783,14 @@ with tab_benchmark:
         value=3,
         help="Evaluates physical, ML, and naive baselines over completed historical years.",
     )
-    benchmark_caption = (
-        "Benchmark compares physical, ML, and naive weather-profile approaches against a "
-        f"historical production proxy through {evaluation_year}."
-    )
-    if demo_mode_active:
-        benchmark_caption += " In demo mode, the benchmark uses the bundled deterministic dataset."
-    st.caption(benchmark_caption)
 
-    benchmark_payload = (
-        build_benchmark_payload(
+    benchmark_payload: BenchmarkEvaluationPayload | None = None
+    if base_payload is not None:
+        benchmark_payload = build_benchmark_payload(
             base_payload=base_payload,
             benchmark_years=benchmark_years,
             evaluation_year=evaluation_year,
         )
-        if base_payload is not None
-        else None
-    )
 
     if base_payload is None:
         st.info("Select a location and system configuration first.")
@@ -1423,10 +798,10 @@ with tab_benchmark:
         if st.button("Run Benchmark Study", type="primary"):
             with st.spinner("Evaluating physical, ML, and naive benchmark baselines..."):
                 benchmark_response = api_post("/evaluation/benchmark", benchmark_payload)
-                if benchmark_response is not None:
-                    st.session_state.benchmark_result = benchmark_response
-                    st.session_state.last_benchmark_payload = dict(benchmark_payload)
-                    st.success("Benchmark study completed.")
+            if benchmark_response is not None:
+                st.session_state.benchmark_result = benchmark_response
+                st.session_state.last_benchmark_payload = dict(benchmark_payload)
+                st.success("Benchmark study completed.")
 
         if st.session_state.benchmark_result is None:
             st.info("Run the benchmark to compare the physical, ML, and naive approaches.")
@@ -1438,97 +813,58 @@ with tab_benchmark:
 
 with tab_scenarios:
     if base_payload is None or st.session_state.forecast_data is None:
+        render_section_intro(
+            "Scenario Comparison",
+            "Compare alternative system designs against the current baseline forecast.",
+            "Run the baseline forecast first so comparison starts from a clear shared context.",
+        )
         st.info("Run the baseline forecast first to unlock scenario comparison.")
     else:
-        top_columns = st.columns([2, 1, 1])
-        with top_columns[0]:
-            scenario_name = st.text_input(
-                "Scenario Name",
-                value=f"Scenario {len(st.session_state.scenario_requests) + 1}",
-            )
-        with top_columns[1]:
-            if st.button("Clear All Scenarios"):
-                st.session_state.scenario_requests = []
-                st.session_state.comparison_result = None
-                st.rerun()
-        with top_columns[2]:
-            if demo_mode_active and selected_demo_scenario_id and st.button("Load Demo Variants"):
-                st.session_state.scenario_requests = build_demo_variant_requests(
-                    base_payload,
-                    selected_demo_scenario_id,
-                )
-                st.session_state.comparison_result = None
-                st.success("Loaded the bundled comparison variants for this demo scenario.")
+        render_scenario_editor(base_payload)
 
-        config_columns = st.columns(4)
-        with config_columns[0]:
-            panel_area_delta_pct = st.slider(
-                "Panel Area Change (%)",
-                min_value=-50,
-                max_value=200,
-                value=20,
-                step=5,
-            )
-        with config_columns[1]:
-            scenario_tilt = st.slider("Scenario Tilt (°)", 0, 60, int(tilt))
-        with config_columns[2]:
-            scenario_ac_capacity = st.number_input(
-                "Scenario AC Capacity (kW)",
-                min_value=0.1,
-                value=float(ac_capacity_kw),
-            )
-        with config_columns[3]:
-            scenario_capex = st.number_input(
-                "Scenario CAPEX",
-                min_value=0.0,
-                value=float(system_capex),
-                step=500.0,
-            )
-
-        if st.button("Add Scenario", type="primary"):
-            scenario_payload = dict(base_payload)
-            scenario_payload["panel_area"] = round(
-                base_payload["panel_area"] * (1 + panel_area_delta_pct / 100),
-                2,
-            )
-            scenario_payload["tilt"] = int(scenario_tilt)
-            scenario_payload["ac_capacity_kw"] = float(scenario_ac_capacity)
-            scenario_payload["system_capex"] = float(scenario_capex)
-            st.session_state.scenario_requests.append(
-                {
-                    "name": scenario_name,
-                    "payload": scenario_payload,
-                }
-            )
-            st.session_state.comparison_result = None
-            st.success(f"Scenario '{scenario_name}' added.")
+        if demo_mode_active and selected_demo_scenario is not None:
+            if st.button("Load Demo Variants", use_container_width=True):
+                variants = build_demo_variant_requests(base_payload, selected_demo_scenario)
+                if variants:
+                    st.session_state.scenario_requests = variants
+                    st.session_state.selected_scenario_index = 0
+                    clear_scenario_editor(base_payload)
+                    clear_comparison_results()
+                    st.success("Loaded the bundled comparison variants for this demo scenario.")
+                else:
+                    st.warning("This demo scenario does not define bundled comparison variants.")
 
         if st.session_state.scenario_requests:
-            if st.button("Run Scenario Comparison"):
-                comparison_payload = build_scenario_comparison_payload(
-                    base_payload,
-                    st.session_state.scenario_requests,
-                )
-                with st.spinner("Comparing yearly scenarios..."):
-                    comparison_response = api_post("/scenarios/compare", comparison_payload)
-                    if comparison_response is not None:
-                        st.session_state.comparison_result = comparison_response
-
-            scenario_table = pd.DataFrame(
-                [
-                    {
-                        "Scenario": scenario["name"],
-                        "Panel Area (m²)": scenario["payload"]["panel_area"],
-                        "Tilt (°)": scenario["payload"]["tilt"],
-                        "AC Capacity (kW)": scenario["payload"]["ac_capacity_kw"],
-                        "System CAPEX": scenario["payload"]["system_capex"],
-                    }
-                    for scenario in st.session_state.scenario_requests
-                ]
+            st.markdown("**Saved scenarios**")
+            st.dataframe(
+                build_scenario_table(st.session_state.scenario_requests),
+                width="stretch",
+                hide_index=True,
             )
-            st.dataframe(scenario_table, width="stretch", hide_index=True)
-
-            if st.session_state.comparison_result is not None:
-                render_comparison_tab(st.session_state.comparison_result)
         else:
-            st.info("Add at least one scenario to compare it against the base system.")
+            st.info("No alternative scenarios yet. Add one above or load the bundled demo variants.")
+
+        comparison_payload = (
+            build_scenario_comparison_payload(
+                base_payload,
+                st.session_state.scenario_requests,
+            )
+            if st.session_state.scenario_requests
+            else None
+        )
+
+        compare_disabled = comparison_payload is None
+        if st.button("Run Scenario Comparison", type="primary", disabled=compare_disabled):
+            with st.spinner("Comparing yearly scenarios..."):
+                comparison_response = api_post("/scenarios/compare", comparison_payload)
+            if comparison_response is not None:
+                st.session_state.comparison_result = comparison_response
+                st.session_state.last_comparison_payload = dict(comparison_payload)
+                st.success("Scenario comparison completed.")
+
+        if st.session_state.comparison_result is None:
+            st.info("Save at least one scenario, then run the comparison to see energy and financial tradeoffs.")
+        else:
+            if payload_changed(comparison_payload, st.session_state.last_comparison_payload):
+                st.warning("Scenario inputs changed after the last comparison run. Re-run the comparison to refresh the results.")
+            render_comparison_tab(st.session_state.comparison_result)
