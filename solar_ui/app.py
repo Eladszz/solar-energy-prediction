@@ -84,6 +84,7 @@ class PVRequestPayload(TypedDict):
     model_type: str
     electricity_price_per_kwh: float
     currency: str
+    system_capex: float
     training_years: int
     demo_mode: bool
     demo_scenario_id: str | None
@@ -111,6 +112,7 @@ class ScenarioComparisonScenarioPayload(TypedDict):
     ac_capacity_kw: float
     gamma: float
     noct: float
+    system_capex: float
 
 
 class ScenarioComparisonRequestPayload(TypedDict):
@@ -189,6 +191,7 @@ def apply_demo_scenario(scenario_id: str) -> dict[str, Any]:
     st.session_state.training_years_slider = int(defaults["training_years"])
     st.session_state.tariff_input = float(defaults["electricity_price_per_kwh"])
     st.session_state.currency_select = defaults["currency"]
+    st.session_state.system_capex_input = float(defaults["system_capex"])
     st.session_state.panel_efficiency_slider = float(defaults["panel_efficiency"])
     st.session_state.tilt_slider = int(defaults["tilt"])
     st.session_state.cleanliness_select = defaults["cleanliness"]
@@ -211,6 +214,9 @@ def build_demo_variant_requests(base_payload: PVRequestPayload, scenario_id: str
                 "ac_capacity_kw": float(variant["ac_capacity_kw"]),
                 "cleanliness": variant["cleanliness"],
                 "shading": variant["shading"],
+                "system_capex": float(
+                    variant.get("system_capex", base_payload["system_capex"])
+                ),
             }
         )
         variants.append({"name": variant["name"], "payload": variant_payload})
@@ -341,6 +347,7 @@ def build_common_payload(
     model_type: str,
     electricity_price_per_kwh: float,
     currency: str,
+    system_capex: float,
     training_years: int,
     demo_mode: bool,
     demo_scenario_id: str | None,
@@ -360,6 +367,7 @@ def build_common_payload(
         "model_type": model_type,
         "electricity_price_per_kwh": electricity_price_per_kwh,
         "currency": currency,
+        "system_capex": system_capex,
         "training_years": training_years,
         "demo_mode": demo_mode,
         "demo_scenario_id": demo_scenario_id,
@@ -396,6 +404,7 @@ def build_scenario_comparison_scenario(
         "ac_capacity_kw": float(payload["ac_capacity_kw"]),
         "gamma": float(payload["gamma"]),
         "noct": float(payload["noct"]),
+        "system_capex": float(payload["system_capex"]),
     }
 
 
@@ -440,23 +449,39 @@ def build_benchmark_payload(
     }
 
 
+def format_payback_years(payback_years: float | None) -> str:
+    if payback_years is None or pd.isna(payback_years):
+        return "Not viable"
+    return f"{payback_years} years"
+
+
 def render_summary_cards(forecast_data: dict) -> None:
     assumptions = forecast_data["financial_assumptions"]
     value_label = f"{forecast_data['yearly_estimated_value']} {assumptions['currency']}"
 
-    metric_columns = st.columns(4)
+    metric_columns = st.columns(3)
     metric_columns[0].metric("Yearly Energy", f"{forecast_data['yearly_kwh']} kWh")
     metric_columns[1].metric("Yearly Value", value_label)
     metric_columns[2].metric(
+        "Annual Savings",
+        f"{forecast_data['annual_savings']} {assumptions['currency']}",
+    )
+
+    performance_columns = st.columns(3)
+    performance_columns[0].metric(
+        "Simple Payback",
+        format_payback_years(forecast_data.get("simple_payback_years")),
+    )
+    performance_columns[1].metric(
         "Specific Yield",
         f"{forecast_data['specific_yield_kwh_per_kwp']} kWh/kWp",
     )
-    metric_columns[3].metric(
+    performance_columns[2].metric(
         "Average Daily Energy",
         f"{forecast_data['avg_daily_kwh']} kWh",
     )
 
-    info_columns = st.columns(4)
+    info_columns = st.columns(5)
     info_columns[0].metric("Forecast Year", forecast_data["forecast_year"])
     info_columns[1].metric("Model Used", forecast_data["model_type_used"].upper())
     reference_year = forecast_data.get("weather_reference_year")
@@ -468,6 +493,10 @@ def render_summary_cards(forecast_data: dict) -> None:
     info_columns[3].metric(
         "Tariff Assumption",
         f"{assumptions['electricity_price_per_kwh']} {assumptions['currency']}/kWh",
+    )
+    info_columns[4].metric(
+        "System CAPEX",
+        f"{assumptions['system_capex']} {assumptions['currency']}",
     )
 
 
@@ -547,6 +576,21 @@ def render_overview_tab(forecast_data: dict) -> None:
                     f"{forecast_data['financial_assumptions']['currency']}/kWh"
                 ),
             },
+            {
+                "Field": "System CAPEX",
+                "Value": (
+                    f"{forecast_data['financial_assumptions']['system_capex']} "
+                    f"{forecast_data['financial_assumptions']['currency']}"
+                ),
+            },
+            {
+                "Field": "Annual savings assumption",
+                "Value": forecast_data["financial_assumptions"]["annual_savings_basis"],
+            },
+            {
+                "Field": "Payback assumption",
+                "Value": forecast_data["financial_assumptions"]["payback_basis"],
+            },
         ]
         render_metadata_table(metadata_rows)
 
@@ -592,6 +636,10 @@ def render_daily_tab(daily_data: dict) -> None:
     st.plotly_chart(power_chart, width="stretch")
 
     with st.expander("Daily Simulation Details", expanded=False):
+        st.caption(
+            f"Tariff: {assumptions['electricity_price_per_kwh']} {assumptions['currency']}/kWh | "
+            f"System CAPEX: {assumptions['system_capex']} {assumptions['currency']}"
+        )
         st.dataframe(daily_df, width="stretch", hide_index=True)
 
 
@@ -611,6 +659,7 @@ def render_last_run_summary(last_run_payload: Mapping[str, Any]) -> None:
             "Parameter": "Inverter AC Capacity (kW)",
             "Value": str(last_run_payload["ac_capacity_kw"]),
         },
+        {"Parameter": "System CAPEX", "Value": str(last_run_payload["system_capex"])},
         {"Parameter": "Panel Efficiency", "Value": str(last_run_payload["panel_efficiency"])},
         {"Parameter": "Tilt (°)", "Value": str(last_run_payload["tilt"])},
         {"Parameter": "Model Type", "Value": str(last_run_payload["model_type"])},
@@ -715,6 +764,24 @@ def render_accuracy_tab(accuracy_data: dict) -> None:
                 "Field": "ML training years",
                 "Value": ", ".join(map(str, accuracy_data.get("training_years_used", [])))
                 or "Not used",
+            },
+            {
+                "Field": "Predicted annual savings",
+                "Value": (
+                    f"{accuracy_data['predicted_annual_savings']} "
+                    f"{accuracy_data['financial_assumptions']['currency']}"
+                ),
+            },
+            {
+                "Field": "Predicted simple payback",
+                "Value": format_payback_years(accuracy_data.get("predicted_simple_payback_years")),
+            },
+            {
+                "Field": "System CAPEX",
+                "Value": (
+                    f"{accuracy_data['financial_assumptions']['system_capex']} "
+                    f"{accuracy_data['financial_assumptions']['currency']}"
+                ),
             },
         ]
         render_metadata_table(metadata_rows)
@@ -839,6 +906,7 @@ def render_comparison_tab(comparison_data: dict) -> None:
     if comparison_data.get("fallback_reason"):
         st.warning(comparison_data["fallback_reason"])
 
+    assumptions = comparison_data["results"][0]["financial_assumptions"]
     monthly_chart_rows: list[dict] = []
     for result in comparison_data["results"]:
         scenario_label = result["scenario"]["name"]
@@ -860,9 +928,8 @@ def render_comparison_tab(comparison_data: dict) -> None:
         title="Scenario Comparison by Month",
     )
     monthly_chart.update_layout(hovermode="x unified")
-    st.plotly_chart(monthly_chart, width="stretch")
-
     summary_rows = []
+    financial_chart_rows: list[dict[str, Any]] = []
     for result in comparison_data["results"]:
         scenario_label = result["scenario"]["name"]
         summary_rows.append(
@@ -871,19 +938,58 @@ def render_comparison_tab(comparison_data: dict) -> None:
                 "Yearly Energy (kWh)": result["yearly_kwh"],
                 "Energy Change (%)": result["deviation_percent"],
                 "Yearly Value": result["yearly_estimated_value"],
+                "Annual Savings": result["annual_savings"],
+                "Simple Payback (years)": result["simple_payback_years"],
+                "Payback Delta (years)": result["payback_delta_years"],
                 "Value Change (%)": result["value_deviation_percent"],
             }
         )
+        financial_chart_rows.append(
+            {
+                "Scenario": scenario_label,
+                "Metric": "Yearly Value",
+                "Value": result["yearly_estimated_value"],
+            }
+        )
+        financial_chart_rows.append(
+            {
+                "Scenario": scenario_label,
+                "Metric": "Annual Savings",
+                "Value": result["annual_savings"],
+            }
+        )
+
+    chart_columns = st.columns(2)
+    with chart_columns[0]:
+        st.plotly_chart(monthly_chart, width="stretch")
+
+    with chart_columns[1]:
+        financial_chart = px.bar(
+            pd.DataFrame(financial_chart_rows),
+            x="Scenario",
+            y="Value",
+            color="Metric",
+            barmode="group",
+            title=f"Scenario Financial Outcome ({assumptions['currency']})",
+        )
+        st.plotly_chart(financial_chart, width="stretch")
 
     metric_columns = st.columns(len(summary_rows))
     for index, row in enumerate(summary_rows):
         metric_columns[index].metric(
             row["Scenario"],
-            f"{row['Yearly Energy (kWh)']} kWh",
-            f"{row['Energy Change (%)']:+.2f}%",
+            f"{row['Yearly Value']} {assumptions['currency']}",
+            f"{row['Value Change (%)']:+.2f}%",
         )
 
-    st.dataframe(pd.DataFrame(summary_rows), width="stretch", hide_index=True)
+    summary_df = pd.DataFrame(summary_rows)
+    summary_df["Simple Payback (years)"] = summary_df["Simple Payback (years)"].apply(
+        format_payback_years
+    )
+    summary_df["Payback Delta (years)"] = summary_df["Payback Delta (years)"].apply(
+        lambda value: "N/A" if pd.isna(value) else value
+    )
+    st.dataframe(summary_df, width="stretch", hide_index=True)
 
 
 initialize_session_state()
@@ -1056,6 +1162,13 @@ currency = st.sidebar.selectbox(
     index=currency_options.index(st.session_state.get("currency_select", "USD")),
     key="currency_select",
 )
+system_capex = st.sidebar.number_input(
+    "System CAPEX",
+    min_value=0.0,
+    value=float(st.session_state.get("system_capex_input", 25000.0)),
+    step=500.0,
+    key="system_capex_input",
+)
 
 with st.sidebar.expander("Advanced Settings", expanded=False):
     panel_efficiency = st.slider(
@@ -1190,6 +1303,7 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         model_type=model_type,
         electricity_price_per_kwh=float(electricity_price_per_kwh),
         currency=currency,
+        system_capex=float(system_capex),
         training_years=int(training_years),
         demo_mode=demo_mode_active,
         demo_scenario_id=selected_demo_scenario_id if demo_mode_active else None,
@@ -1346,7 +1460,7 @@ with tab_scenarios:
                 st.session_state.comparison_result = None
                 st.success("Loaded the bundled comparison variants for this demo scenario.")
 
-        config_columns = st.columns(3)
+        config_columns = st.columns(4)
         with config_columns[0]:
             panel_area_delta_pct = st.slider(
                 "Panel Area Change (%)",
@@ -1363,6 +1477,13 @@ with tab_scenarios:
                 min_value=0.1,
                 value=float(ac_capacity_kw),
             )
+        with config_columns[3]:
+            scenario_capex = st.number_input(
+                "Scenario CAPEX",
+                min_value=0.0,
+                value=float(system_capex),
+                step=500.0,
+            )
 
         if st.button("Add Scenario", type="primary"):
             scenario_payload = dict(base_payload)
@@ -1372,6 +1493,7 @@ with tab_scenarios:
             )
             scenario_payload["tilt"] = int(scenario_tilt)
             scenario_payload["ac_capacity_kw"] = float(scenario_ac_capacity)
+            scenario_payload["system_capex"] = float(scenario_capex)
             st.session_state.scenario_requests.append(
                 {
                     "name": scenario_name,
@@ -1399,6 +1521,7 @@ with tab_scenarios:
                         "Panel Area (m²)": scenario["payload"]["panel_area"],
                         "Tilt (°)": scenario["payload"]["tilt"],
                         "AC Capacity (kW)": scenario["payload"]["ac_capacity_kw"],
+                        "System CAPEX": scenario["payload"]["system_capex"],
                     }
                     for scenario in st.session_state.scenario_requests
                 ]

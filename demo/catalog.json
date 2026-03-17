@@ -26,6 +26,7 @@
         "model_type": "physical",
         "electricity_price_per_kwh": 0.17,
         "currency": "USD",
+        "system_capex": 26000.0,
         "training_years": 3
       },
       "comparison_variants": [
@@ -35,7 +36,8 @@
           "tilt": 18,
           "ac_capacity_kw": 19.0,
           "cleanliness": "clean",
-          "shading": "low"
+          "shading": "low",
+          "system_capex": 32000.0
         },
         {
           "name": "Dust And Partial Shade",
@@ -43,7 +45,8 @@
           "tilt": 22,
           "ac_capacity_kw": 16.5,
           "cleanliness": "dusty",
-          "shading": "medium"
+          "shading": "medium",
+          "system_capex": 26000.0
         }
       ],
       "weather_profile": {
@@ -83,6 +86,7 @@
         "model_type": "physical",
         "electricity_price_per_kwh": 0.14,
         "currency": "USD",
+        "system_capex": 52000.0,
         "training_years": 3
       },
       "comparison_variants": [
@@ -92,7 +96,8 @@
           "tilt": 14,
           "ac_capacity_kw": 44.0,
           "cleanliness": "clean",
-          "shading": "none"
+          "shading": "none",
+          "system_capex": 65000.0
         },
         {
           "name": "Constrained Inverter",
@@ -100,7 +105,8 @@
           "tilt": 16,
           "ac_capacity_kw": 28.0,
           "cleanliness": "clean",
-          "shading": "low"
+          "shading": "low",
+          "system_capex": 48000.0
         }
       ],
       "weather_profile": {
@@ -140,6 +146,7 @@
         "model_type": "physical",
         "electricity_price_per_kwh": 0.29,
         "currency": "EUR",
+        "system_capex": 30000.0,
         "training_years": 4
       },
       "comparison_variants": [
@@ -149,7 +156,8 @@
           "tilt": 38,
           "ac_capacity_kw": 18.5,
           "cleanliness": "clean",
-          "shading": "none"
+          "shading": "none",
+          "system_capex": 32000.0
         },
         {
           "name": "Courtyard Shade Case",
@@ -157,7 +165,8 @@
           "tilt": 32,
           "ac_capacity_kw": 18.5,
           "cleanliness": "normal",
-          "shading": "medium"
+          "shading": "medium",
+          "system_capex": 30000.0
         }
       ],
       "weather_profile": {

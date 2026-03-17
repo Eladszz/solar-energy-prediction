@@ -14,6 +14,7 @@ Implemented in this version:
   - `physical`: physics-based PV simulation using archived weather as the baseline profile
   - `ml`: a lightweight trained regression model that forecasts hourly irradiance and temperature from historical weather patterns, then converts that forecast into energy
 - Monetary estimation from predicted kWh using a configurable tariff
+- Annual savings and simple payback from configurable tariff and CAPEX assumptions
 - Scenario comparison against a baseline system using a shared comparison context plus per-scenario system definitions
 - Forecast benchmark study comparing `physical`, `ml`, and `naive` baselines on historical periods
 - Accuracy backtest with monthly and yearly MAPE
@@ -119,7 +120,8 @@ curl -X POST http://127.0.0.1:8000/forecast/yearly \
     "model_type": "ml",
     "training_years": 3,
     "electricity_price_per_kwh": 0.17,
-    "currency": "USD"
+    "currency": "USD",
+    "system_capex": 25000.0
   }'
 ```
 
@@ -135,7 +137,8 @@ curl -X POST http://127.0.0.1:8000/simulate \
     "panel_efficiency": 0.20,
     "ac_capacity_kw": 15.0,
     "electricity_price_per_kwh": 0.17,
-    "currency": "USD"
+    "currency": "USD",
+    "system_capex": 25000.0
   }'
 ```
 
@@ -165,7 +168,8 @@ curl -X POST http://127.0.0.1:8000/scenarios/compare \
         "cleanliness": "normal",
         "shading": "low",
         "gamma": 0.004,
-        "noct": 45.0
+        "noct": 45.0,
+        "system_capex": 25000.0
       },
       {
         "name": "Expanded Array",
@@ -176,7 +180,8 @@ curl -X POST http://127.0.0.1:8000/scenarios/compare \
         "cleanliness": "clean",
         "shading": "none",
         "gamma": 0.004,
-        "noct": 45.0
+        "noct": 45.0,
+        "system_capex": 30000.0
       }
     ]
   }'
@@ -200,7 +205,8 @@ curl -X POST http://127.0.0.1:8000/evaluation/accuracy \
     "model_type": "ml",
     "training_years": 3,
     "electricity_price_per_kwh": 0.17,
-    "currency": "USD"
+    "currency": "USD",
+    "system_capex": 25000.0
   }'
 ```
 
@@ -264,5 +270,6 @@ The automated suite covers request validation, route contracts, scenario compari
 ## Notes
 
 - The ML forecast is a real trained baseline model, not a hard-coded placeholder.
-- The financial value is an estimate based on the configured tariff assumption. It is intended for demo and comparison use, not billing.
+- Financial outputs assume each kWh offsets or earns the configured flat tariff. Annual savings are treated as equal to yearly estimated value.
+- Simple payback is `system_capex / annual_savings`. It is intentionally simple and ignores financing, taxes, maintenance, degradation, export limits, and time-of-use pricing.
 - When the ML forecast cannot be built, the backend falls back to the physical baseline and reports that fallback explicitly in the response.

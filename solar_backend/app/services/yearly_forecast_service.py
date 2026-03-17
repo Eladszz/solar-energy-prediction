@@ -445,6 +445,7 @@ def build_yearly_forecast_response(
     ac_capacity_kw: float,
     electricity_price_per_kwh: float,
     currency: str,
+    system_capex: float,
 ) -> dict:
     forecast = compute_yearly_from_real_data(
         df=weather_profile.df,
@@ -462,6 +463,7 @@ def build_yearly_forecast_response(
         monthly_kwh=forecast["monthly_kwh"],
         electricity_price_per_kwh=electricity_price_per_kwh,
         currency=currency,
+        system_capex=system_capex,
     )
 
     response = {
@@ -477,6 +479,8 @@ def build_yearly_forecast_response(
         "avg_daily_kwh": forecast["avg_daily_kwh"],
         "monthly_estimated_value": finance["monthly_estimated_value"],
         "yearly_estimated_value": finance["yearly_estimated_value"],
+        "annual_savings": finance["annual_savings"],
+        "simple_payback_years": finance["simple_payback_years"],
         "avg_monthly_estimated_value": finance["avg_monthly_estimated_value"],
         "financial_assumptions": finance["financial_assumptions"],
         "fallback_reason": weather_profile.fallback_reason,
@@ -500,6 +504,7 @@ def build_actual_year_summary(
     ac_capacity_kw: float,
     electricity_price_per_kwh: float,
     currency: str,
+    system_capex: float,
 ) -> dict:
     actual_summary = compute_yearly_from_real_data(
         df=df,
@@ -516,9 +521,12 @@ def build_actual_year_summary(
         monthly_kwh=actual_summary["monthly_kwh"],
         electricity_price_per_kwh=electricity_price_per_kwh,
         currency=currency,
+        system_capex=system_capex,
     )
     actual_summary["monthly_estimated_value"] = finance["monthly_estimated_value"]
     actual_summary["yearly_estimated_value"] = finance["yearly_estimated_value"]
+    actual_summary["annual_savings"] = finance["annual_savings"]
+    actual_summary["simple_payback_years"] = finance["simple_payback_years"]
     actual_summary["avg_monthly_estimated_value"] = finance["avg_monthly_estimated_value"]
     actual_summary["financial_assumptions"] = finance["financial_assumptions"]
     return actual_summary

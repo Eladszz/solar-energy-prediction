@@ -14,7 +14,6 @@ Shared request body for:
 - `POST /simulate`
 - `POST /forecast/yearly`
 - `POST /evaluation/accuracy`
-- each item in `POST /scenarios/compare`
 
 Validated fields:
 
@@ -32,6 +31,7 @@ Validated fields:
 - `model_type`: `"physical" | "ml"`
 - `electricity_price_per_kwh`: `>= 0`
 - `currency`: `"USD" | "EUR" | "ILS"`
+- `system_capex`: `>= 0`
 - `training_years`: `1` to `10`
 
 Additional request-contract behavior:
@@ -91,6 +91,8 @@ Key fields:
 - `avg_daily_kwh`
 - `monthly_estimated_value`
 - `yearly_estimated_value`
+- `annual_savings`
+- `simple_payback_years`
 - `avg_monthly_estimated_value`
 - `financial_assumptions`
 - `fallback_reason`
@@ -112,6 +114,10 @@ Key fields:
 - `predicted_yearly_kwh`
 - `actual_monthly_kwh`
 - `predicted_monthly_kwh`
+- `actual_annual_savings`
+- `predicted_annual_savings`
+- `actual_simple_payback_years`
+- `predicted_simple_payback_years`
 - `mape_percent`
 - `yearly_mape_percent`
 - `quality`
@@ -132,6 +138,8 @@ Key fields:
 - `fallback_reason`
 - `baseline_yearly_kwh`
 - `baseline_yearly_estimated_value`
+- `baseline_annual_savings`
+- `baseline_simple_payback_years`
 - `results`
 
 Each `results` item is a `ScenarioComparisonResult` containing:
@@ -139,5 +147,6 @@ Each `results` item is a `ScenarioComparisonResult` containing:
 - the validated `scenario` payload
 - yearly and monthly energy
 - yearly and monthly estimated value
+- annual savings and simple payback
 - financial assumptions
 - energy and value deltas versus baseline

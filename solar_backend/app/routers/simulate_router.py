@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.services.finance_service import estimate_energy_value
+from app.services.finance_service import build_financial_assumptions, estimate_energy_value
 from app.models.requests import SimulationRequest
 from app.models.responses import SimulationResponse
 from app.services.external_service import (
@@ -75,11 +75,12 @@ def simulate(req: SimulationRequest):
             energy_kwh=daily_kwh,
             electricity_price_per_kwh=req.electricity_price_per_kwh,
         ),
-        "financial_assumptions": {
-            "electricity_price_per_kwh": round(req.electricity_price_per_kwh, 4),
-            "currency": req.currency,
-            "valuation_basis": "Estimated daily value from forecasted AC energy.",
-        },
+        "financial_assumptions": build_financial_assumptions(
+            electricity_price_per_kwh=req.electricity_price_per_kwh,
+            currency=req.currency,
+            system_capex=req.system_capex,
+            valuation_basis="Estimated daily value from forecasted AC energy.",
+        ),
         "timezone": timezone,
         "hourly_time": hourly_time,
         "data_source": weather.get("data_source", "live"),

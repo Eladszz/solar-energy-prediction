@@ -25,6 +25,7 @@ class BasePVRequest(BaseModel):
     model_type: ModelType = "physical"
     electricity_price_per_kwh: float = Field(default=0.17, ge=0.0)
     currency: CurrencyCode = "USD"
+    system_capex: float = Field(default=25000.0, ge=0.0)
     training_years: int = Field(default=3, ge=1, le=10)
     demo_mode: bool = False
     demo_scenario_id: str | None = None
@@ -57,6 +58,7 @@ class BenchmarkEvaluationRequest(BaseModel):
     ac_capacity_kw: float = Field(default=15.0, gt=0.0)
     gamma: float = 0.004
     noct: float = 45.0
+    system_capex: float = Field(default=25000.0, ge=0.0)
     training_years: int = Field(default=3, ge=1, le=10)
     demo_mode: bool = False
     demo_scenario_id: str | None = None
@@ -88,6 +90,7 @@ class ScenarioComparisonScenario(BaseModel):
     ac_capacity_kw: float = Field(default=15.0, gt=0.0)
     gamma: float = 0.004
     noct: float = 45.0
+    system_capex: float = Field(default=25000.0, ge=0.0)
 
 
 class ScenarioComparisonRequest(BaseModel):

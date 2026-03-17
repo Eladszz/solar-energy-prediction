@@ -79,6 +79,7 @@ def test_evaluate_yearly_accuracy_returns_backtest_summary(
         training_years=3,
         electricity_price_per_kwh=0.2,
         currency="USD",
+        system_capex=2400.0,
     )
 
     assert result["year"] == 2025
@@ -90,6 +91,10 @@ def test_evaluate_yearly_accuracy_returns_backtest_summary(
     assert result["training_years_used"] == [2022, 2023, 2024]
     assert result["predicted_yearly_estimated_value"] == 216.0
     assert result["actual_yearly_estimated_value"] == 240.0
+    assert result["predicted_annual_savings"] == 216.0
+    assert result["actual_annual_savings"] == 240.0
+    assert result["predicted_simple_payback_years"] == 11.1
+    assert result["actual_simple_payback_years"] == 10.0
     assert result["ml_metadata"] == {"training_metrics": {"irradiance": {"rmse": 42.0}}}
 
     mock_build_profile.assert_called_once_with(
