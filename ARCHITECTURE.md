@@ -9,6 +9,7 @@ The Solar Energy Prediction System estimates solar energy production for a user-
 - A real ML-based yearly forecast path
 - A naive climatology benchmark baseline
 - Financial value estimation from predicted kWh
+- Financial decision-support using tariff and simple CAPEX assumptions
 - Scenario comparison, benchmark evaluation, and backtest accuracy analysis
 
 ## High-Level Architecture
@@ -63,7 +64,7 @@ External dependency:
 - `ml_forecast_service.py`
   - Trains a ridge-regression weather model from historical hourly data
 - `finance_service.py`
-  - Converts energy outputs to estimated financial value
+  - Converts energy outputs to estimated value, annual savings, and simple payback
 - `scenario_comparison_service.py`
   - Reuses one yearly weather profile across multiple scenarios
 - `accuracy_service.py`
@@ -189,17 +190,26 @@ This design keeps the Alpha version:
 
 ## Monetary Estimation Logic
 
-Financial outputs are computed from forecasted energy:
+Financial outputs are computed from forecasted energy using intentionally simple assumptions:
 
 - input:
   - `electricity_price_per_kwh`
   - `currency`
+  - `system_capex`
 - output:
   - monthly estimated value
   - yearly estimated value
+  - annual savings
+  - simple payback period
   - average monthly estimated value
 
-The tariff is user-configurable and returned in the backend response under `financial_assumptions`. This keeps the monetary estimate transparent and suitable for scenario comparison.
+Current financial assumptions:
+
+- annual savings are treated as equal to yearly estimated value at the configured flat tariff
+- simple payback is `system_capex / annual_savings`
+- the model ignores degradation, financing, maintenance, taxes, export caps, and time-varying tariff plans
+
+The tariff and CAPEX assumptions are returned in the backend response under `financial_assumptions`. This keeps the monetary estimate transparent and suitable for scenario comparison.
 
 ## Frontend / Backend Responsibilities
 
@@ -210,6 +220,7 @@ The tariff is user-configurable and returned in the backend response under `fina
 - parameter collection
 - forecast model selection
 - tariff input
+- CAPEX input
 - result visualization
 - scenario setup
 - invoking backtest analysis
@@ -233,6 +244,7 @@ Included in Alpha:
 - scenario comparison
 - backtest accuracy with MAPE
 - tariff-based monetary estimation
+- annual savings and simple payback estimation
 - automated test coverage for core services
 
 Not included in Alpha:

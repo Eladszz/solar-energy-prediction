@@ -84,6 +84,7 @@ def evaluate_yearly_accuracy(
     training_years: int = 3,
     electricity_price_per_kwh: float = 0.17,
     currency: str = "USD",
+    system_capex: float = 25000.0,
     demo_mode: bool = False,
     demo_scenario_id: str | None = None,
 ) -> dict:
@@ -114,6 +115,7 @@ def evaluate_yearly_accuracy(
         monthly_kwh=actual_summary["monthly_kwh"],
         electricity_price_per_kwh=electricity_price_per_kwh,
         currency=currency,
+        system_capex=system_capex,
     )
 
     predicted_weather_profile = build_forecast_weather_profile(
@@ -141,6 +143,7 @@ def evaluate_yearly_accuracy(
         monthly_kwh=predicted_summary["monthly_kwh"],
         electricity_price_per_kwh=electricity_price_per_kwh,
         currency=currency,
+        system_capex=system_capex,
     )
 
     yearly_mape = calculate_mape(
@@ -164,6 +167,10 @@ def evaluate_yearly_accuracy(
         "predicted_yearly_kwh": round(predicted_summary["yearly_kwh"], 1),
         "actual_yearly_estimated_value": actual_finance["yearly_estimated_value"],
         "predicted_yearly_estimated_value": predicted_finance["yearly_estimated_value"],
+        "actual_annual_savings": actual_finance["annual_savings"],
+        "predicted_annual_savings": predicted_finance["annual_savings"],
+        "actual_simple_payback_years": actual_finance["simple_payback_years"],
+        "predicted_simple_payback_years": predicted_finance["simple_payback_years"],
         "actual_monthly_kwh": actual_summary["monthly_kwh"],
         "predicted_monthly_kwh": predicted_summary["monthly_kwh"],
         "actual_monthly_estimated_value": actual_finance["monthly_estimated_value"],

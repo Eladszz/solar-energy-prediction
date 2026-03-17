@@ -44,6 +44,7 @@ def yearly(req: YearlyForecastRequest):
             ac_capacity_kw=req.ac_capacity_kw,
             electricity_price_per_kwh=req.electricity_price_per_kwh,
             currency=req.currency,
+            system_capex=req.system_capex,
         )
     except ExternalServiceError as exc:
         raise external_service_to_http_exception(exc) from exc

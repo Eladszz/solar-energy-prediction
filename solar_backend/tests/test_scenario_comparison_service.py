@@ -51,6 +51,7 @@ def base_scenario():
         ac_capacity_kw=15.0,
         gamma=0.004,
         noct=45.0,
+        system_capex=25000.0,
     )
 
 
@@ -66,6 +67,7 @@ def larger_scenario():
         ac_capacity_kw=18.0,
         gamma=0.004,
         noct=45.0,
+        system_capex=30000.0,
     )
 
 
@@ -101,11 +103,16 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
     assert result["year"] == 2026
     assert result["baseline_yearly_kwh"] == 7200.0
     assert result["baseline_yearly_estimated_value"] == 1296.0
+    assert result["baseline_annual_savings"] == 1296.0
+    assert result["baseline_simple_payback_years"] == 19.3
     assert result["results"][0]["scenario"]["name"] == "Base System"
     assert result["results"][1]["scenario"]["name"] == "Expanded Array"
     assert result["results"][0]["deviation_percent"] == 0.0
     assert result["results"][1]["deviation_percent"] == 25.0
     assert result["results"][1]["yearly_estimated_value"] == 1620.0
+    assert result["results"][1]["annual_savings"] == 1620.0
+    assert result["results"][1]["simple_payback_years"] == 18.5
+    assert result["results"][1]["payback_delta_years"] == -0.8
     assert result["results"][1]["value_deviation_percent"] == 25.0
 
     mock_build_profile.assert_called_once_with(
@@ -163,6 +170,7 @@ def test_compare_yearly_scenarios_uses_shared_context_for_weather_and_finance(
     )
     assert result["results"][0]["financial_assumptions"]["currency"] == "EUR"
     assert result["results"][0]["financial_assumptions"]["electricity_price_per_kwh"] == 0.22
+    assert result["results"][0]["financial_assumptions"]["system_capex"] == 25000.0
 
 
 @patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")

@@ -26,7 +26,10 @@ class RootResponse(ApiResponseModel):
 class FinancialAssumptions(ApiResponseModel):
     electricity_price_per_kwh: float
     currency: CurrencyCode
+    system_capex: float
     valuation_basis: str
+    annual_savings_basis: str
+    payback_basis: str
 
 
 class SimulationResponse(ApiResponseModel):
@@ -57,6 +60,8 @@ class YearlyForecastResponse(ApiResponseModel):
     avg_daily_kwh: float
     monthly_estimated_value: list[float]
     yearly_estimated_value: float
+    annual_savings: float
+    simple_payback_years: float | None = None
     avg_monthly_estimated_value: float
     financial_assumptions: FinancialAssumptions
     fallback_reason: str | None = None
@@ -80,6 +85,10 @@ class AccuracyEvaluationResponse(ApiResponseModel):
     predicted_yearly_kwh: float
     actual_yearly_estimated_value: float
     predicted_yearly_estimated_value: float
+    actual_annual_savings: float
+    predicted_annual_savings: float
+    actual_simple_payback_years: float | None = None
+    predicted_simple_payback_years: float | None = None
     actual_monthly_kwh: list[float]
     predicted_monthly_kwh: list[float]
     actual_monthly_estimated_value: list[float]
@@ -146,6 +155,9 @@ class ScenarioComparisonResult(ApiResponseModel):
     yearly_kwh: float
     monthly_kwh: list[float]
     yearly_estimated_value: float
+    annual_savings: float
+    simple_payback_years: float | None = None
+    payback_delta_years: float | None = None
     monthly_estimated_value: list[float]
     financial_assumptions: FinancialAssumptions
     deviation_percent: float
@@ -161,6 +173,8 @@ class ScenarioComparisonResponse(ApiResponseModel):
     fallback_reason: str | None = None
     baseline_yearly_kwh: float
     baseline_yearly_estimated_value: float
+    baseline_annual_savings: float
+    baseline_simple_payback_years: float | None = None
     results: list[ScenarioComparisonResult]
     data_source: Literal["live", "demo"] = "live"
     demo_scenario_id: str | None = None

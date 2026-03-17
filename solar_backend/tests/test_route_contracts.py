@@ -37,6 +37,7 @@ def build_valid_payload(**overrides):
         "model_type": "physical",
         "electricity_price_per_kwh": 0.17,
         "currency": "USD",
+        "system_capex": 25000.0,
         "training_years": 3,
     }
     payload.update(overrides)
@@ -92,6 +93,7 @@ def build_valid_comparison_scenario(**overrides):
         "ac_capacity_kw": 15.0,
         "gamma": 0.004,
         "noct": 45.0,
+        "system_capex": 25000.0,
     }
     payload.update(overrides)
     return payload
@@ -117,7 +119,10 @@ def build_financial_assumptions():
     return {
         "electricity_price_per_kwh": 0.17,
         "currency": "USD",
+        "system_capex": 25000.0,
         "valuation_basis": "Estimated value from forecasted energy.",
+        "annual_savings_basis": "Annual savings equal yearly value.",
+        "payback_basis": "Simple payback = CAPEX / annual savings.",
     }
 
 
@@ -135,6 +140,8 @@ def build_yearly_response():
         "avg_daily_kwh": 3.3,
         "monthly_estimated_value": [17.0] * 12,
         "yearly_estimated_value": 204.0,
+        "annual_savings": 204.0,
+        "simple_payback_years": 122.5,
         "avg_monthly_estimated_value": 17.0,
         "financial_assumptions": build_financial_assumptions(),
         "fallback_reason": None,
@@ -154,6 +161,10 @@ def build_accuracy_response():
         "predicted_yearly_kwh": 1200.0,
         "actual_yearly_estimated_value": 200.6,
         "predicted_yearly_estimated_value": 204.0,
+        "actual_annual_savings": 200.6,
+        "predicted_annual_savings": 204.0,
+        "actual_simple_payback_years": 124.6,
+        "predicted_simple_payback_years": 122.5,
         "actual_monthly_kwh": [98.3] * 12,
         "predicted_monthly_kwh": [100.0] * 12,
         "actual_monthly_estimated_value": [16.71] * 12,
@@ -176,12 +187,17 @@ def build_scenario_response():
         "fallback_reason": None,
         "baseline_yearly_kwh": 1200.0,
         "baseline_yearly_estimated_value": 204.0,
+        "baseline_annual_savings": 204.0,
+        "baseline_simple_payback_years": 122.5,
         "results": [
             {
                 "scenario": build_valid_comparison_scenario(name="Base System"),
                 "yearly_kwh": 1200.0,
                 "monthly_kwh": [100.0] * 12,
                 "yearly_estimated_value": 204.0,
+                "annual_savings": 204.0,
+                "simple_payback_years": 122.5,
+                "payback_delta_years": 0.0,
                 "monthly_estimated_value": [17.0] * 12,
                 "financial_assumptions": build_financial_assumptions(),
                 "deviation_percent": 0.0,
@@ -196,6 +212,9 @@ def build_scenario_response():
                 "yearly_kwh": 1440.0,
                 "monthly_kwh": [120.0] * 12,
                 "yearly_estimated_value": 244.8,
+                "annual_savings": 244.8,
+                "simple_payback_years": 102.1,
+                "payback_delta_years": -20.4,
                 "monthly_estimated_value": [20.4] * 12,
                 "financial_assumptions": build_financial_assumptions(),
                 "deviation_percent": 20.0,

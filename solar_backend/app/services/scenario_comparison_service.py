@@ -51,6 +51,7 @@ def compare_yearly_scenarios(
             monthly_kwh=forecast["monthly_kwh"],
             electricity_price_per_kwh=context.electricity_price_per_kwh,
             currency=context.currency,
+            system_capex=scenario.system_capex,
         )
 
         results.append(
@@ -59,6 +60,8 @@ def compare_yearly_scenarios(
                 "yearly_kwh": forecast["yearly_kwh"],
                 "monthly_kwh": forecast["monthly_kwh"],
                 "yearly_estimated_value": finance["yearly_estimated_value"],
+                "annual_savings": finance["annual_savings"],
+                "simple_payback_years": finance["simple_payback_years"],
                 "monthly_estimated_value": finance["monthly_estimated_value"],
                 "financial_assumptions": finance["financial_assumptions"],
             }
@@ -66,6 +69,8 @@ def compare_yearly_scenarios(
 
     baseline = results[0]["yearly_kwh"]
     baseline_value = results[0]["yearly_estimated_value"]
+    baseline_annual_savings = results[0]["annual_savings"]
+    baseline_simple_payback = results[0]["simple_payback_years"]
 
     for result in results:
         if baseline == 0:
@@ -85,6 +90,14 @@ def compare_yearly_scenarios(
                 2,
             )
 
+        if baseline_simple_payback is None or result["simple_payback_years"] is None:
+            result["payback_delta_years"] = None
+        else:
+            result["payback_delta_years"] = round(
+                result["simple_payback_years"] - baseline_simple_payback,
+                1,
+            )
+
     return {
         "year": weather_profile.forecast_year,
         "model_type_requested": weather_profile.model_type_requested,
@@ -94,6 +107,8 @@ def compare_yearly_scenarios(
         "fallback_reason": weather_profile.fallback_reason,
         "baseline_yearly_kwh": baseline,
         "baseline_yearly_estimated_value": baseline_value,
+        "baseline_annual_savings": baseline_annual_savings,
+        "baseline_simple_payback_years": baseline_simple_payback,
         "results": results,
         "data_source": weather_profile.data_source,
         "demo_scenario_id": weather_profile.demo_scenario_id,

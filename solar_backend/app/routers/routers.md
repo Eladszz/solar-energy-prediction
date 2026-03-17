@@ -48,7 +48,8 @@ curl -X POST http://localhost:8000/simulate \
     "panel_efficiency": 0.20,
     "cleanliness": "normal",
     "shading": "low",
-    "ac_capacity_kw": 15.0
+    "ac_capacity_kw": 15.0,
+    "system_capex": 25000.0
   }'
 ```
 
@@ -78,7 +79,8 @@ curl -X POST http://localhost:8000/forecast/yearly \
     "model_type": "ml",
     "training_years": 3,
     "electricity_price_per_kwh": 0.17,
-    "currency": "USD"
+    "currency": "USD",
+    "system_capex": 25000.0
   }'
 ```
 
@@ -94,7 +96,7 @@ Notes:
 
 - at least two scenarios are required
 - `context` carries the shared location, model, tariff, and demo settings
-- each item in `scenarios` carries only scenario-specific system fields
+- each item in `scenarios` carries only scenario-specific system fields, including `system_capex`
 
 ### `POST /evaluation/benchmark`
 
@@ -117,6 +119,11 @@ Backtests the selected forecasting path against archived weather for a completed
 Request model: `AccuracyEvaluationRequest`
 
 Response model: `AccuracyEvaluationResponse`
+
+Notes:
+
+- yearly responses expose monthly value, yearly value, annual savings, and simple payback
+- simple payback uses the submitted `system_capex` and ignores financing and long-term O&M
 
 ## Mounted Prefixes
 
