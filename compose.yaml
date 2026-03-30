@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: solar-energy-app
+    ports:
+      - "8000:8000"
+      - "8501:8501"
