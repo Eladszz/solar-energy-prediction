@@ -85,8 +85,12 @@ def test_evaluate_yearly_accuracy_returns_backtest_summary(
     assert result["year"] == 2025
     assert result["actual_yearly_kwh"] == 1200.0
     assert result["predicted_yearly_kwh"] == 1080.0
+    assert result["monthly_mae_kwh"] == 10.0
     assert result["mape_percent"] == 10.0
+    assert result["yearly_mae_kwh"] == 120.0
     assert result["yearly_mape_percent"] == 10.0
+    assert result["bias_percent"] == -10.0
+    assert result["bias_kwh"] == -120.0
     assert result["quality"] == "GOOD"
     assert result["training_years_used"] == [2022, 2023, 2024]
     assert result["predicted_yearly_estimated_value"] == 216.0
@@ -144,8 +148,12 @@ def test_evaluate_yearly_accuracy_zero_actual_energy_returns_zero_mape(
     )
 
     assert result["actual_yearly_kwh"] == 0.0
+    assert result["monthly_mae_kwh"] == 12.5
     assert result["mape_percent"] == 0.0
+    assert result["yearly_mae_kwh"] == 150.0
     assert result["yearly_mape_percent"] == 0.0
+    assert result["bias_percent"] == 0.0
+    assert result["bias_kwh"] == 150.0
 
 
 @patch("app.services.accuracy_service.compute_yearly_from_real_data")

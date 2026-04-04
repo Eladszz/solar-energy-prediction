@@ -4,7 +4,7 @@ Solar energy forecasting project prepared for academic engineering submission.
 
 The system combines:
 - A FastAPI backend for weather retrieval, PV simulation, yearly forecasting, scenario comparison, benchmark evaluation, and backtest accuracy analysis.
-- A Streamlit frontend for location selection, system configuration, forecast visualization, monetary estimation, benchmark review, and demo-ready what-if flows.
+- A React frontend for location selection, system configuration, forecast visualization, monetary estimation, benchmark review, and demo-ready what-if flows.
 
 ## Alpha Scope
 
@@ -49,6 +49,10 @@ solar-energy-prediction/
 │   │   └── services/
 │   ├── backend_requirements.txt
 │   └── tests/
+├── solar_frontend/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
 ├── solar_ui/
 │   ├── app.py
 │   ├── config.py
@@ -82,20 +86,18 @@ Backend URL: `http://127.0.0.1:8000`
 Open a second terminal:
 
 ```bash
-cd solar_ui
-python3 -m venv venv
-source venv/bin/activate
-pip install -r frontend_requirements.txt
-streamlit run app.py
+cd solar_frontend
+npm install
+npm run dev
 ```
 
-Frontend URL: `http://localhost:8501`
+Frontend URL: `http://localhost:3000`
 
 ### 3. Docker option
 
 ```bash
 docker build -t solar-energy-app .
-docker run -p 8000:8000 -p 8501:8501 solar-energy-app
+docker run -p 8000:8000 -p 3000:3000 solar-energy-app
 ```
 
 ## Example Requests
@@ -119,8 +121,8 @@ curl -X POST http://127.0.0.1:8000/forecast/yearly \
     "ac_capacity_kw": 15.0,
     "model_type": "ml",
     "training_years": 3,
-    "electricity_price_per_kwh": 0.17,
-    "currency": "USD",
+    "electricity_price_per_kwh": 0.48,
+    "currency": "ILS",
     "system_capex": 25000.0
   }'
 ```
@@ -136,8 +138,8 @@ curl -X POST http://127.0.0.1:8000/simulate \
     "panel_area": 80.0,
     "panel_efficiency": 0.20,
     "ac_capacity_kw": 15.0,
-    "electricity_price_per_kwh": 0.17,
-    "currency": "USD",
+    "electricity_price_per_kwh": 0.48,
+    "currency": "ILS",
     "system_capex": 25000.0
   }'
 ```
@@ -155,8 +157,8 @@ curl -X POST http://127.0.0.1:8000/scenarios/compare \
       "longitude": 34.78,
       "year": 2026,
       "model_type": "physical",
-      "electricity_price_per_kwh": 0.17,
-      "currency": "USD"
+      "electricity_price_per_kwh": 0.48,
+      "currency": "ILS"
     },
     "scenarios": [
       {
@@ -204,8 +206,8 @@ curl -X POST http://127.0.0.1:8000/evaluation/accuracy \
     "ac_capacity_kw": 15.0,
     "model_type": "ml",
     "training_years": 3,
-    "electricity_price_per_kwh": 0.17,
-    "currency": "USD",
+    "electricity_price_per_kwh": 0.48,
+    "currency": "ILS",
     "system_capex": 25000.0
   }'
 ```
@@ -242,7 +244,7 @@ curl -X POST http://127.0.0.1:8000/evaluation/benchmark \
 ## Demo Flow
 
 Recommended Alpha demo:
-1. Open the Streamlit UI.
+1. Open the React UI.
 2. Resolve an address and optionally draw a roof rectangle to auto-fill panel area.
 3. Run a yearly forecast with `physical` mode.
 4. Switch to `ml` mode and rerun to show the alternative forecasting path.
