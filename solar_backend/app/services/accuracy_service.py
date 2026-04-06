@@ -82,8 +82,8 @@ def evaluate_yearly_accuracy(
     ac_capacity_kw: float,
     model_type: str = "physical",
     training_years: int = 3,
-    electricity_price_per_kwh: float = 0.17,
-    currency: str = "USD",
+    electricity_price_per_kwh: float = 0.48,
+    currency: str = "ILS",
     system_capex: float = 25000.0,
     demo_mode: bool = False,
     demo_scenario_id: str | None = None,
@@ -150,9 +150,25 @@ def evaluate_yearly_accuracy(
         actual_summary["yearly_kwh"],
         predicted_summary["yearly_kwh"],
     )
+    yearly_mae = calculate_mae(
+        actual_summary["yearly_kwh"],
+        predicted_summary["yearly_kwh"],
+    )
     monthly_mape = calculate_series_mape(
         actual_summary["monthly_kwh"],
         predicted_summary["monthly_kwh"],
+    )
+    monthly_mae = calculate_series_mae(
+        actual_summary["monthly_kwh"],
+        predicted_summary["monthly_kwh"],
+    )
+    bias_percent = calculate_bias_percent(
+        [actual_summary["yearly_kwh"]],
+        [predicted_summary["yearly_kwh"]],
+    )
+    bias_kwh = calculate_mean_bias_kwh(
+        [actual_summary["yearly_kwh"]],
+        [predicted_summary["yearly_kwh"]],
     )
     quality = classify_quality(monthly_mape)
 
@@ -175,8 +191,12 @@ def evaluate_yearly_accuracy(
         "predicted_monthly_kwh": predicted_summary["monthly_kwh"],
         "actual_monthly_estimated_value": actual_finance["monthly_estimated_value"],
         "predicted_monthly_estimated_value": predicted_finance["monthly_estimated_value"],
+        "monthly_mae_kwh": round(monthly_mae, 1),
         "mape_percent": round(monthly_mape, 2),
+        "yearly_mae_kwh": round(yearly_mae, 1),
         "yearly_mape_percent": round(yearly_mape, 2),
+        "bias_percent": round(bias_percent, 2),
+        "bias_kwh": round(bias_kwh, 1),
         "quality": quality,
         "financial_assumptions": predicted_finance["financial_assumptions"],
         "ml_metadata": predicted_weather_profile.ml_metadata,

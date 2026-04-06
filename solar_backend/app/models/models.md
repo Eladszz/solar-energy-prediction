@@ -118,8 +118,12 @@ Key fields:
 - `predicted_annual_savings`
 - `actual_simple_payback_years`
 - `predicted_simple_payback_years`
+- `monthly_mae_kwh`
 - `mape_percent`
+- `yearly_mae_kwh`
 - `yearly_mape_percent`
+- `bias_percent`
+- `bias_kwh`
 - `quality`
 - `financial_assumptions`
 - `ml_metadata`

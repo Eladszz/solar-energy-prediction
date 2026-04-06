@@ -6,6 +6,8 @@ ModelType = Literal["physical", "ml"]
 CleanlinessLevel = Literal["clean", "normal", "dusty"]
 ShadingLevel = Literal["none", "low", "medium", "high"]
 CurrencyCode = Literal["USD", "EUR", "ILS"]
+DEFAULT_ELECTRICITY_PRICE_PER_KWH = 0.48
+DEFAULT_CURRENCY: CurrencyCode = "ILS"
 
 
 class BasePVRequest(BaseModel):
@@ -23,8 +25,8 @@ class BasePVRequest(BaseModel):
     gamma: float = 0.004
     noct: float = 45.0
     model_type: ModelType = "physical"
-    electricity_price_per_kwh: float = Field(default=0.17, ge=0.0)
-    currency: CurrencyCode = "USD"
+    electricity_price_per_kwh: float = Field(default=DEFAULT_ELECTRICITY_PRICE_PER_KWH, ge=0.0)
+    currency: CurrencyCode = DEFAULT_CURRENCY
     system_capex: float = Field(default=25000.0, ge=0.0)
     training_years: int = Field(default=3, ge=1, le=10)
     demo_mode: bool = False
@@ -72,8 +74,8 @@ class ScenarioComparisonContext(BaseModel):
     year: int | None = Field(default=None, ge=2000, le=2100)
     model_type: ModelType = "physical"
     training_years: int = Field(default=3, ge=1, le=10)
-    electricity_price_per_kwh: float = Field(default=0.17, ge=0.0)
-    currency: CurrencyCode = "USD"
+    electricity_price_per_kwh: float = Field(default=DEFAULT_ELECTRICITY_PRICE_PER_KWH, ge=0.0)
+    currency: CurrencyCode = DEFAULT_CURRENCY
     demo_mode: bool = False
     demo_scenario_id: str | None = None
 

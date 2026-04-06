@@ -78,8 +78,8 @@ curl -X POST http://localhost:8000/forecast/yearly \
     "ac_capacity_kw": 15.0,
     "model_type": "ml",
     "training_years": 3,
-    "electricity_price_per_kwh": 0.17,
-    "currency": "USD",
+    "electricity_price_per_kwh": 0.48,
+    "currency": "ILS",
     "system_capex": 25000.0
   }'
 ```

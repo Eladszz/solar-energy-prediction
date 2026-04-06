@@ -1,0 +1,13 @@
+.DS_Store
+.git
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+solar_frontend/.git
+solar_frontend/node_modules
+solar_frontend/dist
+
+solar_backend/.pytest_cache
