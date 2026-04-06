@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.config import config
 from app.models.responses import RootResponse
 from app.routers import (
     benchmark_router,
@@ -22,6 +24,21 @@ app = FastAPI(
 
 configure_logging()
 logger.info("Logging is configured.")
+
+
+def _parse_cors_allow_origins(raw_value: str) -> list[str]:
+    origins = [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+    return origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_parse_cors_allow_origins(config.CORS_ALLOW_ORIGINS),
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Routers
 app.include_router(health_router.router)
 app.include_router(simulate_router.router, prefix="/simulate", tags=["Day Simulation"])

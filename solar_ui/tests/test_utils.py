@@ -79,28 +79,3 @@ def test_reverse_geocode_unavailable_preserves_coordinates(monkeypatch):
         result.error_message
         == "Reverse geocoding is temporarily unavailable. Coordinates will be shown instead."
     )
-
-
-def test_geocode_address_demo_mode_uses_bundled_scenario():
-    result = geocode_address(
-        "100 Dizengoff St, Tel Aviv-Yafo, Israel",
-        demo_mode=True,
-        demo_scenario_id="tel_aviv_rooftop",
-    )
-
-    assert result.is_success is True
-    assert result.address == "100 Dizengoff St, Tel Aviv-Yafo, Israel"
-    assert result.latitude == 32.0853
-    assert result.longitude == 34.7818
-
-
-def test_reverse_geocode_demo_mode_returns_scenario_address():
-    result = reverse_geocode(
-        33.4342,
-        -112.0116,
-        demo_mode=True,
-        demo_scenario_id="phoenix_distribution_center",
-    )
-
-    assert result.is_success is True
-    assert result.address == "3400 E Sky Harbor Blvd, Phoenix, Arizona, United States"

@@ -17,6 +17,7 @@ class GlobalConfig(BaseConfig):
     DB_FORCE_ROLL_BACK: bool = False
     DEMO_MODE: bool = False
     DEMO_DEFAULT_SCENARIO_ID: str = "tel_aviv_rooftop"
+    CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
 
 class DevConfig(GlobalConfig):

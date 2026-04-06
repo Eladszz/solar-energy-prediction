@@ -50,8 +50,8 @@ def build_valid_payload(**overrides):
         "gamma": 0.004,
         "noct": 45.0,
         "model_type": "physical",
-        "electricity_price_per_kwh": 0.17,
-        "currency": "USD",
+        "electricity_price_per_kwh": 0.48,
+        "currency": "ILS",
         "system_capex": 25000.0,
         "training_years": 3,
     }
@@ -66,8 +66,8 @@ def build_valid_comparison_context(**overrides):
         "year": 2026,
         "model_type": "physical",
         "training_years": 3,
-        "electricity_price_per_kwh": 0.17,
-        "currency": "USD",
+        "electricity_price_per_kwh": 0.48,
+        "currency": "ILS",
         "demo_mode": False,
         "demo_scenario_id": None,
     }
@@ -128,8 +128,8 @@ def build_valid_comparison_payload(**overrides):
 
 def build_financial_assumptions():
     return {
-        "electricity_price_per_kwh": 0.17,
-        "currency": "USD",
+        "electricity_price_per_kwh": 0.48,
+        "currency": "ILS",
         "system_capex": 25000.0,
         "valuation_basis": "Estimated value from forecasted energy.",
         "annual_savings_basis": "Annual savings equal yearly value.",
@@ -180,8 +180,12 @@ def build_accuracy_response():
         "predicted_monthly_kwh": [100.0] * 12,
         "actual_monthly_estimated_value": [16.71] * 12,
         "predicted_monthly_estimated_value": [17.0] * 12,
+        "monthly_mae_kwh": 1.7,
         "mape_percent": 5.4,
+        "yearly_mae_kwh": 20.0,
         "yearly_mape_percent": 1.69,
+        "bias_percent": 1.69,
+        "bias_kwh": 20.0,
         "quality": "GOOD",
         "financial_assumptions": build_financial_assumptions(),
         "ml_metadata": None,
@@ -343,7 +347,7 @@ class TestRequestModels:
 
         assert base_request.model_dump() == simulation_request.model_dump()
         assert yearly_request.year == 2026
-        assert accuracy_request.currency == "USD"
+        assert accuracy_request.currency == "ILS"
         assert benchmark_request.benchmark_years == 3
         assert comparison_request.context.model_type == "physical"
         assert comparison_request.scenarios[1].name == "Expanded Array"

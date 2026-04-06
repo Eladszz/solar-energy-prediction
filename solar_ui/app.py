@@ -560,16 +560,16 @@ training_years = st.sidebar.slider(
 electricity_price_per_kwh = st.sidebar.number_input(
     "Electricity Price / Feed-in Tariff",
     min_value=0.0,
-    value=float(st.session_state.get("tariff_input", 0.17)),
+    value=float(st.session_state.get("tariff_input", 0.48)),
     step=0.01,
     format="%.2f",
     key="tariff_input",
 )
-currency_options = ["USD", "EUR", "ILS"]
+currency_options = ["ILS", "USD", "EUR"]
 currency = st.sidebar.selectbox(
     "Currency",
     options=currency_options,
-    index=currency_options.index(st.session_state.get("currency_select", "USD")),
+    index=currency_options.index(st.session_state.get("currency_select", "ILS")),
     key="currency_select",
 )
 system_capex = st.sidebar.number_input(

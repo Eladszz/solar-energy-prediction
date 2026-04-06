@@ -93,8 +93,12 @@ class AccuracyEvaluationResponse(ApiResponseModel):
     predicted_monthly_kwh: list[float]
     actual_monthly_estimated_value: list[float]
     predicted_monthly_estimated_value: list[float]
+    monthly_mae_kwh: float
     mape_percent: float
+    yearly_mae_kwh: float
     yearly_mape_percent: float
+    bias_percent: float
+    bias_kwh: float
     quality: QualityLabel
     financial_assumptions: FinancialAssumptions
     ml_metadata: dict[str, Any] | None = None
