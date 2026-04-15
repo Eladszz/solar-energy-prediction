@@ -93,12 +93,18 @@ npm run dev
 
 Frontend URL: `http://localhost:3000`
 
+The Vite dev server proxies API requests to `http://127.0.0.1:8000` by default, so the React UI can call the backend without extra CORS setup. If your backend runs elsewhere, set `VITE_API_BASE_URL` or `VITE_API_PROXY_TARGET`.
+
 ### 3. Docker option
 
 ```bash
 docker build -t solar-energy-app .
-docker run -p 8000:8000 -p 3000:3000 solar-energy-app
+docker run -p 8000:8000 solar-energy-app
 ```
+
+Docker URL: `http://127.0.0.1:8000`
+
+The container serves the built React UI and the FastAPI API from the same port. In cloud environments, the startup script also honors the platform-provided `PORT` environment variable.
 
 ## Example Requests
 

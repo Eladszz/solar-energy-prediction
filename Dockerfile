@@ -15,7 +15,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,8 +31,6 @@ COPY docker/start.sh /app/start.sh
 RUN mkdir -p /app/solar_backend/logs \
     && chmod +x /app/start.sh
 
-# 8000 for FastAPI backend
-# 3000 for the built React frontend
-EXPOSE 8000 3000
+EXPOSE 8000
 
 CMD ["/app/start.sh"]

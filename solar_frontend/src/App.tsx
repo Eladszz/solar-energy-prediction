@@ -27,7 +27,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   apiPost,
   type BenchmarkApproachType,
-  resolveApiBaseUrl,
   type AccuracyEvaluationResponse,
   type BenchmarkEvaluationPayload,
   type BenchmarkEvaluationResponse,
@@ -597,7 +596,6 @@ function LocationMarker({
 export default function App() {
   const currentYear = new Date().getFullYear();
   const lastCompleteYear = currentYear - 1;
-  const backendBaseUrl = resolveApiBaseUrl();
 
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [selectedLocationId, setSelectedLocationId] = useState('');

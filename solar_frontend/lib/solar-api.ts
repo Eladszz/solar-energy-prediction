@@ -224,10 +224,13 @@ export interface ScenarioComparisonResponse {
   demo_scenario_name?: string | null;
 }
 
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000';
-
 function normalizeBaseUrl(value: string): string {
-  return value.trim().replace(/\/+$/, '');
+  const trimmedValue = value.trim();
+  if (!trimmedValue || trimmedValue === '/') {
+    return '';
+  }
+
+  return trimmedValue.replace(/\/+$/, '');
 }
 
 export function resolveApiBaseUrl(): string {
@@ -236,16 +239,7 @@ export function resolveApiBaseUrl(): string {
     return normalizeBaseUrl(configured);
   }
 
-  if (typeof window === 'undefined') {
-    return DEFAULT_API_BASE_URL;
-  }
-
-  const { protocol, hostname, port } = window.location;
-  if (port === '8000') {
-    return window.location.origin;
-  }
-
-  return normalizeBaseUrl(`${protocol}//${hostname}:8000`);
+  return '';
 }
 
 function buildErrorMessage(payload: unknown, status: number): string {
