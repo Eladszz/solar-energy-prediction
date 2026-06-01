@@ -3,22 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type MutableRefObject, type ReactNode } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, FeatureGroup } from 'react-leaflet';
 import { EditControl } from 'react-leaflet-draw';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { DollarSign, GripVertical, Info, MapPin, Moon, PanelLeftClose, PanelLeftOpen, Settings, Sun } from 'lucide-react';
+import { DollarSign, GripVertical, MapPin, Moon, PanelLeftClose, PanelLeftOpen, Settings, Sun } from 'lucide-react';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -64,19 +63,34 @@ const MAX_SIDEBAR_WIDTH = 560;
 const COLLAPSED_SIDEBAR_WIDTH = 72;
 const FORECAST_APPROACH_COPY: Record<
   ModelType,
-  { label: string; shortLabel: string; description: string }
+  { label: string; shortLabel: string }
 > = {
   physical: {
     label: 'Physics-based forecast',
     shortLabel: 'Physics-based',
-    description: 'Uses panel setup, tilt, and weather assumptions to estimate output.',
   },
   ml: {
     label: 'History-based forecast',
     shortLabel: 'History-based',
-    description: 'Learns patterns from past years to estimate future output.',
   },
 };
+
+function HelpTip({ children, label = 'More info' }: { children: ReactNode; label?: string }) {
+  return (
+    <span className="group relative inline-flex align-middle">
+      <span
+        tabIndex={0}
+        aria-label={label}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-[10px] font-semibold leading-none text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        ?
+      </span>
+      <span className="pointer-events-none absolute left-1/2 top-6 z-50 hidden w-64 -translate-x-1/2 rounded-md border bg-popover px-3 py-2 text-xs font-normal leading-5 text-popover-foreground shadow-md group-hover:block group-focus-within:block">
+        {children}
+      </span>
+    </span>
+  );
+}
 
 type MapPosition = { lat: number; lng: number };
 type ScenarioRequest = { name: string; payload: PVRequestPayload };
@@ -352,10 +366,6 @@ function getForecastApproachLabel(modelType: ModelType): string {
 
 function getForecastApproachShortLabel(modelType: ModelType): string {
   return FORECAST_APPROACH_COPY[modelType].shortLabel;
-}
-
-function getForecastApproachDescription(modelType: ModelType): string {
-  return FORECAST_APPROACH_COPY[modelType].description;
 }
 
 function getBenchmarkApproachLabel(approachType: BenchmarkApproachType, fallbackLabel: string): string {
@@ -1245,16 +1255,16 @@ export default function App() {
     `${getForecastApproachShortLabel(modelType)}`;
   const financialSummary = `${formatSidebarNumber(electricityPrice, 2)} ${currency}/kWh · CAPEX ${formatSidebarNumber(systemCapex)} ${currency}`;
   const overviewSummaryText = forecastData
-    ? `For ${forecastData.forecast_year}, this site is expected to generate about ${formatReadableKwh(
+    ? `${formatReadableKwh(
         forecastData.yearly_kwh,
-      )}/year, save about ${formatReadableCurrency(
+      )}/year · ${formatReadableCurrency(
         forecastData.annual_savings,
         forecastData.financial_assumptions.currency,
-      )} per year, and ${
+      )}/year · ${
         forecastData.simple_payback_years == null
-          ? 'not currently reach a viable simple payback'
-          : `reach simple payback in about ${formatReadableNumber(forecastData.simple_payback_years, 1)} years`
-      } using the ${getForecastApproachLabel(forecastData.model_type_used)}.`
+          ? 'No viable payback'
+          : `${formatReadableNumber(forecastData.simple_payback_years, 1)} year payback`
+      }`
     : '';
   const overviewContextRows = forecastData
     ? [
@@ -1341,35 +1351,20 @@ export default function App() {
       : 'Not available';
   const dailyLossPercent = dailySimulation ? Math.max(0, (1 - dailySimulation.system_loss_factor) * 100) : null;
   const dailySummaryText = dailySimulation
-    ? `For ${dailySimulationDateLabel}, this site is expected to generate about ${formatReadableKwh(
+    ? `${dailySimulationDateLabel} · ${formatReadableKwh(
         dailySimulation.daily_kwh,
         1,
-      )}, be worth about ${formatReadableCurrency(
+      )} · ${formatReadableCurrency(
         dailySimulation.estimated_daily_value,
         dailySimulation.financial_assumptions.currency,
         2,
-      )}, and peak around ${dailyPeakHourLabel} at roughly ${formatReadableNumber(dailyPeakPower, 2)} kW.`
+      )} · peak ${dailyPeakHourLabel} at ${formatReadableNumber(dailyPeakPower, 2)} kW`
     : '';
   const dailyHourlyChartData = dailySimulation
     ? dailySimulation.hourly_ac_kw.map((power, index) => ({
         time: formatHourlyLabel(dailySimulation.hourly_time[index], index),
         power,
       }))
-    : [];
-  const dailyContextRows = dailySimulation
-    ? [
-        { label: 'Simulated day', value: dailySimulationDateLabel },
-        { label: 'Timezone', value: dailySimulation.timezone },
-        { label: 'Data source', value: dailySimulation.data_source },
-        {
-          label: 'Tariff assumption',
-          value: `${formatReadableNumber(
-            dailySimulation.financial_assumptions.electricity_price_per_kwh,
-            2,
-          )} ${dailySimulation.financial_assumptions.currency}/kWh`,
-        },
-        { label: 'Valuation basis', value: dailySimulation.financial_assumptions.valuation_basis },
-      ]
     : [];
   const dailyTechnicalRows = dailySimulation
     ? [
@@ -1393,12 +1388,12 @@ export default function App() {
       <header className="border-b bg-card">
         <div className="flex w-full items-start justify-between gap-6 px-6 py-6 md:px-8 md:py-8">
           <div className="min-w-0 flex-1">
-            <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl xl:text-6xl">
+            <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
               <Sun className="h-8 w-8 shrink-0 text-yellow-500 sm:h-10 sm:w-10 lg:h-12 lg:w-12" />
-              <span>Solar Energy Prediction System</span>
+              <span>Solar Forecast</span>
             </h1>
             <p className="mt-3 max-w-4xl text-sm text-muted-foreground sm:text-base">
-              Configure the site, tune system and financial assumptions, then compare production and payback outcomes.
+              Estimate production, savings, and payback for one site.
             </p>
           </div>
           <Button variant="outline" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
@@ -1432,7 +1427,7 @@ export default function App() {
             <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto p-4">
               <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">Collapse sidebar</p>
+                  <p className="text-sm font-semibold">Controls</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -1453,13 +1448,15 @@ export default function App() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold">Location</p>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">{locationSummary}</p>
+                        <p className="mt-1 max-w-full break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                          {locationSummary}
+                        </p>
                       </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4 pb-3">
                     <div className="space-y-2">
-                      <Label>Quick Cities</Label>
+                      <Label>City</Label>
                       <Select
                         value={selectedLocationId}
                         onValueChange={(value) => {
@@ -1475,7 +1472,7 @@ export default function App() {
                         }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Choose a preset city" />
+                          <SelectValue placeholder="Choose city" />
                         </SelectTrigger>
                         <SelectContent>
                           {PREDEFINED_LOCATIONS.map((location) => (
@@ -1483,19 +1480,19 @@ export default function App() {
                               {location.label}
                             </SelectItem>
                           ))}
-                          <SelectItem value="custom">Custom Location (Map)</SelectItem>
+                          <SelectItem value="custom">Custom map point</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="rounded-xl border border-dashed border-border/70 bg-muted/25 p-3">
-                      <Label>Search Exact Address</Label>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Enter street, house number, city, and country for a more accurate result.
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <Label>Address</Label>
+                        <HelpTip>Search a full street address for a more accurate site location.</HelpTip>
+                      </div>
                       <div className="mt-3 flex gap-2">
                         <Input
-                          placeholder="e.g. 1600 Amphitheatre Parkway, Mountain View, CA"
+                          placeholder="Street, city, country"
                           value={searchQuery}
                           onChange={(event) => setSearchQuery(event.target.value)}
                           onKeyDown={(event) => event.key === 'Enter' && handleSearchLocation()}
@@ -1507,10 +1504,12 @@ export default function App() {
                     </div>
 
                     <div>
-                      <Label className="text-muted-foreground">Detected Address</Label>
+                      <Label className="text-muted-foreground">Selected Address</Label>
                       {detectedAddress ? (
                         <Alert className="mt-2 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20">
-                          <AlertDescription className="text-sm">{detectedAddress}</AlertDescription>
+                          <AlertDescription className="max-h-24 overflow-y-auto break-words text-sm [overflow-wrap:anywhere]">
+                            {detectedAddress}
+                          </AlertDescription>
                         </Alert>
                       ) : (
                         <p className="mt-2 text-sm text-muted-foreground">No address selected yet.</p>
@@ -1535,14 +1534,7 @@ export default function App() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Label>Forecast Year</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">
-                            The year for which you want to predict solar energy production.
-                          </PopoverContent>
-                        </Popover>
+                        <HelpTip>The year to estimate solar production for.</HelpTip>
                       </div>
                       <Input type="number" value={forecastYear} onChange={(event) => setForecastYear(event.target.value)} />
                     </div>
@@ -1550,49 +1542,25 @@ export default function App() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Label>Panel Area (m²)</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">
-                            The total surface area of the solar panels. You can draw a shape on the map to estimate this automatically.
-                          </PopoverContent>
-                        </Popover>
+                        <HelpTip>Total panel surface. Draw on the map to estimate it automatically.</HelpTip>
                       </div>
                       <Input type="number" value={panelArea} onChange={(event) => setPanelArea(event.target.value)} />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Inverter AC Capacity (kW)</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">
-                            The maximum AC power output of the inverter. This caps the maximum power the system can deliver to the grid.
-                          </PopoverContent>
-                        </Popover>
+                        <Label>AC Capacity (kW)</Label>
+                        <HelpTip>Maximum inverter output delivered as AC power.</HelpTip>
                       </div>
                       <Input type="number" value={acCapacityKw} onChange={(event) => setAcCapacityKw(event.target.value)} />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Forecast Approach</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">
-                            <p className="mb-2">
-                              <strong>Physics-based forecast:</strong> Uses panel setup, tilt, and weather assumptions to estimate output.
-                            </p>
-                            <p>
-                              <strong>History-based forecast:</strong> Learns patterns from past years to estimate future output using machine learning behind the scenes.
-                            </p>
-                          </PopoverContent>
-                        </Popover>
+                        <Label>Approach</Label>
+                        <HelpTip>
+                          Physics uses panel and weather assumptions. History learns from past production patterns.
+                        </HelpTip>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         {(['physical', 'ml'] as const).map((approach) => {
@@ -1613,10 +1581,8 @@ export default function App() {
                             >
                               <div className="space-y-2">
                                 <div className="flex items-start justify-between gap-2">
-                                  <span className="font-medium">{getForecastApproachLabel(approach)}</span>
-                                  {isSelected ? <Badge variant="secondary">Selected</Badge> : null}
+                                  <span className="font-medium">{getForecastApproachShortLabel(approach)}</span>
                                 </div>
-                                <p className="text-sm text-muted-foreground">{getForecastApproachDescription(approach)}</p>
                               </div>
                             </button>
                           );
@@ -1628,11 +1594,10 @@ export default function App() {
                       <div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <Label>Past Years Used For Learning</Label>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              More years gives a steadier forecast. Fewer years reacts more to recent patterns.
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">3 years is a good starting point for most sites.</p>
+                            <div className="flex items-center gap-2">
+                              <Label>Learning Years</Label>
+                              <HelpTip>More years gives a steadier forecast. Fewer years reacts more to recent patterns.</HelpTip>
+                            </div>
                           </div>
                           <span className="text-sm text-muted-foreground">{trainingYears}</span>
                         </div>
@@ -1650,10 +1615,7 @@ export default function App() {
                       <AccordionItem value="advanced-system" className="border-none">
                         <AccordionTrigger className="py-3 hover:no-underline">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium">Advanced System Tuning</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Expand efficiency, tilt, cleanliness, shading, and thermal parameters.
-                            </p>
+                            <p className="text-sm font-medium">Advanced</p>
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-4 pb-3">
@@ -1661,14 +1623,7 @@ export default function App() {
                             <div className="flex justify-between">
                               <div className="flex items-center gap-2">
                                 <Label>Panel Efficiency</Label>
-                                <Popover>
-                                  <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                                    <Info className="h-3 w-3 text-muted-foreground" />
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-80 text-sm">
-                                    The percentage of sunlight the panels can convert into usable electricity.
-                                  </PopoverContent>
-                                </Popover>
+                                <HelpTip>Percentage of sunlight converted into electricity.</HelpTip>
                               </div>
                               <span className="text-sm text-muted-foreground">{panelEfficiency.toFixed(2)}</span>
                             </div>
@@ -1678,15 +1633,8 @@ export default function App() {
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <div className="flex items-center gap-2">
-                                <Label>Tilt Angle (°)</Label>
-                                <Popover>
-                                  <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                                    <Info className="h-3 w-3 text-muted-foreground" />
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-80 text-sm">
-                                    The angle of the solar panels relative to the horizontal ground.
-                                  </PopoverContent>
-                                </Popover>
+                                <Label>Tilt (°)</Label>
+                                <HelpTip>Panel angle relative to flat ground.</HelpTip>
                               </div>
                               <span className="text-sm text-muted-foreground">{tilt}</span>
                             </div>
@@ -1695,15 +1643,8 @@ export default function App() {
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>Panel Cleanliness</Label>
-                              <Popover>
-                                <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                                  <Info className="h-3 w-3 text-muted-foreground" />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 text-sm">
-                                  Accounts for energy loss due to dust, dirt, or snow on the panels.
-                                </PopoverContent>
-                              </Popover>
+                              <Label>Cleanliness</Label>
+                              <HelpTip>Adjusts energy loss from dust, dirt, or snow.</HelpTip>
                             </div>
                             <Select value={cleanliness} onValueChange={(value) => setCleanliness(value as CleanlinessLevel)}>
                               <SelectTrigger>
@@ -1719,15 +1660,8 @@ export default function App() {
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>Shading Level</Label>
-                              <Popover>
-                                <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                                  <Info className="h-3 w-3 text-muted-foreground" />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 text-sm">
-                                  Accounts for energy loss due to shadows from nearby buildings or trees.
-                                </PopoverContent>
-                              </Popover>
+                              <Label>Shading</Label>
+                              <HelpTip>Adjusts energy loss from nearby shadows.</HelpTip>
                             </div>
                             <Select value={shading} onValueChange={(value) => setShading(value as ShadingLevel)}>
                               <SelectTrigger>
@@ -1744,15 +1678,8 @@ export default function App() {
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>Temperature Coefficient (gamma)</Label>
-                              <Popover>
-                                <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                                  <Info className="h-3 w-3 text-muted-foreground" />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 text-sm">
-                                  The rate at which panel efficiency drops as temperature rises above standard conditions.
-                                </PopoverContent>
-                              </Popover>
+                              <Label>Temperature Coefficient</Label>
+                              <HelpTip>How quickly panel efficiency drops as temperature rises.</HelpTip>
                             </div>
                             <Input type="number" step="0.0001" value={gamma} onChange={(event) => setGamma(event.target.value)} />
                           </div>
@@ -1760,14 +1687,7 @@ export default function App() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <Label>NOCT (°C)</Label>
-                              <Popover>
-                                <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                                  <Info className="h-3 w-3 text-muted-foreground" />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 text-sm">
-                                  Nominal Operating Cell Temperature. The temperature the cells reach under standard conditions.
-                                </PopoverContent>
-                              </Popover>
+                              <HelpTip>Nominal cell temperature under standard operating conditions.</HelpTip>
                             </div>
                             <Input type="number" step="1" value={noct} onChange={(event) => setNoct(event.target.value)} />
                           </div>
@@ -1784,7 +1704,7 @@ export default function App() {
                         <DollarSign className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">Financial Parameters</p>
+                        <p className="text-sm font-semibold">Financial</p>
                         <p className="mt-1 truncate text-xs text-muted-foreground">{financialSummary}</p>
                       </div>
                     </div>
@@ -1792,15 +1712,8 @@ export default function App() {
                   <AccordionContent className="space-y-4 pb-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Electricity Price / Feed-in Tariff</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">
-                            The price per kWh of electricity. This is used to estimate yearly value and annual savings.
-                          </PopoverContent>
-                        </Popover>
+                        <Label>Tariff</Label>
+                        <HelpTip>Price per kWh used to estimate value and savings.</HelpTip>
                       </div>
                       <Input
                         type="number"
@@ -1813,12 +1726,7 @@ export default function App() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Label>Currency</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">The currency used for financial estimations.</PopoverContent>
-                        </Popover>
+                        <HelpTip>Currency for financial estimates.</HelpTip>
                       </div>
                       <Select value={currency} onValueChange={(value) => setCurrency(value as CurrencyCode)}>
                         <SelectTrigger>
@@ -1834,25 +1742,10 @@ export default function App() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>System CAPEX</Label>
-                        <Popover>
-                          <PopoverTrigger className="inline-flex h-4 w-4 items-center justify-center rounded-full p-0 hover:bg-accent hover:text-accent-foreground">
-                            <Info className="h-3 w-3 text-muted-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 text-sm">
-                            Used by the backend to estimate annual savings and simple payback.
-                          </PopoverContent>
-                        </Popover>
+                        <Label>CAPEX</Label>
+                        <HelpTip>System cost used for savings and payback.</HelpTip>
                       </div>
                       <Input type="number" step="100" value={systemCapex} onChange={(event) => setSystemCapex(event.target.value)} />
-                    </div>
-
-                    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
-                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Summary</p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {formatSidebarNumber(electricityPrice, 2)} {currency}/kWh valuation with a CAPEX assumption of{' '}
-                        {formatSidebarNumber(systemCapex)} {currency}.
-                      </p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -1892,8 +1785,7 @@ export default function App() {
 
           {!position ? (
             <Alert className="mb-6">
-              <AlertTitle>Location Required</AlertTitle>
-              <AlertDescription>Enter an address in the sidebar to show the map and enable forecasting.</AlertDescription>
+              <AlertTitle>Choose Location</AlertTitle>
             </Alert>
           ) : (
             <div className="relative z-0 mb-6 h-[360px] overflow-hidden rounded-xl border">
@@ -1940,16 +1832,16 @@ export default function App() {
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="mb-4 flex h-auto flex-wrap">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="daily">Daily Simulation</TabsTrigger>
-              <TabsTrigger value="accuracy">Accuracy Check</TabsTrigger>
-              <TabsTrigger value="benchmark">Forecast Comparison</TabsTrigger>
-              <TabsTrigger value="scenarios">System Options</TabsTrigger>
+              <TabsTrigger value="daily">Day</TabsTrigger>
+              <TabsTrigger value="accuracy">Accuracy</TabsTrigger>
+              <TabsTrigger value="benchmark">Methods</TabsTrigger>
+              <TabsTrigger value="scenarios">Options</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
               {!forecastData ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run the forecast to see expected yearly energy, savings, and payback for this site.
+                  Choose a location, then run forecast.
                 </div>
               ) : (
                 <>
@@ -1963,8 +1855,10 @@ export default function App() {
                   <Card className="border-primary/25 bg-primary/5">
                     <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-2">
-                        <CardTitle>Forecast Summary</CardTitle>
-                        <CardDescription>Decision-first overview of yearly output and financial return.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Summary
+                          <HelpTip>Yearly production, savings, and simple payback from the current inputs.</HelpTip>
+                        </CardTitle>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">Year {forecastData.forecast_year}</Badge>
                           <Badge variant="outline">{getForecastApproachLabel(forecastData.model_type_used)}</Badge>
@@ -1977,10 +1871,7 @@ export default function App() {
                   </Card>
 
                   <div className="space-y-3">
-                    <div>
-                      <h3 className="text-lg font-semibold">Primary Outcomes</h3>
-                      <p className="text-sm text-muted-foreground">The main numbers most users care about first.</p>
-                    </div>
+                    <h3 className="text-lg font-semibold">Key Results</h3>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <Card>
                         <CardHeader className="pb-2">
@@ -1992,13 +1883,12 @@ export default function App() {
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Estimated Annual Savings</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">Annual Savings</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
                             {formatReadableCurrency(forecastData.annual_savings, forecastData.financial_assumptions.currency)}
                           </div>
-                          <p className="mt-2 text-xs text-muted-foreground">{forecastData.financial_assumptions.annual_savings_basis}</p>
                         </CardContent>
                       </Card>
                       <Card>
@@ -2015,8 +1905,10 @@ export default function App() {
                   <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Forecast Context</CardTitle>
-                        <CardDescription>These assumptions shape the yearly forecast shown above.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Context
+                          <HelpTip>Inputs and assumptions used for this forecast.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
@@ -2034,8 +1926,10 @@ export default function App() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Performance Details</CardTitle>
-                        <CardDescription>Helpful supporting metrics for quick energy benchmarking.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Performance
+                          <HelpTip>Supporting production metrics for benchmarking.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="grid gap-3">
                         <div className="rounded-lg border bg-background/70 p-3">
@@ -2070,10 +1964,10 @@ export default function App() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Estimated Monthly Electricity Value</CardTitle>
-                        <CardDescription>
-                          Estimated money by month based on the current tariff and valuation assumptions.
-                        </CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Monthly Value
+                          <HelpTip>Estimated money by month using the current tariff.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2096,8 +1990,10 @@ export default function App() {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Seasonal Production Split</CardTitle>
-                      <CardDescription>This view shows where annual output is concentrated across the year.</CardDescription>
+                      <CardTitle className="flex items-center gap-2">
+                        Seasonal Split
+                        <HelpTip>Shows where annual output is concentrated across the year.</HelpTip>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -2132,9 +2028,9 @@ export default function App() {
                     <AccordionItem value="overview-details" className="border-none">
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
-                          <p className="font-semibold">Technical Details</p>
-                          <p className="text-sm font-normal text-muted-foreground">
-                            Open this section for method details, data source, and financial assumptions.
+                          <p className="flex items-center gap-2 font-semibold">
+                            Details
+                            <HelpTip>Method, data source, and financial assumptions.</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2165,15 +2061,17 @@ export default function App() {
             <TabsContent value="daily" className="space-y-6">
               {!dailySimulation ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run the forecast to see the next day's hourly solar output and estimated daily value.
+                  Run forecast to see hourly output.
                 </div>
               ) : (
                 <>
                   <Card className="border-primary/25 bg-primary/5">
                     <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-2">
-                        <CardTitle>One-Day Forecast Summary</CardTitle>
-                        <CardDescription>Decision-first view of the next forecasted day for this site.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Day Summary
+                          <HelpTip>Expected production, value, and peak power for the simulated day.</HelpTip>
+                        </CardTitle>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">{dailySimulationDateLabel}</Badge>
                           <Badge variant="outline">{dailySimulation.timezone}</Badge>
@@ -2196,7 +2094,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Estimated Daily Value</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Daily Value</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">
@@ -2222,45 +2120,24 @@ export default function App() {
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{dailyPeakHourLabel}</div>
-                        <p className="mt-2 text-xs text-muted-foreground">Shown in local site time.</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Estimated System Losses</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">System Losses</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{formatReadableNumber(dailyLossPercent, 1)}%</div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Includes shading, cleanliness, wiring, and inverter effects.
-                        </p>
                       </CardContent>
                     </Card>
                   </div>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Daily Forecast Context</CardTitle>
-                      <CardDescription>Supporting details for how the one-day forecast is interpreted.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableBody>
-                          {dailyContextRows.map((row) => (
-                            <TableRow key={row.label}>
-                              <TableCell className="font-medium">{row.label}</TableCell>
-                              <TableCell>{row.value}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Hourly Power Forecast</CardTitle>
-                      <CardDescription>Local-time AC output for the simulated day.</CardDescription>
+                      <CardTitle className="flex items-center gap-2">
+                        Hourly Power
+                        <HelpTip>Local-time AC output for the simulated day.</HelpTip>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="h-[400px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -2287,9 +2164,9 @@ export default function App() {
                     <AccordionItem value="daily-details" className="border-none">
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
-                          <p className="font-semibold">Technical Details</p>
-                          <p className="text-sm font-normal text-muted-foreground">
-                            Open this section for raw loss, source, and forecast context fields.
+                          <p className="flex items-center gap-2 font-semibold">
+                            Details
+                            <HelpTip>Raw loss, source, and forecast context fields.</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2322,9 +2199,6 @@ export default function App() {
                 <div className="space-y-2">
                   <div>
                     <h3 className="font-medium">Past-Year Accuracy Check</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Test the selected forecast approach on a completed year we already know.
-                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">Year {evaluationYear}</Badge>
@@ -2348,7 +2222,7 @@ export default function App() {
 
               {!accuracyResult ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run the accuracy check to compare the forecast against archived actual weather for the selected site.
+                  Run accuracy to compare forecast vs archive.
                 </div>
               ) : (
                 <>
@@ -2359,14 +2233,14 @@ export default function App() {
                     </Alert>
                   )}
 
-                  <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+                  <div className="grid gap-4">
                     <Card className="border-primary/25 bg-primary/5">
                       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
-                          <CardTitle>Overall Takeaway</CardTitle>
-                          <CardDescription>
-                            Accuracy check for {accuracyResult.year} using {accuracyMethodLabel}.
-                          </CardDescription>
+                          <CardTitle className="flex items-center gap-2">
+                            Takeaway
+                            <HelpTip>Lower error is better. Positive bias means overprediction; negative bias means underprediction.</HelpTip>
+                          </CardTitle>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="secondary">Checked year {accuracyResult.year}</Badge>
                             <Badge variant="outline">{accuracyMethodLabel}</Badge>
@@ -2375,13 +2249,13 @@ export default function App() {
                         <div className="space-y-1 md:text-right">
                           <p className="text-xs uppercase tracking-wide text-muted-foreground">Accuracy rating</p>
                           <p className={`text-2xl font-semibold ${accuracyQualityClassName}`}>{accuracyResult.quality}</p>
-                          <p className="text-xs text-muted-foreground">{accuracyQualityDescription}</p>
+                          <HelpTip>{accuracyQualityDescription}</HelpTip>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div>
                           <p className="text-3xl font-semibold tracking-tight">{accuracyTakeaway?.headline}</p>
-                          <p className="mt-2 text-sm text-muted-foreground">{accuracyTakeaway?.description}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">{accuracyBiasDirection}</p>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-3">
@@ -2405,30 +2279,14 @@ export default function App() {
                         </div>
                       </CardContent>
                     </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>How To Read This Check</CardTitle>
-                        <CardDescription>
-                          Archived actual weather is the reference. Forecast values show what the selected approach would have predicted.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-3 text-sm text-muted-foreground">
-                          <li>Lower monthly and yearly misses mean the method matched the completed year more closely.</li>
-                          <li>Positive bias means overprediction. Negative bias means underprediction.</li>
-                          <li>The rating is based on monthly percentage error, while the kWh miss shows the real size of the error.</li>
-                        </ul>
-                      </CardContent>
-                    </Card>
                   </div>
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Actual Vs Forecast Summary</CardTitle>
-                        <CardDescription>
-                          Archived actual weather is the reference. Forecast values show what the selected method would have produced.
-                        </CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Actual vs Forecast
+                          <HelpTip>Archive is the reference. Forecast shows what the selected method would have produced.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
@@ -2457,7 +2315,7 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Forecast Approach Used</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Approach</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyMethodLabel}</div>
@@ -2465,7 +2323,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Weather Reference Used</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Weather Reference</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyWeatherBasisLabel}</div>
@@ -2473,7 +2331,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Past Years Used For Learning</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Learning Years</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyTrainingYearsLabel}</div>
@@ -2511,8 +2369,10 @@ export default function App() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Monthly Forecast Error</CardTitle>
-                        <CardDescription>Positive means the forecast was too high. Negative means it was too low.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Monthly Error
+                          <HelpTip>Positive means the forecast was too high. Negative means it was too low.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2534,9 +2394,9 @@ export default function App() {
                     <AccordionItem value="accuracy-details" className="border-none">
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
-                          <p className="font-semibold">Technical Details</p>
-                          <p className="text-sm font-normal text-muted-foreground">
-                            Open this section for method metadata, fallback notes, and financial assumptions.
+                          <p className="flex items-center gap-2 font-semibold">
+                            Details
+                            <HelpTip>Method metadata, fallback notes, and financial assumptions.</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2611,10 +2471,10 @@ export default function App() {
               <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
                   <div>
-                    <h3 className="font-medium">Forecast Method Comparison</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Test each forecasting method against completed historical years ending in {evaluationYear}.
-                    </p>
+                    <h3 className="flex items-center gap-2 font-medium">
+                      Compare Methods
+                      <HelpTip>Tests forecasting methods against completed historical years ending in {evaluationYear}.</HelpTip>
+                    </h3>
                   </div>
                   <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between">
@@ -2631,23 +2491,25 @@ export default function App() {
 
               {!benchmarkResult ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run the comparison to see which forecast method best matches completed past years for this site.
+                  Compare methods against past years.
                 </div>
               ) : (
                 <>
                   <Alert>
-                    <AlertTitle>How the historical reference is built</AlertTitle>
-                    <AlertDescription>{benchmarkResult.reference_note}</AlertDescription>
+                    <AlertTitle className="flex items-center gap-2">
+                      Historical Reference
+                      <HelpTip>{benchmarkResult.reference_note}</HelpTip>
+                    </AlertTitle>
                   </Alert>
 
-                  <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+                  <div className="grid gap-4">
                     <Card className="border-primary/25 bg-primary/5">
                       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
-                          <CardTitle>Recommended Method For This Site</CardTitle>
-                          <CardDescription>
-                            Based on completed years {benchmarkWindowLabel} with the current system settings.
-                          </CardDescription>
+                          <CardTitle className="flex items-center gap-2">
+                            Recommended Method
+                            <HelpTip>Best fit across yearly error, monthly error, and bias for {benchmarkWindowLabel}.</HelpTip>
+                          </CardTitle>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="secondary">Window {benchmarkWindowLabel}</Badge>
                             <Badge variant="outline">{benchmarkTrainingWindowLabel}</Badge>
@@ -2658,11 +2520,6 @@ export default function App() {
                       <CardContent className="space-y-4">
                         <div>
                           <p className="text-3xl font-semibold tracking-tight">{recommendedBenchmark?.label ?? 'No recommendation yet'}</p>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {recommendedBenchmark
-                              ? `${recommendedBenchmark.label} ranked best across yearly error, monthly error, and bias.`
-                              : 'Run the comparison to generate a recommendation.'}
-                          </p>
                         </div>
                         {recommendedBenchmark ? (
                           <div className="grid gap-3 sm:grid-cols-3">
@@ -2685,20 +2542,6 @@ export default function App() {
                         ) : null}
                       </CardContent>
                     </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>How To Read This Comparison</CardTitle>
-                        <CardDescription>Every method uses the same system settings and the same PV conversion stack.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-3 text-sm text-muted-foreground">
-                          <li>Lower average yearly and monthly error means the method matched completed years more closely.</li>
-                          <li>Bias near 0 means the method is not consistently too high or too low.</li>
-                          <li>Backup logic means the model had to fall back to a simpler weather reference for one or more years.</li>
-                        </ul>
-                      </CardContent>
-                    </Card>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
@@ -2710,8 +2553,10 @@ export default function App() {
                         <CardHeader>
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <CardTitle>{getBenchmarkApproachLabel(approach.approach, approach.label)}</CardTitle>
-                              <CardDescription>{approach.description}</CardDescription>
+                              <CardTitle className="flex items-center gap-2">
+                                {getBenchmarkApproachLabel(approach.approach, approach.label)}
+                                <HelpTip>{approach.description}</HelpTip>
+                              </CardTitle>
                             </div>
                             {recommendedBenchmark?.id === approach.approach ? <Badge variant="secondary">Best overall</Badge> : null}
                           </div>
@@ -2732,8 +2577,10 @@ export default function App() {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Comparison Summary</CardTitle>
-                      <CardDescription>Lower error is better. Bias close to 0 is better.</CardDescription>
+                      <CardTitle className="flex items-center gap-2">
+                        Summary
+                        <HelpTip>Lower error is better. Bias close to 0 is better.</HelpTip>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <Table>
@@ -2774,8 +2621,10 @@ export default function App() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Historical Reference Vs Forecasts</CardTitle>
-                        <CardDescription>Compare each method's yearly estimate against the shared historical reference.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Reference vs Forecasts
+                          <HelpTip>Each method's yearly estimate compared with the shared historical reference.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[360px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2802,8 +2651,10 @@ export default function App() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Forecast Error Comparison</CardTitle>
-                        <CardDescription>Errors shown in kWh so the differences are easier to interpret.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Error Comparison
+                          <HelpTip>Errors are shown in kWh for easier comparison.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[360px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2827,9 +2678,9 @@ export default function App() {
                     <AccordionItem value="year-details" className="border-none">
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
-                          <p className="font-semibold">Advanced Year-By-Year Details</p>
-                          <p className="text-sm font-normal text-muted-foreground">
-                            Open this section for the per-year comparison, detailed bias, and backup-logic notes.
+                          <p className="flex items-center gap-2 font-semibold">
+                            Year Details
+                            <HelpTip>Per-year comparison, detailed bias, and backup notes.</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2874,33 +2725,32 @@ export default function App() {
             <TabsContent value="scenarios" className="space-y-6">
               {!forecastData ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run the base forecast first. That forecast defines the shared location, forecast approach, and tariff used for every system option.
+                  Run forecast first to compare options.
                 </div>
               ) : (
                 <>
                   <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                       <div>
-                        <h3 className="font-medium">System Options Comparison</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Same location, same forecast, same tariff. Only system design changes between options.
-                        </p>
+                        <h3 className="flex items-center gap-2 font-medium">
+                          Compare Options
+                          <HelpTip>Same location, forecast, and tariff. Only system design changes.</HelpTip>
+                        </h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">Base System included automatically</Badge>
+                        <Badge variant="secondary">Base included</Badge>
                         <Badge variant="outline">{comparisonRequestedModelLabel}</Badge>
                       </div>
                     </div>
-                    <p className="max-w-md text-sm text-muted-foreground">
-                      Use this tab to compare design tradeoffs quickly without changing the shared weather or pricing context.
-                    </p>
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Shared Comparison Context</CardTitle>
-                        <CardDescription>These assumptions stay fixed for every option when you run the comparison.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Shared Context
+                          <HelpTip>These assumptions stay fixed for every option.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
@@ -2924,35 +2774,31 @@ export default function App() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>What Changes Per Option</CardTitle>
-                        <CardDescription>Only these inputs change per option in this pass.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                          Option Inputs
+                          <HelpTip>Only name, panel area, tilt, AC capacity, and CAPEX change per option.</HelpTip>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <ul className="space-y-3 text-sm text-muted-foreground">
+                        <ul className="space-y-2 text-sm text-muted-foreground">
                           <li>Name</li>
                           <li>Panel area change</li>
                           <li>Tilt</li>
                           <li>AC capacity</li>
                           <li>CAPEX</li>
                         </ul>
-                        <p className="text-sm text-muted-foreground">
-                          Every other system setting inherits from Base System, including panel efficiency, cleanliness, shading, gamma, and NOCT.
-                        </p>
                       </CardContent>
                     </Card>
                   </div>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Add Option</CardTitle>
-                      <CardDescription>
-                        Change only the option-specific fields below. Everything else inherits from Base System.
-                      </CardDescription>
+                      <CardTitle className="flex items-center gap-2">
+                        Add Option
+                        <HelpTip>Everything not shown here inherits from Base System.</HelpTip>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Option-specific controls in this pass: name, panel area change, tilt, AC capacity, and CAPEX.
-                      </p>
                       <div className="flex flex-col items-end gap-4 md:flex-row">
                         <div className="min-w-[150px] flex-1 space-y-2">
                           <Label>Option Name</Label>
@@ -3004,9 +2850,6 @@ export default function App() {
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                           <h3 className="text-lg font-semibold">Configured Options</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Base System is added automatically when you run the comparison. The rows below are your alternative options.
-                          </p>
                         </div>
                         <div className="space-x-2">
                           <Button
@@ -3081,7 +2924,7 @@ export default function App() {
                     <Alert>
                       <AlertTitle>No saved options yet</AlertTitle>
                       <AlertDescription>
-                        Add at least one alternative option. Base System is included automatically when you run the comparison.
+                        Add one option. Base is included automatically.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -3098,20 +2941,25 @@ export default function App() {
                       <Card className="border-primary/25 bg-primary/5">
                         <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                           <div className="space-y-2">
-                            <CardTitle>{comparisonRecommendationTitle}</CardTitle>
-                            <CardDescription>Decision-first summary across Base System and every configured option.</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                              {comparisonRecommendationTitle}
+                              <HelpTip>Recommendation across Base System and configured options.</HelpTip>
+                            </CardTitle>
                             <div className="flex flex-wrap gap-2">
-                              <Badge variant="secondary">Base System stays visible as the reference</Badge>
+                              <Badge variant="secondary">Base reference</Badge>
                               {recommendedScenario ? <Badge variant="outline">Highlighted option: {recommendedScenario.label}</Badge> : null}
                             </div>
                           </div>
-                          {recommendedScenario ? <Badge className="w-fit">Decision-first summary</Badge> : null}
+                          {recommendedScenario ? <Badge className="w-fit">Recommended</Badge> : null}
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div>
                             <p className="text-3xl font-semibold tracking-tight">{recommendedScenario?.label ?? 'No recommendation yet'}</p>
-                            <p className="mt-2 text-sm text-muted-foreground">{comparisonRecommendationSummary}</p>
-                            <p className="mt-2 text-sm text-muted-foreground">{comparisonRecommendationDetail}</p>
+                            <div className="mt-2">
+                              <HelpTip>
+                                {comparisonRecommendationSummary} {comparisonRecommendationDetail}
+                              </HelpTip>
+                            </div>
                           </div>
                           {recommendedScenario ? (
                             <div className="grid gap-3 sm:grid-cols-4">
@@ -3198,11 +3046,11 @@ export default function App() {
                                   {recommendedScenario?.id === row.id ? <Badge variant="outline">Recommended</Badge> : null}
                                 </div>
                               </CardTitle>
-                              <CardDescription>
+                              <HelpTip>
                                 {row.isBaseline
                                   ? 'Reference option for every change shown below.'
                                   : 'Compared against Base System under the same forecast and tariff assumptions.'}
-                              </CardDescription>
+                              </HelpTip>
                             </CardHeader>
                             <CardContent className="space-y-3">
                               <div className="rounded-lg border bg-background/70 p-3">
@@ -3253,8 +3101,10 @@ export default function App() {
 
                       <Card>
                         <CardHeader>
-                          <CardTitle>Monthly Energy By Option</CardTitle>
-                          <CardDescription>Base System is the reference line. The recommended option is emphasized when it is not the base system.</CardDescription>
+                          <CardTitle className="flex items-center gap-2">
+                            Monthly Energy
+                            <HelpTip>Base System is the reference line. The recommended option is emphasized.</HelpTip>
+                          </CardTitle>
                         </CardHeader>
                         <CardContent className="h-[400px]">
                           <ResponsiveContainer width="100%" height="100%">
@@ -3288,8 +3138,10 @@ export default function App() {
 
                       <Card>
                         <CardHeader>
-                          <CardTitle>All Options At A Glance</CardTitle>
-                          <CardDescription>Positive energy and savings changes are better. Lower payback deltas are better.</CardDescription>
+                          <CardTitle className="flex items-center gap-2">
+                            All Options
+                            <HelpTip>Positive energy and savings changes are better. Lower payback deltas are better.</HelpTip>
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <Table>
@@ -3347,9 +3199,9 @@ export default function App() {
                         <AccordionItem value="scenario-details" className="border-none">
                           <AccordionTrigger className="py-4 text-left hover:no-underline">
                             <div>
-                              <p className="font-semibold">Technical Details</p>
-                              <p className="text-sm font-normal text-muted-foreground">
-                                Open this section for model metadata, weather reference details, and data-source notes.
+                              <p className="flex items-center gap-2 font-semibold">
+                                Details
+                                <HelpTip>Model metadata, weather reference details, and data-source notes.</HelpTip>
                               </p>
                             </div>
                           </AccordionTrigger>
