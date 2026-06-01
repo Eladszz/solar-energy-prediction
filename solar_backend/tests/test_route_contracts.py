@@ -469,7 +469,7 @@ def test_documented_yearly_path_works_without_redirect(*_mocks):
     return_value=build_accuracy_response(),
 )
 def test_documented_accuracy_path_works(_mock_evaluate):
-    response = client.post("/evaluation/accuracy", json=build_valid_payload())
+    response = client.post("/evaluation/accuracy", json=build_valid_payload(year=2025))
 
     assert response.status_code == 200
     assert response.json()["quality"] == "GOOD"
@@ -536,7 +536,7 @@ def test_yearly_returns_service_unavailable_for_rate_limit(_mock_profile):
     ),
 )
 def test_accuracy_returns_service_unavailable_for_upstream_outage(_mock_evaluate):
-    response = client.post("/evaluation/accuracy", json=build_valid_payload())
+    response = client.post("/evaluation/accuracy", json=build_valid_payload(year=2025))
 
     assert response.status_code == 503
     assert "temporarily unavailable" in response.json()["detail"]

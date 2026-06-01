@@ -14,7 +14,13 @@ router = APIRouter()
 @router.post("/accuracy", response_model=AccuracyEvaluationResponse)
 def evaluate_accuracy(req: AccuracyEvaluationRequest):
 
-    year = req.year or (pd.Timestamp.now().year - 1)
+    last_complete_year = pd.Timestamp.now().year - 1
+    year = req.year or last_complete_year
+    if year > last_complete_year:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Accuracy evaluation requires a completed year. Latest available year is {last_complete_year}.",
+        )
 
     try:
         return evaluate_yearly_accuracy(

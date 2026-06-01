@@ -10,10 +10,14 @@ from typing import Any
 import pandas as pd
 
 from app.config import config
+from app.services.external_service import ExternalServiceUnavailableError
 
 
 DEMO_FORECAST_START = pd.Timestamp("2026-06-21 00:00:00")
 DEMO_CATALOG_PATH = Path(__file__).resolve().parents[3] / "demo" / "catalog.json"
+DEMO_UNAVAILABLE_MESSAGE = (
+    "Demo mode is not available in this build. Run the system with live inputs instead."
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,13 @@ def is_demo_mode_enabled(requested_demo_mode: bool | None = None) -> bool:
 
 @lru_cache()
 def load_demo_catalog() -> dict[str, DemoScenario]:
+    if not DEMO_CATALOG_PATH.is_file():
+        raise ExternalServiceUnavailableError(
+            provider="Demo mode",
+            user_message=DEMO_UNAVAILABLE_MESSAGE,
+            detail="Demo catalog is not packaged with this build.",
+        )
+
     raw_payload = json.loads(DEMO_CATALOG_PATH.read_text())
     scenarios = {}
     for raw_scenario in raw_payload["scenarios"]:
@@ -52,6 +63,13 @@ def load_demo_catalog() -> dict[str, DemoScenario]:
 
 @lru_cache()
 def get_default_demo_scenario_id() -> str:
+    if not DEMO_CATALOG_PATH.is_file():
+        raise ExternalServiceUnavailableError(
+            provider="Demo mode",
+            user_message=DEMO_UNAVAILABLE_MESSAGE,
+            detail="Demo catalog is not packaged with this build.",
+        )
+
     raw_payload = json.loads(DEMO_CATALOG_PATH.read_text())
     return str(raw_payload["default_scenario_id"])
 

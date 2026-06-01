@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from app.config import config
@@ -15,6 +16,7 @@ from app.routers import (
 )
 from loguru import logger
 from app.logging_conf import configure_logging
+from app.validation import validation_exception_handler
 
 FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "solar_frontend" / "dist"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
@@ -41,6 +43,7 @@ app = FastAPI(
 
 configure_logging()
 logger.info("Logging is configured.")
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 def _parse_cors_allow_origins(raw_value: str) -> list[str]:

@@ -25,8 +25,11 @@ from app.routers import (
     simulate_router,
     yearly_forecast_router,
 )
+from app.validation import validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 
 api_app = FastAPI()
+api_app.add_exception_handler(RequestValidationError, validation_exception_handler)
 api_app.include_router(health_router.router)
 api_app.include_router(simulate_router.router, prefix="/simulate")
 api_app.include_router(yearly_forecast_router.router, prefix="/forecast/yearly")
@@ -423,6 +426,29 @@ class TestRequestModels:
         errors = exc_info.value.errors()
         assert any(error["loc"][-1] == "unexpected_field" for error in errors)
 
+    def test_request_models_reject_non_finite_numbers(self):
+        payload = build_valid_payload(panel_area=float("inf"))
+
+        with pytest.raises(ValidationError) as exc_info:
+            BasePVRequest(**payload)
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"][-1] == "panel_area" for error in errors)
+
+    def test_scenario_comparison_limits_number_of_scenarios(self):
+        payload = build_valid_comparison_payload(
+            scenarios=[
+                build_valid_comparison_scenario(name=f"Variant {index}")
+                for index in range(21)
+            ]
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            ScenarioComparisonRequest(**payload)
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"][-1] == "scenarios" for error in errors)
+
 
 class TestApiValidation:
     @patch("app.routers.simulate_router.estimate_energy_value", return_value=12.5)
@@ -474,10 +500,20 @@ class TestApiValidation:
         return_value=build_accuracy_response(),
     )
     def test_accuracy_accepts_valid_payload(self, _mock_evaluate):
-        response = client.post("/evaluation/accuracy", json=build_valid_payload())
+        response = client.post("/evaluation/accuracy", json=build_valid_payload(year=2025))
 
         assert response.status_code == 200
         assert response.json()["quality"] == "GOOD"
+
+    @patch(
+        "app.routers.accuracy_router.evaluate_yearly_accuracy",
+        side_effect=AssertionError("Business logic should not run for future accuracy years"),
+    )
+    def test_accuracy_rejects_future_actual_year(self, _mock_evaluate):
+        response = client.post("/evaluation/accuracy", json=build_valid_payload(year=2100))
+
+        assert response.status_code == 422
+        assert "completed year" in response.json()["detail"]
 
     @patch(
         "app.routers.benchmark_router.evaluate_forecast_benchmark",
@@ -498,6 +534,34 @@ class TestApiValidation:
 
         assert response.status_code == 200
         assert len(response.json()["results"]) == 1
+
+    def test_api_rejects_raw_infinity_before_business_logic(self):
+        raw_payload = (
+            '{"latitude":32.08,"longitude":34.78,'
+            '"panel_area":Infinity,"ac_capacity_kw":15.0}'
+        )
+        with patch(
+            "app.routers.simulate_router.get_weather_forecast",
+            side_effect=AssertionError("Business logic should not run for invalid payloads"),
+        ):
+            response = client.post(
+                "/simulate",
+                content=raw_payload,
+                headers={"content-type": "application/json"},
+            )
+
+        assert_validation_error(response, "panel_area")
+
+    def test_demo_mode_returns_controlled_error_when_catalog_is_absent(self):
+        response = client.post(
+            "/simulate",
+            json=build_valid_payload(demo_mode=True),
+        )
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == (
+            "Demo mode is not available in this build. Run the system with live inputs instead."
+        )
 
     @pytest.mark.parametrize(
         ("path", "payload", "field_name", "patch_target"),
