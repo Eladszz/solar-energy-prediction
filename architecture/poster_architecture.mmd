@@ -1,0 +1,68 @@
+flowchart LR
+  user([User])
+
+  subgraph ds["Data Sources"]
+    weather["Open-Meteo Forecast API"]
+    archive["Open-Meteo Archive API"]
+    pv["PV System Parameters"]
+    geo["Map / Geolocation Input"]
+  end
+
+  subgraph pre["Data Preprocessing"]
+    validation["Request Validation"]
+    weather_profile["Weather Profile Builder"]
+    cleaning["Missing-Value Handling"]
+    features["Time Features & Year Alignment"]
+    losses["Cleanliness / Shading Loss Factor"]
+  end
+
+  subgraph models["Forecasting Models"]
+    physical["Physical PV Simulation"]
+    ml["ML Weather Forecast\nRidge Regression"]
+    naive["Naive Climatology\nBenchmark"]
+  end
+
+  subgraph eval["Evaluation & Business Metrics"]
+    energy["Hourly, Monthly & Yearly kWh"]
+    accuracy["MAPE, MAE & Bias"]
+    finance["Tariff Value, Savings & Payback"]
+    compare["Scenario Comparison"]
+  end
+
+  subgraph api["FastAPI Backend"]
+    routes["REST Routers\n/simulate, /forecast/yearly,\n/scenarios, /evaluation"]
+    services["Service Layer\nweather, yearly, simulation,\nML, accuracy, benchmark, finance"]
+  end
+
+  subgraph ui["Web Dashboard"]
+    react["React / Vite UI"]
+    charts["Charts, Tables & KPI Cards"]
+    map["Map-Based Roof Area Selection"]
+  end
+
+  user --> react
+  react --> routes
+  routes --> services
+  services --> validation
+  weather --> weather_profile
+  archive --> weather_profile
+  pv --> validation
+  geo --> validation
+  validation --> weather_profile
+  weather_profile --> cleaning
+  cleaning --> features
+  features --> losses
+  losses --> physical
+  features --> ml
+  features --> naive
+  ml --> physical
+  naive --> physical
+  physical --> energy
+  energy --> accuracy
+  energy --> finance
+  energy --> compare
+  accuracy --> charts
+  finance --> charts
+  compare --> charts
+  charts --> react
+  map --> react

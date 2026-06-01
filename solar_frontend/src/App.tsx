@@ -61,17 +61,356 @@ const DEFAULT_SIDEBAR_WIDTH = 368;
 const MIN_SIDEBAR_WIDTH = 304;
 const MAX_SIDEBAR_WIDTH = 560;
 const COLLAPSED_SIDEBAR_WIDTH = 72;
+type Language = 'en' | 'he';
 const FORECAST_APPROACH_COPY: Record<
+  Language,
+  Record<
   ModelType,
   { label: string; shortLabel: string }
+  >
 > = {
-  physical: {
-    label: 'Physics-based forecast',
-    shortLabel: 'Physics-based',
+  en: {
+    physical: {
+      label: 'Physics-based forecast',
+      shortLabel: 'Physics-based',
+    },
+    ml: {
+      label: 'History-based forecast',
+      shortLabel: 'History-based',
+    },
   },
-  ml: {
-    label: 'History-based forecast',
-    shortLabel: 'History-based',
+  he: {
+    physical: {
+      label: 'תחזית פיזיקלית',
+      shortLabel: 'פיזיקלית',
+    },
+    ml: {
+      label: 'תחזית מבוססת היסטוריה',
+      shortLabel: 'מבוססת היסטוריה',
+    },
+  },
+};
+
+const UI_COPY: Record<Language, Record<string, string>> = {
+  en: {
+    languageButton: 'עברית',
+    themeToggle: 'Toggle theme',
+    appTitle: 'Solar Forecast',
+    appSubtitle: 'Estimate production, savings, and payback for one site.',
+    controls: 'Controls',
+    location: 'Location',
+    city: 'City',
+    chooseCity: 'Choose city',
+    customMapPoint: 'Custom map point',
+    address: 'Address',
+    addressHelp: 'Search a full street address for a more accurate site location.',
+    addressPlaceholder: 'Street, city, country',
+    find: 'Find',
+    selectedAddress: 'Selected Address',
+    noAddress: 'No address selected yet.',
+    systemParameters: 'System Parameters',
+    forecastYear: 'Forecast Year',
+    forecastYearHelp: 'The year to estimate solar production for.',
+    panelArea: 'Panel Area (m²)',
+    panelAreaHelp: 'Total panel surface. Draw on the map to estimate it automatically.',
+    acCapacity: 'AC Capacity (kW)',
+    acCapacityHelp: 'Maximum inverter output delivered as AC power.',
+    approach: 'Approach',
+    approachHelp: 'Physics uses panel and weather assumptions. History learns from past production patterns.',
+    learningYears: 'Learning Years',
+    learningYearsHelp: 'More years gives a steadier forecast. Fewer years reacts more to recent patterns.',
+    advanced: 'Advanced',
+    panelEfficiency: 'Panel Efficiency',
+    panelEfficiencyHelp: 'Percentage of sunlight converted into electricity.',
+    tilt: 'Tilt (°)',
+    tiltHelp: 'Panel angle relative to flat ground.',
+    cleanliness: 'Cleanliness',
+    cleanlinessHelp: 'Adjusts energy loss from dust, dirt, or snow.',
+    shading: 'Shading',
+    shadingHelp: 'Adjusts energy loss from nearby shadows.',
+    temperatureCoefficient: 'Temperature Coefficient',
+    temperatureCoefficientHelp: 'How quickly panel efficiency drops as temperature rises.',
+    noct: 'NOCT (°C)',
+    noctHelp: 'Nominal cell temperature under standard operating conditions.',
+    financial: 'Financial',
+    tariff: 'Tariff',
+    tariffHelp: 'Price per kWh used to estimate value and savings.',
+    currency: 'Currency',
+    currencyHelp: 'Currency for financial estimates.',
+    capex: 'CAPEX',
+    capexHelp: 'System cost used for savings and payback.',
+    runForecast: 'Run Forecast',
+    running: 'Running...',
+    expandSidebar: 'Expand sidebar',
+    minimizeSidebar: 'Minimize sidebar',
+    resizeSidebar: 'Resize sidebar',
+    chooseLocation: 'Choose Location',
+    tabOverview: 'Overview',
+    tabDay: 'Day',
+    tabAccuracy: 'Accuracy',
+    tabMethods: 'Methods',
+    tabOptions: 'Options',
+    emptyOverview: 'Choose a location, then run forecast.',
+    summary: 'Summary',
+    summaryHelp: 'Yearly production, savings, and simple payback from the current inputs.',
+    keyResults: 'Key Results',
+    yearlyEnergy: 'Yearly Energy',
+    annualSavings: 'Annual Savings',
+    simplePayback: 'Simple Payback',
+    context: 'Context',
+    contextHelp: 'Inputs and assumptions used for this forecast.',
+    performance: 'Performance',
+    performanceHelp: 'Supporting production metrics for benchmarking.',
+    specificYield: 'Specific Yield',
+    averageDailyEnergy: 'Average Daily Energy',
+    monthlyEnergyForecast: 'Monthly Energy Forecast',
+    monthlyValue: 'Monthly Value',
+    monthlyValueHelp: 'Estimated money by month using the current tariff.',
+    seasonalSplit: 'Seasonal Split',
+    seasonalSplitHelp: 'Shows where annual output is concentrated across the year.',
+    details: 'Details',
+    overviewDetailsHelp: 'Method, data source, and financial assumptions.',
+    dayEmpty: 'Run forecast to see hourly output.',
+    daySummary: 'Day Summary',
+    daySummaryHelp: 'Expected production, value, and peak power for the simulated day.',
+    dailyEnergy: 'Daily Energy',
+    dailyValue: 'Daily Value',
+    peakPower: 'Peak Power',
+    peakHour: 'Peak Hour',
+    systemLosses: 'System Losses',
+    hourlyPower: 'Hourly Power',
+    hourlyPowerHelp: 'Local-time AC output for the simulated day.',
+    dayDetailsHelp: 'Raw loss, source, and forecast context fields.',
+    accuracyTitle: 'Accuracy Check',
+    accuracyTitleHelp: 'Tests the selected forecast approach on a completed year.',
+    runAccuracy: 'Run Accuracy',
+    accuracyEmpty: 'Run accuracy to compare forecast vs archive.',
+    takeaway: 'Takeaway',
+    takeawayHelp: 'Lower error is better. Positive bias means overprediction; negative bias means underprediction.',
+    accuracyRating: 'Accuracy rating',
+    avgMonthlyMiss: 'Avg monthly miss',
+    yearlyMiss: 'Yearly miss',
+    bias: 'Bias',
+    actualVsForecast: 'Actual vs Forecast',
+    actualVsForecastHelp: 'Archive is the reference. Forecast shows what the selected method would have produced.',
+    methodApproach: 'Approach',
+    weatherReference: 'Weather Reference',
+    dataSource: 'Data Source',
+    monthlyForecastVsActual: 'Monthly Forecast vs Actual Energy',
+    monthlyError: 'Monthly Error',
+    monthlyErrorHelp: 'Positive means the forecast was too high. Negative means it was too low.',
+    accuracyDetailsHelp: 'Method metadata, fallback notes, and financial assumptions.',
+    compareMethods: 'Compare Methods',
+    compareMethodsHelpPrefix: 'Tests forecasting methods against completed historical years ending in',
+    comparisonWindow: 'Comparison Window (years)',
+    compareForecastMethods: 'Compare Methods',
+    methodsEmpty: 'Compare methods against past years.',
+    historicalReference: 'Historical Reference',
+    recommendedMethod: 'Recommended Method',
+    recommendedMethodHelp: 'Best fit across yearly error, monthly error, and bias.',
+    bestOverall: 'Best overall',
+    avgYearlyError: 'Avg yearly error',
+    avgMonthlyError: 'Avg monthly error',
+    averageBias: 'Average bias',
+    methodSummaryHelp: 'Lower error is better. Bias close to 0 is better.',
+    referenceVsForecasts: 'Reference vs Forecasts',
+    referenceVsForecastsHelp: "Each method's yearly estimate compared with the shared historical reference.",
+    errorComparison: 'Error Comparison',
+    errorComparisonHelp: 'Errors are shown in kWh for easier comparison.',
+    yearDetails: 'Year Details',
+    yearDetailsHelp: 'Per-year comparison, detailed bias, and backup notes.',
+    optionsEmpty: 'Run forecast first to compare options.',
+    compareOptions: 'Compare Options',
+    compareOptionsHelp: 'Same location, forecast, and tariff. Only system design changes.',
+    baseIncluded: 'Base included',
+    sharedContext: 'Shared Context',
+    sharedContextHelp: 'These assumptions stay fixed for every option.',
+    optionInputs: 'Option Inputs',
+    optionInputsHelp: 'Only name, panel area, tilt, AC capacity, and CAPEX change per option.',
+    name: 'Name',
+    panelAreaChange: 'Panel area change',
+    acCapacityShort: 'AC capacity',
+    addOption: 'Add Option',
+    addOptionHelp: 'Everything not shown here inherits from Base System.',
+    optionName: 'Option Name',
+    optionTilt: 'Option Tilt (°)',
+    optionCapex: 'Option CAPEX',
+    configuredOptions: 'Configured Options',
+    clearAll: 'Clear All',
+    compareSystemOptions: 'Compare Options',
+    noSavedOptions: 'No saved options yet',
+    noSavedOptionsHelp: 'Add one option. Base is included automatically.',
+    recommended: 'Recommended',
+    baseReference: 'Base reference',
+    highlightedOption: 'Highlighted option',
+    bestPayback: 'Best Payback',
+    highestSavings: 'Highest Savings',
+    mostEnergy: 'Most Energy',
+    monthlyEnergy: 'Monthly Energy',
+    monthlyEnergyHelp: 'Base System is the reference line. The recommended option is emphasized.',
+    allOptions: 'All Options',
+    allOptionsHelp: 'Positive energy and savings changes are better. Lower payback deltas are better.',
+    optionsDetailsHelp: 'Model metadata, weather reference details, and data-source notes.',
+  },
+  he: {
+    languageButton: 'English',
+    themeToggle: 'החלפת מצב תצוגה',
+    appTitle: 'תחזית סולארית',
+    appSubtitle: 'הערכת ייצור, חיסכון והחזר השקעה לאתר אחד.',
+    controls: 'בקרה',
+    location: 'מיקום',
+    city: 'עיר',
+    chooseCity: 'בחר עיר',
+    customMapPoint: 'נקודה במפה',
+    address: 'כתובת',
+    addressHelp: 'חיפוש כתובת מלאה נותן מיקום מדויק יותר.',
+    addressPlaceholder: 'רחוב, עיר, מדינה',
+    find: 'חפש',
+    selectedAddress: 'כתובת נבחרת',
+    noAddress: 'עדיין לא נבחרה כתובת.',
+    systemParameters: 'פרטי מערכת',
+    forecastYear: 'שנת תחזית',
+    forecastYearHelp: 'השנה שעבורה מחשבים ייצור סולארי.',
+    panelArea: 'שטח פאנלים (מ״ר)',
+    panelAreaHelp: 'שטח הפאנלים הכולל. אפשר לסמן על המפה כדי להעריך אוטומטית.',
+    acCapacity: 'הספק AC (kW)',
+    acCapacityHelp: 'הספק היציאה המרבי של הממיר.',
+    approach: 'שיטה',
+    approachHelp: 'פיזיקלית משתמשת בנתוני פאנלים ומזג אוויר. היסטורית לומדת מדפוסי עבר.',
+    learningYears: 'שנות למידה',
+    learningYearsHelp: 'יותר שנים נותנות תחזית יציבה יותר. פחות שנים מגיבות יותר לדפוסים אחרונים.',
+    advanced: 'מתקדם',
+    panelEfficiency: 'יעילות פאנלים',
+    panelEfficiencyHelp: 'אחוז אור השמש שהפאנלים ממירים לחשמל.',
+    tilt: 'זווית (°)',
+    tiltHelp: 'זווית הפאנלים ביחס לקרקע שטוחה.',
+    cleanliness: 'ניקיון',
+    cleanlinessHelp: 'התאמת איבוד אנרגיה מאבק, לכלוך או שלג.',
+    shading: 'הצללה',
+    shadingHelp: 'התאמת איבוד אנרגיה מצללים סמוכים.',
+    temperatureCoefficient: 'מקדם טמפרטורה',
+    temperatureCoefficientHelp: 'קצב ירידת יעילות הפאנלים כשהטמפרטורה עולה.',
+    noct: 'NOCT (°C)',
+    noctHelp: 'טמפרטורת תא נומינלית בתנאי עבודה סטנדרטיים.',
+    financial: 'כספים',
+    tariff: 'תעריף',
+    tariffHelp: 'מחיר לקוט״ש לחישוב ערך וחיסכון.',
+    currency: 'מטבע',
+    currencyHelp: 'המטבע לחישובים כספיים.',
+    capex: 'עלות מערכת',
+    capexHelp: 'עלות המערכת לחישוב חיסכון והחזר.',
+    runForecast: 'הרץ תחזית',
+    running: 'רץ...',
+    expandSidebar: 'הרחב תפריט',
+    minimizeSidebar: 'מזער תפריט',
+    resizeSidebar: 'שנה רוחב תפריט',
+    chooseLocation: 'בחר מיקום',
+    tabOverview: 'סקירה',
+    tabDay: 'יום',
+    tabAccuracy: 'דיוק',
+    tabMethods: 'שיטות',
+    tabOptions: 'אפשרויות',
+    emptyOverview: 'בחר מיקום ואז הרץ תחזית.',
+    summary: 'סיכום',
+    summaryHelp: 'ייצור שנתי, חיסכון והחזר השקעה לפי הקלט הנוכחי.',
+    keyResults: 'תוצאות מרכזיות',
+    yearlyEnergy: 'אנרגיה שנתית',
+    annualSavings: 'חיסכון שנתי',
+    simplePayback: 'החזר השקעה',
+    context: 'הקשר',
+    contextHelp: 'קלטים והנחות ששימשו לתחזית.',
+    performance: 'ביצועים',
+    performanceHelp: 'מדדי ייצור תומכים להשוואה.',
+    specificYield: 'תפוקה סגולית',
+    averageDailyEnergy: 'אנרגיה יומית ממוצעת',
+    monthlyEnergyForecast: 'תחזית אנרגיה חודשית',
+    monthlyValue: 'ערך חודשי',
+    monthlyValueHelp: 'הערכת כסף לפי חודש על בסיס התעריף הנוכחי.',
+    seasonalSplit: 'חלוקה עונתית',
+    seasonalSplitHelp: 'מראה איפה הייצור השנתי מרוכז לאורך השנה.',
+    details: 'פרטים',
+    overviewDetailsHelp: 'שיטה, מקור נתונים והנחות כספיות.',
+    dayEmpty: 'הרץ תחזית כדי לראות תפוקה שעתית.',
+    daySummary: 'סיכום יום',
+    daySummaryHelp: 'ייצור, ערך ושיא הספק ביום המדומה.',
+    dailyEnergy: 'אנרגיה יומית',
+    dailyValue: 'ערך יומי',
+    peakPower: 'שיא הספק',
+    peakHour: 'שעת שיא',
+    systemLosses: 'איבודי מערכת',
+    hourlyPower: 'הספק שעתי',
+    hourlyPowerHelp: 'תפוקת AC לפי זמן מקומי ביום המדומה.',
+    dayDetailsHelp: 'איבוד גולמי, מקור ושדות הקשר לתחזית.',
+    accuracyTitle: 'בדיקת דיוק',
+    accuracyTitleHelp: 'בודק את שיטת התחזית על שנה שהסתיימה.',
+    runAccuracy: 'בדוק דיוק',
+    accuracyEmpty: 'הרץ בדיקת דיוק כדי להשוות תחזית מול ארכיון.',
+    takeaway: 'מסקנה',
+    takeawayHelp: 'שגיאה נמוכה יותר טובה יותר. הטיה חיובית היא הערכת יתר; שלילית היא הערכת חסר.',
+    accuracyRating: 'דירוג דיוק',
+    avgMonthlyMiss: 'פספוס חודשי ממוצע',
+    yearlyMiss: 'פספוס שנתי',
+    bias: 'הטיה',
+    actualVsForecast: 'בפועל מול תחזית',
+    actualVsForecastHelp: 'הארכיון הוא הייחוס. התחזית מראה מה השיטה הייתה מפיקה.',
+    methodApproach: 'שיטה',
+    weatherReference: 'ייחוס מזג אוויר',
+    dataSource: 'מקור נתונים',
+    monthlyForecastVsActual: 'תחזית מול בפועל לפי חודש',
+    monthlyError: 'שגיאה חודשית',
+    monthlyErrorHelp: 'חיובי אומר שהתחזית הייתה גבוהה מדי. שלילי אומר נמוכה מדי.',
+    accuracyDetailsHelp: 'מטא-דאטה של השיטה, הערות גיבוי והנחות כספיות.',
+    compareMethods: 'השוואת שיטות',
+    compareMethodsHelpPrefix: 'בודק שיטות תחזית מול שנים היסטוריות שהסתיימו עד',
+    comparisonWindow: 'חלון השוואה (שנים)',
+    compareForecastMethods: 'השווה שיטות',
+    methodsEmpty: 'השווה שיטות מול שנים קודמות.',
+    historicalReference: 'ייחוס היסטורי',
+    recommendedMethod: 'שיטה מומלצת',
+    recommendedMethodHelp: 'ההתאמה הטובה ביותר לפי שגיאה שנתית, שגיאה חודשית והטיה.',
+    bestOverall: 'הטובה ביותר',
+    avgYearlyError: 'שגיאה שנתית ממוצעת',
+    avgMonthlyError: 'שגיאה חודשית ממוצעת',
+    averageBias: 'הטיה ממוצעת',
+    methodSummaryHelp: 'שגיאה נמוכה יותר טובה יותר. הטיה קרובה ל-0 טובה יותר.',
+    referenceVsForecasts: 'ייחוס מול תחזיות',
+    referenceVsForecastsHelp: 'הערכת כל שיטה מול הייחוס ההיסטורי המשותף.',
+    errorComparison: 'השוואת שגיאות',
+    errorComparisonHelp: 'השגיאות מוצגות בקוט״ש להשוואה נוחה.',
+    yearDetails: 'פירוט שנים',
+    yearDetailsHelp: 'השוואה לפי שנה, הטיה מפורטת והערות גיבוי.',
+    optionsEmpty: 'הרץ תחזית כדי להשוות אפשרויות.',
+    compareOptions: 'השוואת אפשרויות',
+    compareOptionsHelp: 'אותו מיקום, תחזית ותעריף. רק עיצוב המערכת משתנה.',
+    baseIncluded: 'בסיס כלול',
+    sharedContext: 'הקשר משותף',
+    sharedContextHelp: 'ההנחות האלה קבועות לכל האפשרויות.',
+    optionInputs: 'קלטי אפשרות',
+    optionInputsHelp: 'רק שם, שטח פאנלים, זווית, הספק AC ועלות משתנים לכל אפשרות.',
+    name: 'שם',
+    panelAreaChange: 'שינוי שטח פאנלים',
+    acCapacityShort: 'הספק AC',
+    addOption: 'הוסף אפשרות',
+    addOptionHelp: 'כל מה שלא מוצג כאן יורש ממערכת הבסיס.',
+    optionName: 'שם אפשרות',
+    optionTilt: 'זווית אפשרות (°)',
+    optionCapex: 'עלות אפשרות',
+    configuredOptions: 'אפשרויות מוגדרות',
+    clearAll: 'נקה הכל',
+    compareSystemOptions: 'השווה אפשרויות',
+    noSavedOptions: 'אין אפשרויות שמורות',
+    noSavedOptionsHelp: 'הוסף אפשרות אחת. הבסיס כלול אוטומטית.',
+    recommended: 'מומלץ',
+    baseReference: 'בסיס להשוואה',
+    highlightedOption: 'אפשרות מודגשת',
+    bestPayback: 'החזר הטוב ביותר',
+    highestSavings: 'החיסכון הגבוה ביותר',
+    mostEnergy: 'הכי הרבה אנרגיה',
+    monthlyEnergy: 'אנרגיה חודשית',
+    monthlyEnergyHelp: 'מערכת הבסיס היא קו הייחוס. האפשרות המומלצת מודגשת.',
+    allOptions: 'כל האפשרויות',
+    allOptionsHelp: 'שינוי חיובי באנרגיה ובחיסכון טוב יותר. דלתא החזר נמוכה יותר טובה יותר.',
+    optionsDetailsHelp: 'מטא-דאטה של המודל, ייחוס מזג אוויר והערות מקור נתונים.',
   },
 };
 
@@ -135,21 +474,21 @@ type ScenarioOptionRow = {
 type ScenarioRecommendationMode = 'payback' | 'savings';
 
 const PREDEFINED_LOCATIONS = [
-  { id: 'telaviv', label: 'Tel Aviv, Israel', lat: 32.0853, lng: 34.7818 },
-  { id: 'newyork', label: 'New York, USA', lat: 40.7128, lng: -74.006 },
-  { id: 'london', label: 'London, UK', lat: 51.5074, lng: -0.1278 },
-  { id: 'tokyo', label: 'Tokyo, Japan', lat: 35.6762, lng: 139.6503 },
-  { id: 'sydney', label: 'Sydney, Australia', lat: -33.8688, lng: 151.2093 },
-  { id: 'berlin', label: 'Berlin, Germany', lat: 52.52, lng: 13.405 },
-  { id: 'paris', label: 'Paris, France', lat: 48.8566, lng: 2.3522 },
-  { id: 'sanfrancisco', label: 'San Francisco, USA', lat: 37.7749, lng: -122.4194 },
+  { id: 'telaviv', label: 'Tel Aviv, Israel', labelHe: 'תל אביב, ישראל', lat: 32.0853, lng: 34.7818 },
+  { id: 'newyork', label: 'New York, USA', labelHe: 'ניו יורק, ארה״ב', lat: 40.7128, lng: -74.006 },
+  { id: 'london', label: 'London, UK', labelHe: 'לונדון, בריטניה', lat: 51.5074, lng: -0.1278 },
+  { id: 'tokyo', label: 'Tokyo, Japan', labelHe: 'טוקיו, יפן', lat: 35.6762, lng: 139.6503 },
+  { id: 'sydney', label: 'Sydney, Australia', labelHe: 'סידני, אוסטרליה', lat: -33.8688, lng: 151.2093 },
+  { id: 'berlin', label: 'Berlin, Germany', labelHe: 'ברלין, גרמניה', lat: 52.52, lng: 13.405 },
+  { id: 'paris', label: 'Paris, France', labelHe: 'פריז, צרפת', lat: 48.8566, lng: 2.3522 },
+  { id: 'sanfrancisco', label: 'San Francisco, USA', labelHe: 'סן פרנסיסקו, ארה״ב', lat: 37.7749, lng: -122.4194 },
 ];
 
-function formatPaybackYears(paybackYears: number | null | undefined): string {
+function formatPaybackYears(paybackYears: number | null | undefined, language: Language = 'en'): string {
   if (paybackYears == null || Number.isNaN(paybackYears)) {
-    return 'Not viable';
+    return language === 'he' ? 'לא כדאי' : 'Not viable';
   }
-  return `${formatReadableNumber(paybackYears, 1)} years`;
+  return language === 'he' ? `${formatReadableNumber(paybackYears, 1)} שנים` : `${formatReadableNumber(paybackYears, 1)} years`;
 }
 
 function formatHourlyLabel(value: string, fallbackIndex: number): string {
@@ -360,28 +699,31 @@ function formatSignedNumber(value: number | string | undefined, digits = 1): str
   return formatted;
 }
 
-function getForecastApproachLabel(modelType: ModelType): string {
-  return FORECAST_APPROACH_COPY[modelType].label;
+function getForecastApproachLabel(modelType: ModelType, language: Language = 'en'): string {
+  return FORECAST_APPROACH_COPY[language][modelType].label;
 }
 
-function getForecastApproachShortLabel(modelType: ModelType): string {
-  return FORECAST_APPROACH_COPY[modelType].shortLabel;
+function getForecastApproachShortLabel(modelType: ModelType, language: Language = 'en'): string {
+  return FORECAST_APPROACH_COPY[language][modelType].shortLabel;
 }
 
-function getBenchmarkApproachLabel(approachType: BenchmarkApproachType, fallbackLabel: string): string {
+function getBenchmarkApproachLabel(approachType: BenchmarkApproachType, fallbackLabel: string, language: Language = 'en'): string {
   if (approachType === 'physical' || approachType === 'ml') {
-    return getForecastApproachLabel(approachType);
+    return getForecastApproachLabel(approachType, language);
   }
   return fallbackLabel;
 }
 
-function formatLearningYearsUsed(years: number[] | undefined): string {
-  return years && years.length > 0 ? years.join(', ') : 'Not used';
+function formatLearningYearsUsed(years: number[] | undefined, language: Language = 'en'): string {
+  return years && years.length > 0 ? years.join(', ') : language === 'he' ? 'לא בשימוש' : 'Not used';
 }
 
-function describeBiasDirection(biasPercent: number): string {
+function describeBiasDirection(biasPercent: number, language: Language = 'en'): string {
   if (!Number.isFinite(biasPercent) || Math.abs(biasPercent) < 1) {
-    return 'Bias is close to neutral';
+    return language === 'he' ? 'ההטיה כמעט ניטרלית' : 'Bias is close to neutral';
+  }
+  if (language === 'he') {
+    return biasPercent > 0 ? 'נוטה להערכת יתר' : 'נוטה להערכת חסר';
   }
   return biasPercent > 0 ? 'Tends to overpredict' : 'Tends to underpredict';
 }
@@ -407,14 +749,18 @@ function buildBenchmarkRankMap(
   );
 }
 
-function getAccuracyQualityDescription(quality: AccuracyQuality): string {
+function getAccuracyQualityDescription(quality: AccuracyQuality, language: Language = 'en'): string {
   if (quality === 'EXCELLENT') {
-    return 'Monthly error stayed under 10%.';
+    return language === 'he' ? 'השגיאה החודשית נשארה מתחת ל-10%.' : 'Monthly error stayed under 10%.';
   }
   if (quality === 'GOOD') {
-    return 'Monthly error stayed under 25%, but there is still noticeable spread month to month.';
+    return language === 'he'
+      ? 'השגיאה החודשית נשארה מתחת ל-25%, אך עדיין יש שונות בין חודשים.'
+      : 'Monthly error stayed under 25%, but there is still noticeable spread month to month.';
   }
-  return 'Monthly error reached 25% or more, so the forecast should be used with caution.';
+  return language === 'he'
+    ? 'השגיאה החודשית הגיעה ל-25% או יותר, לכן כדאי להשתמש בתחזית בזהירות.'
+    : 'Monthly error reached 25% or more, so the forecast should be used with caution.';
 }
 
 function getAccuracyQualityClassName(quality: AccuracyQuality): string {
@@ -427,9 +773,28 @@ function getAccuracyQualityClassName(quality: AccuracyQuality): string {
   return 'text-rose-600';
 }
 
-function buildAccuracyTakeaway(quality: AccuracyQuality, biasPercent: number): { headline: string; description: string } {
-  const biasDirection = describeBiasDirection(biasPercent);
+function buildAccuracyTakeaway(quality: AccuracyQuality, biasPercent: number, language: Language = 'en'): { headline: string; description: string } {
+  const biasDirection = describeBiasDirection(biasPercent, language);
   const biasDirectionLower = biasDirection.toLowerCase();
+
+  if (language === 'he') {
+    if (quality === 'EXCELLENT') {
+      return {
+        headline: 'השיטה התאימה היטב לשנה שנבחרה',
+        description: Math.abs(biasPercent) < 5 ? 'הפספוסים החודשיים והשנתיים היו נמוכים.' : biasDirection,
+      };
+    }
+    if (quality === 'GOOD') {
+      return {
+        headline: 'השיטה שימושית, אך יש תנודות חודשיות',
+        description: biasDirection,
+      };
+    }
+    return {
+      headline: 'השיטה התקשתה בשנה שנבחרה',
+      description: biasDirection,
+    };
+  }
 
   if (quality === 'EXCELLENT') {
     return {
@@ -460,11 +825,11 @@ function buildAccuracyTakeaway(quality: AccuracyQuality, biasPercent: number): {
   };
 }
 
-function formatPaybackDelta(actual: number | null | undefined, predicted: number | null | undefined): string {
+function formatPaybackDelta(actual: number | null | undefined, predicted: number | null | undefined, language: Language = 'en'): string {
   if (actual == null || predicted == null || Number.isNaN(actual) || Number.isNaN(predicted)) {
-    return 'Not comparable';
+    return language === 'he' ? 'לא ניתן להשוואה' : 'Not comparable';
   }
-  return `${formatSignedNumber(predicted - actual, 1)} years`;
+  return language === 'he' ? `${formatSignedNumber(predicted - actual, 1)} שנים` : `${formatSignedNumber(predicted - actual, 1)} years`;
 }
 
 function formatCurrencyAmount(value: number | string | undefined, currency: CurrencyCode | string, digits = 1): string {
@@ -488,8 +853,11 @@ function getDeltaToneClass(value: number | null | undefined, positiveIsGood = tr
   return isGood ? 'text-emerald-600' : 'text-rose-600';
 }
 
-function formatWeatherReferenceLabel(weatherReferenceYear: number | null | undefined): string {
-  return weatherReferenceYear == null ? 'Model-generated weather profile' : `Archived weather from ${weatherReferenceYear}`;
+function formatWeatherReferenceLabel(weatherReferenceYear: number | null | undefined, language: Language = 'en'): string {
+  if (weatherReferenceYear == null) {
+    return language === 'he' ? 'פרופיל מזג אוויר שנוצר במודל' : 'Model-generated weather profile';
+  }
+  return language === 'he' ? `מזג אוויר מארכיון ${weatherReferenceYear}` : `Archived weather from ${weatherReferenceYear}`;
 }
 
 function selectScenarioRecommendation(
@@ -567,6 +935,7 @@ function LocationMarker({
   clearShapes,
   isDrawingRef,
   setSelectedLocationId,
+  markerLabel,
 }: {
   position: MapPosition | null;
   setPosition: (value: MapPosition) => void;
@@ -574,6 +943,7 @@ function LocationMarker({
   clearShapes: () => void;
   isDrawingRef: MutableRefObject<boolean>;
   setSelectedLocationId: (value: string) => void;
+  markerLabel: string;
 }) {
   useMapEvents({
     click(event) {
@@ -598,7 +968,7 @@ function LocationMarker({
 
   return (
     <Marker position={position}>
-      <Popup>Selected Location</Popup>
+      <Popup>{markerLabel}</Popup>
     </Marker>
   );
 }
@@ -608,6 +978,7 @@ export default function App() {
   const lastCompleteYear = currentYear - 1;
 
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [language, setLanguage] = useState<Language>('en');
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [position, setPosition] = useState<MapPosition | null>(null);
   const [detectedAddress, setDetectedAddress] = useState<string | null>(null);
@@ -652,12 +1023,19 @@ export default function App() {
   const featureGroupRef = useRef<L.FeatureGroup | null>(null);
   const isDrawingRef = useRef(false);
   const sidebarResizeStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const text = UI_COPY[language];
+  const isHebrew = language === 'he';
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === 'he' ? 'rtl' : 'ltr';
+  }, [language]);
 
   useEffect(() => {
     if (!isSidebarResizing) {
@@ -972,9 +1350,9 @@ export default function App() {
     ? benchmarkResult.evaluation_years.map((year) => {
         const row: Record<string, string | number> = { year: String(year) };
         const actualReference = benchmarkResult.approaches[0]?.yearly_results.find((result) => result.year === year);
-        row['Historical reference'] = actualReference?.actual_yearly_kwh ?? 0;
+        row[text.historicalReference] = actualReference?.actual_yearly_kwh ?? 0;
         benchmarkResult.approaches.forEach((approach) => {
-          const displayLabel = getBenchmarkApproachLabel(approach.approach, approach.label);
+          const displayLabel = getBenchmarkApproachLabel(approach.approach, approach.label, language);
           row[displayLabel] = approach.yearly_results.find((result) => result.year === year)?.predicted_yearly_kwh ?? 0;
         });
         return row;
@@ -983,17 +1361,17 @@ export default function App() {
 
   const benchmarkMetricChartData = benchmarkResult
     ? benchmarkResult.approaches.map((approach) => ({
-        approach: getBenchmarkApproachLabel(approach.approach, approach.label),
-        'Avg monthly error (kWh)': approach.metrics.monthly_mae_kwh,
-        'Avg yearly error (kWh)': approach.metrics.yearly_mae_kwh,
-        'Average bias (kWh)': approach.metrics.bias_kwh,
+        approach: getBenchmarkApproachLabel(approach.approach, approach.label, language),
+        [text.avgMonthlyError]: approach.metrics.monthly_mae_kwh,
+        [text.avgYearlyError]: approach.metrics.yearly_mae_kwh,
+        [text.averageBias]: approach.metrics.bias_kwh,
       }))
     : [];
 
   const benchmarkSummaryRows: BenchmarkSummaryRow[] = benchmarkResult
     ? benchmarkResult.approaches.map((approach) => ({
         id: approach.approach,
-        label: getBenchmarkApproachLabel(approach.approach, approach.label),
+        label: getBenchmarkApproachLabel(approach.approach, approach.label, language),
         monthlyMape: approach.metrics.monthly_mape_percent,
         monthlyMaeKwh: approach.metrics.monthly_mae_kwh,
         yearlyMape: approach.metrics.yearly_mape_percent,
@@ -1003,7 +1381,7 @@ export default function App() {
         absBiasPercent: Math.abs(approach.metrics.bias_percent),
         fallbackCount: approach.fallback_years.length,
         fallbackSummary: formatFallbackSummary(approach.fallback_years),
-        biasDirection: describeBiasDirection(approach.metrics.bias_percent),
+        biasDirection: describeBiasDirection(approach.metrics.bias_percent, language),
       }))
     : [];
 
@@ -1047,48 +1425,53 @@ export default function App() {
   const benchmarkWindowStart = benchmarkResult?.evaluation_years[0] ?? Math.max(2000, evaluationYear - benchmarkYears + 1);
   const benchmarkWindowEnd = benchmarkResult?.evaluation_years[benchmarkResult.evaluation_years.length - 1] ?? evaluationYear;
   const benchmarkWindowLabel = benchmarkWindowStart === benchmarkWindowEnd ? String(benchmarkWindowEnd) : `${benchmarkWindowStart}-${benchmarkWindowEnd}`;
-  const benchmarkTrainingWindowLabel = `Using ${benchmarkResult?.training_window_years ?? trainingYears} past years for learning`;
+  const benchmarkTrainingWindowLabel = isHebrew
+    ? `משתמש ב-${benchmarkResult?.training_window_years ?? trainingYears} שנות למידה`
+    : `Using ${benchmarkResult?.training_window_years ?? trainingYears} past years for learning`;
+  const accuracyForecastKey = isHebrew ? 'תחזית' : 'Forecast';
+  const accuracyActualKey = isHebrew ? 'בפועל' : 'Actual';
+  const accuracyErrorKey = isHebrew ? 'שגיאת תחזית (kWh)' : 'Forecast error (kWh)';
   const accuracyMonthlyEnergyChartData = accuracyResult
     ? MONTH_NAMES.map((month, index) => ({
         name: month,
-        Forecast: accuracyResult.predicted_monthly_kwh[index] ?? 0,
-        Actual: accuracyResult.actual_monthly_kwh[index] ?? 0,
+        [accuracyForecastKey]: accuracyResult.predicted_monthly_kwh[index] ?? 0,
+        [accuracyActualKey]: accuracyResult.actual_monthly_kwh[index] ?? 0,
       }))
     : [];
   const accuracyMonthlyErrorChartData = accuracyResult
     ? MONTH_NAMES.map((month, index) => ({
         name: month,
-        'Forecast error (kWh)': Number(
+        [accuracyErrorKey]: Number(
           ((accuracyResult.predicted_monthly_kwh[index] ?? 0) - (accuracyResult.actual_monthly_kwh[index] ?? 0)).toFixed(1),
         ),
       }))
     : [];
   const accuracyTakeaway = accuracyResult
-    ? buildAccuracyTakeaway(accuracyResult.quality, accuracyResult.bias_percent)
+    ? buildAccuracyTakeaway(accuracyResult.quality, accuracyResult.bias_percent, language)
     : null;
-  const accuracyQualityDescription = accuracyResult ? getAccuracyQualityDescription(accuracyResult.quality) : '';
+  const accuracyQualityDescription = accuracyResult ? getAccuracyQualityDescription(accuracyResult.quality, language) : '';
   const accuracyQualityClassName = accuracyResult ? getAccuracyQualityClassName(accuracyResult.quality) : 'text-foreground';
-  const accuracyBiasDirection = accuracyResult ? describeBiasDirection(accuracyResult.bias_percent) : 'Bias is close to neutral';
-  const selectedForecastApproachLabel = getForecastApproachLabel(modelType);
+  const accuracyBiasDirection = accuracyResult ? describeBiasDirection(accuracyResult.bias_percent, language) : describeBiasDirection(0, language);
+  const selectedForecastApproachLabel = getForecastApproachLabel(modelType, language);
   const accuracyMethodLabel = accuracyResult
-    ? getForecastApproachLabel(accuracyResult.model_type_used)
+    ? getForecastApproachLabel(accuracyResult.model_type_used, language)
     : selectedForecastApproachLabel;
   const accuracyWeatherBasisLabel = accuracyResult
-    ? formatWeatherReferenceLabel(accuracyResult.weather_reference_year)
-    : 'Not available';
+    ? formatWeatherReferenceLabel(accuracyResult.weather_reference_year, language)
+    : isHebrew ? 'לא זמין' : 'Not available';
   const accuracyTrainingYearsLabel = accuracyResult
-    ? formatLearningYearsUsed(accuracyResult.training_years_used)
-    : 'Not available';
+    ? formatLearningYearsUsed(accuracyResult.training_years_used, language)
+    : isHebrew ? 'לא זמין' : 'Not available';
   const accuracyComparisonRows = accuracyResult
     ? [
         {
-          metric: 'Yearly energy',
+          metric: text.yearlyEnergy,
           actual: `${formatSidebarNumber(accuracyResult.actual_yearly_kwh)} kWh`,
           forecast: `${formatSidebarNumber(accuracyResult.predicted_yearly_kwh)} kWh`,
           difference: `${formatSignedNumber(accuracyResult.bias_kwh)} kWh (${formatSignedNumber(accuracyResult.bias_percent, 2)}%)`,
         },
         {
-          metric: 'Annual savings',
+          metric: text.annualSavings,
           actual: `${formatSidebarNumber(accuracyResult.actual_annual_savings)} ${accuracyResult.financial_assumptions.currency}`,
           forecast: `${formatSidebarNumber(accuracyResult.predicted_annual_savings)} ${accuracyResult.financial_assumptions.currency}`,
           difference: `${formatSignedNumber(
@@ -1096,12 +1479,13 @@ export default function App() {
           )} ${accuracyResult.financial_assumptions.currency}`,
         },
         {
-          metric: 'Simple payback',
-          actual: formatPaybackYears(accuracyResult.actual_simple_payback_years),
-          forecast: formatPaybackYears(accuracyResult.predicted_simple_payback_years),
+          metric: text.simplePayback,
+          actual: formatPaybackYears(accuracyResult.actual_simple_payback_years, language),
+          forecast: formatPaybackYears(accuracyResult.predicted_simple_payback_years, language),
           difference: formatPaybackDelta(
             accuracyResult.actual_simple_payback_years,
             accuracyResult.predicted_simple_payback_years,
+            language,
           ),
         },
       ]
@@ -1109,20 +1493,20 @@ export default function App() {
   const currentBasePayload = buildPayload();
   const comparisonRequestedModelLabel = selectedForecastApproachLabel;
   const comparisonModelLabel = comparisonResult
-    ? getForecastApproachLabel(comparisonResult.model_type_used)
+    ? getForecastApproachLabel(comparisonResult.model_type_used, language)
     : comparisonRequestedModelLabel;
   const comparisonWeatherBasisLabel = comparisonResult
-    ? formatWeatherReferenceLabel(comparisonResult.weather_reference_year)
+    ? formatWeatherReferenceLabel(comparisonResult.weather_reference_year, language)
     : forecastData
-      ? formatWeatherReferenceLabel(forecastData.weather_reference_year)
-      : 'Resolved when you run comparison';
+      ? formatWeatherReferenceLabel(forecastData.weather_reference_year, language)
+      : isHebrew ? 'יוגדר בהרצת ההשוואה' : 'Resolved when you run comparison';
   const comparisonSharedContextRows = [
-    { label: 'Forecast year', value: String(currentBasePayload.year) },
-    { label: 'Forecast approach', value: comparisonModelLabel },
-    { label: 'Weather reference', value: comparisonWeatherBasisLabel },
-    { label: 'Tariff', value: `${formatSidebarNumber(currentBasePayload.electricity_price_per_kwh, 2)} ${currency}/kWh` },
+    { label: text.forecastYear, value: String(currentBasePayload.year) },
+    { label: text.approach, value: comparisonModelLabel },
+    { label: text.weatherReference, value: comparisonWeatherBasisLabel },
+    { label: text.tariff, value: `${formatSidebarNumber(currentBasePayload.electricity_price_per_kwh, 2)} ${currency}/kWh` },
     {
-      label: 'Base system reference',
+      label: isHebrew ? 'מערכת בסיס' : 'Base system reference',
       value:
         `${formatSidebarNumber(currentBasePayload.panel_area)} m² · ` +
         `${formatSidebarNumber(currentBasePayload.tilt)}° · ` +
@@ -1130,7 +1514,7 @@ export default function App() {
         `${formatCurrencyAmount(currentBasePayload.system_capex, currency, 0)}`,
     },
     {
-      label: 'Inherited settings',
+      label: isHebrew ? 'הגדרות בירושה' : 'Inherited settings',
       value:
         `${formatSidebarNumber(currentBasePayload.panel_efficiency * 100, 0)}% efficiency · ` +
         `${cleanliness} cleanliness · ` +
@@ -1174,7 +1558,9 @@ export default function App() {
     ? comparisonOptionRows.findIndex((row) => row.id === recommendedScenario.id)
     : -1;
   const comparisonRecommendationTitle =
-    recommendedScenarioSelection.mode === 'payback' ? 'Recommended Option' : 'Best Savings Option';
+    recommendedScenarioSelection.mode === 'payback'
+      ? isHebrew ? 'אפשרות מומלצת' : 'Recommended Option'
+      : isHebrew ? 'אפשרות החיסכון הטובה ביותר' : 'Best Savings Option';
   const bestPaybackScenario = comparisonOptionRows
     .filter((row) => row.simplePaybackYears != null && Number.isFinite(row.simplePaybackYears))
     .reduce<ScenarioOptionRow | null>((best, current) => {
@@ -1198,19 +1584,38 @@ export default function App() {
   const comparisonRecommendationSummary = recommendedScenario
     ? recommendedScenarioSelection.mode === 'payback'
       ? recommendedScenario.isBaseline
-        ? 'Base System still offers the shortest simple payback under the shared forecast assumptions.'
-        : `${recommendedScenario.label} offers the shortest simple payback under the shared forecast assumptions.`
+        ? isHebrew
+          ? 'מערכת הבסיס עדיין נותנת את החזר ההשקעה הקצר ביותר.'
+          : 'Base System still offers the shortest simple payback under the shared forecast assumptions.'
+        : isHebrew
+          ? `${recommendedScenario.label} נותנת את החזר ההשקעה הקצר ביותר.`
+          : `${recommendedScenario.label} offers the shortest simple payback under the shared forecast assumptions.`
       : recommendedScenario.isBaseline
-        ? 'No option has a viable simple payback, and Base System still produces the highest annual savings.'
-        : `No option has a viable simple payback, so the recommendation falls back to the highest annual savings.`
-    : 'Run the option comparison to generate a recommendation.';
+        ? isHebrew
+          ? 'לאף אפשרות אין החזר כדאי, ומערכת הבסיס עדיין נותנת את החיסכון השנתי הגבוה ביותר.'
+          : 'No option has a viable simple payback, and Base System still produces the highest annual savings.'
+        : isHebrew
+          ? 'לאף אפשרות אין החזר כדאי, לכן ההמלצה עוברת לחיסכון השנתי הגבוה ביותר.'
+          : `No option has a viable simple payback, so the recommendation falls back to the highest annual savings.`
+    : isHebrew ? 'הרץ השוואת אפשרויות כדי לקבל המלצה.' : 'Run the option comparison to generate a recommendation.';
   const comparisonRecommendationDetail = recommendedScenario
     ? recommendedScenario.isBaseline
-      ? `Base System remains the reference option with ${formatSidebarNumber(recommendedScenario.yearlyKwh)} kWh/year, ${formatCurrencyAmount(
+      ? `${isHebrew ? 'מערכת הבסיס נשארת אפשרות הייחוס עם' : 'Base System remains the reference option with'} ${formatSidebarNumber(recommendedScenario.yearlyKwh)} kWh/${isHebrew ? 'שנה' : 'year'}, ${formatCurrencyAmount(
           recommendedScenario.annualSavings,
           recommendedScenario.currency,
-        )} in annual savings, and ${formatPaybackYears(recommendedScenario.simplePaybackYears)} simple payback.`
-      : `${recommendedScenario.label} changes yearly energy by ${formatSignedNumber(
+        )} ${isHebrew ? 'חיסכון שנתי, והחזר' : 'in annual savings, and'} ${formatPaybackYears(recommendedScenario.simplePaybackYears, language)}${isHebrew ? '.' : ' simple payback.'}`
+      : isHebrew
+        ? `${recommendedScenario.label} משנה את האנרגיה השנתית ב-${formatSignedNumber(
+            recommendedScenario.energyDeltaKwh,
+          )} kWh, את החיסכון השנתי ב-${formatSignedCurrency(
+            recommendedScenario.savingsDeltaValue,
+            recommendedScenario.currency,
+          )}, ו${
+            recommendedScenario.paybackDeltaYears == null
+              ? 'לא נותנת דלתא החזר ניתנת להשוואה'
+              : `משנה את ההחזר ב-${formatSignedNumber(recommendedScenario.paybackDeltaYears, 1)} שנים`
+          } מול מערכת הבסיס.`
+        : `${recommendedScenario.label} changes yearly energy by ${formatSignedNumber(
           recommendedScenario.energyDeltaKwh,
         )} kWh, annual savings by ${formatSignedCurrency(
           recommendedScenario.savingsDeltaValue,
@@ -1220,39 +1625,39 @@ export default function App() {
             ? 'does not deliver a comparable simple payback under the current CAPEX/tariff assumptions'
             : `shifts payback by ${formatSignedNumber(recommendedScenario.paybackDeltaYears, 1)} years`
         } versus Base System.`
-    : 'Add at least one alternative option to compare against Base System.';
+    : isHebrew ? 'הוסף לפחות אפשרות אחת להשוואה מול מערכת הבסיס.' : 'Add at least one alternative option to compare against Base System.';
   const comparisonTechnicalRows = comparisonResult
     ? [
         {
-          field: 'Requested forecast approach',
-          value: getForecastApproachLabel(comparisonResult.model_type_requested),
+          field: isHebrew ? 'שיטה מבוקשת' : 'Requested forecast approach',
+          value: getForecastApproachLabel(comparisonResult.model_type_requested, language),
         },
         {
-          field: 'Forecast approach used',
-          value: getForecastApproachLabel(comparisonResult.model_type_used),
+          field: isHebrew ? 'שיטה בפועל' : 'Forecast approach used',
+          value: getForecastApproachLabel(comparisonResult.model_type_used, language),
         },
         {
-          field: 'Weather reference used',
-          value: formatWeatherReferenceLabel(comparisonResult.weather_reference_year),
+          field: isHebrew ? 'ייחוס מזג אוויר' : 'Weather reference used',
+          value: formatWeatherReferenceLabel(comparisonResult.weather_reference_year, language),
         },
         {
-          field: 'Past years used for learning',
-          value: formatLearningYearsUsed(comparisonResult.training_years_used),
+          field: text.learningYears,
+          value: formatLearningYearsUsed(comparisonResult.training_years_used, language),
         },
         {
-          field: 'Backup forecast note',
-          value: comparisonResult.fallback_reason || 'No backup forecast method used',
+          field: isHebrew ? 'הערת גיבוי' : 'Backup forecast note',
+          value: comparisonResult.fallback_reason || (isHebrew ? 'לא הופעלה שיטת גיבוי' : 'No backup forecast method used'),
         },
-        { field: 'Data source', value: comparisonResult.data_source },
+        { field: text.dataSource, value: comparisonResult.data_source },
       ]
     : [];
   const locationSummary = position
     ? detectedAddress || `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`
-    : 'Choose a city, search an address, or click the map.';
+    : isHebrew ? 'בחר עיר, חפש כתובת או לחץ על המפה.' : 'Choose a city, search an address, or click the map.';
   const systemSummary =
     `${formatSidebarNumber(panelArea)} m² · ` +
     `${formatSidebarNumber(acCapacityKw)} kW · ` +
-    `${getForecastApproachShortLabel(modelType)}`;
+    `${getForecastApproachShortLabel(modelType, language)}`;
   const financialSummary = `${formatSidebarNumber(electricityPrice, 2)} ${currency}/kWh · CAPEX ${formatSidebarNumber(systemCapex)} ${currency}`;
   const overviewSummaryText = forecastData
     ? `${formatReadableKwh(
@@ -1262,28 +1667,30 @@ export default function App() {
         forecastData.financial_assumptions.currency,
       )}/year · ${
         forecastData.simple_payback_years == null
-          ? 'No viable payback'
-          : `${formatReadableNumber(forecastData.simple_payback_years, 1)} year payback`
+          ? isHebrew ? 'אין החזר כדאי' : 'No viable payback'
+          : isHebrew
+            ? `החזר תוך ${formatReadableNumber(forecastData.simple_payback_years, 1)} שנים`
+            : `${formatReadableNumber(forecastData.simple_payback_years, 1)} year payback`
       }`
     : '';
   const overviewContextRows = forecastData
     ? [
-        { label: 'Forecast year', value: String(forecastData.forecast_year) },
-        { label: 'Forecast approach used', value: getForecastApproachLabel(forecastData.model_type_used) },
-        { label: 'Weather reference', value: formatWeatherReferenceLabel(forecastData.weather_reference_year) },
+        { label: text.forecastYear, value: String(forecastData.forecast_year) },
+        { label: text.methodApproach, value: getForecastApproachLabel(forecastData.model_type_used, language) },
+        { label: text.weatherReference, value: formatWeatherReferenceLabel(forecastData.weather_reference_year, language) },
         {
-          label: 'Tariff assumption',
+          label: text.tariff,
           value: `${formatReadableNumber(forecastData.financial_assumptions.electricity_price_per_kwh, 2)} ${forecastData.financial_assumptions.currency}/kWh`,
         },
         {
-          label: 'System CAPEX',
+          label: text.capex,
           value: formatReadableCurrency(forecastData.financial_assumptions.system_capex, forecastData.financial_assumptions.currency),
         },
         ...(forecastData.training_years_used.length > 0
           ? [
               {
-                label: 'Past years used for learning',
-                value: formatLearningYearsUsed(forecastData.training_years_used),
+                label: text.learningYears,
+                value: formatLearningYearsUsed(forecastData.training_years_used, language),
               },
             ]
           : []),
@@ -1320,18 +1727,18 @@ export default function App() {
     : [];
   const overviewTechnicalRows = forecastData
     ? [
-        { field: 'Requested forecast approach', value: getForecastApproachLabel(forecastData.model_type_requested) },
-        { field: 'Forecast approach used', value: getForecastApproachLabel(forecastData.model_type_used) },
-        { field: 'Weather reference', value: formatWeatherReferenceLabel(forecastData.weather_reference_year) },
-        { field: 'Data source', value: forecastData.data_source },
-        { field: 'Valuation basis', value: forecastData.financial_assumptions.valuation_basis },
-        { field: 'Annual savings basis', value: forecastData.financial_assumptions.annual_savings_basis },
-        { field: 'Payback basis', value: forecastData.financial_assumptions.payback_basis },
+        { field: isHebrew ? 'שיטה מבוקשת' : 'Requested forecast approach', value: getForecastApproachLabel(forecastData.model_type_requested, language) },
+        { field: isHebrew ? 'שיטה בפועל' : 'Forecast approach used', value: getForecastApproachLabel(forecastData.model_type_used, language) },
+        { field: text.weatherReference, value: formatWeatherReferenceLabel(forecastData.weather_reference_year, language) },
+        { field: text.dataSource, value: forecastData.data_source },
+        { field: isHebrew ? 'בסיס הערכה' : 'Valuation basis', value: forecastData.financial_assumptions.valuation_basis },
+        { field: isHebrew ? 'בסיס חיסכון שנתי' : 'Annual savings basis', value: forecastData.financial_assumptions.annual_savings_basis },
+        { field: isHebrew ? 'בסיס החזר' : 'Payback basis', value: forecastData.financial_assumptions.payback_basis },
         ...(forecastData.training_years_used.length > 0
           ? [
               {
-                field: 'Past years used for learning',
-                value: formatLearningYearsUsed(forecastData.training_years_used),
+                field: text.learningYears,
+                value: formatLearningYearsUsed(forecastData.training_years_used, language),
               },
             ]
           : []),
@@ -1339,7 +1746,7 @@ export default function App() {
     : [];
   const dailySimulationDateLabel = dailySimulation
     ? formatSimulationDateLabel(dailySimulation.hourly_time[0] ?? '')
-    : 'Not available';
+    : isHebrew ? 'לא זמין' : 'Not available';
   const dailyPeakPower = dailySimulation && dailySimulation.hourly_ac_kw.length > 0 ? Math.max(...dailySimulation.hourly_ac_kw) : null;
   const dailyPeakIndex =
     dailySimulation && dailyPeakPower != null
@@ -1348,7 +1755,7 @@ export default function App() {
   const dailyPeakHourLabel =
     dailySimulation && dailyPeakIndex >= 0
       ? formatHourlyLabel(dailySimulation.hourly_time[dailyPeakIndex], dailyPeakIndex)
-      : 'Not available';
+      : isHebrew ? 'לא זמין' : 'Not available';
   const dailyLossPercent = dailySimulation ? Math.max(0, (1 - dailySimulation.system_loss_factor) * 100) : null;
   const dailySummaryText = dailySimulation
     ? `${dailySimulationDateLabel} · ${formatReadableKwh(
@@ -1368,15 +1775,15 @@ export default function App() {
     : [];
   const dailyTechnicalRows = dailySimulation
     ? [
-        { field: 'Simulated day', value: dailySimulationDateLabel },
-        { field: 'Raw system loss factor', value: formatReadableNumber(dailySimulation.system_loss_factor, 3) },
+        { field: isHebrew ? 'יום מדומה' : 'Simulated day', value: dailySimulationDateLabel },
+        { field: isHebrew ? 'מקדם איבוד גולמי' : 'Raw system loss factor', value: formatReadableNumber(dailySimulation.system_loss_factor, 3) },
         {
-          field: 'Location coordinates',
+          field: isHebrew ? 'קואורדינטות מיקום' : 'Location coordinates',
           value: `${formatReadableNumber(dailySimulation.location[0], 4)}, ${formatReadableNumber(dailySimulation.location[1], 4)}`,
         },
-        { field: 'Timezone', value: dailySimulation.timezone },
-        { field: 'Data source', value: dailySimulation.data_source },
-        { field: 'Valuation basis', value: dailySimulation.financial_assumptions.valuation_basis },
+        { field: isHebrew ? 'אזור זמן' : 'Timezone', value: dailySimulation.timezone },
+        { field: text.dataSource, value: dailySimulation.data_source },
+        { field: isHebrew ? 'בסיס הערכה' : 'Valuation basis', value: dailySimulation.financial_assumptions.valuation_basis },
       ]
     : [];
   const sidebarStyle = {
@@ -1384,21 +1791,32 @@ export default function App() {
   } as CSSProperties;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground" dir={isHebrew ? 'rtl' : 'ltr'}>
       <header className="border-b bg-card">
         <div className="flex w-full items-start justify-between gap-6 px-6 py-6 md:px-8 md:py-8">
           <div className="min-w-0 flex-1">
             <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
               <Sun className="h-8 w-8 shrink-0 text-yellow-500 sm:h-10 sm:w-10 lg:h-12 lg:w-12" />
-              <span>Solar Forecast</span>
+              <span>{text.appTitle}</span>
             </h1>
             <p className="mt-3 max-w-4xl text-sm text-muted-foreground sm:text-base">
-              Estimate production, savings, and payback for one site.
+              {text.appSubtitle}
             </p>
           </div>
-          <Button variant="outline" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" onClick={() => setLanguage(isHebrew ? 'en' : 'he')}>
+              {text.languageButton}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              aria-label={text.themeToggle}
+              title={text.themeToggle}
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -1414,27 +1832,27 @@ export default function App() {
                 size="icon"
                 className="shrink-0"
                 onClick={() => setSidebarCollapsed(false)}
-                aria-label="Expand sidebar"
-                title="Expand sidebar"
+                aria-label={text.expandSidebar}
+                title={text.expandSidebar}
               >
                 <PanelLeftOpen className="h-4 w-4" />
               </Button>
               <div className="min-w-0 md:pt-2 md:[writing-mode:vertical-rl]">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Controls</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{text.controls}</p>
               </div>
             </div>
           ) : (
             <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto p-4">
               <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">Controls</p>
+                  <p className="text-sm font-semibold">{text.controls}</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSidebarCollapsed(true)}
-                  aria-label="Minimize sidebar"
-                  title="Minimize sidebar"
+                  aria-label={text.minimizeSidebar}
+                  title={text.minimizeSidebar}
                 >
                   <PanelLeftClose className="h-4 w-4" />
                 </Button>
@@ -1447,7 +1865,7 @@ export default function App() {
                         <MapPin className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">Location</p>
+                        <p className="text-sm font-semibold">{text.location}</p>
                         <p className="mt-1 max-w-full break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
                           {locationSummary}
                         </p>
@@ -1456,7 +1874,7 @@ export default function App() {
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4 pb-3">
                     <div className="space-y-2">
-                      <Label>City</Label>
+                      <Label>{text.city}</Label>
                       <Select
                         value={selectedLocationId}
                         onValueChange={(value) => {
@@ -1465,46 +1883,46 @@ export default function App() {
                             const selected = PREDEFINED_LOCATIONS.find((location) => location.id === value);
                             if (selected) {
                               setPosition({ lat: selected.lat, lng: selected.lng });
-                              setDetectedAddress(selected.label);
+                              setDetectedAddress(isHebrew ? selected.labelHe : selected.label);
                               clearShapes();
                             }
                           }
                         }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Choose city" />
+                          <SelectValue placeholder={text.chooseCity} />
                         </SelectTrigger>
                         <SelectContent>
                           {PREDEFINED_LOCATIONS.map((location) => (
                             <SelectItem key={location.id} value={location.id}>
-                              {location.label}
+                              {isHebrew ? location.labelHe : location.label}
                             </SelectItem>
                           ))}
-                          <SelectItem value="custom">Custom map point</SelectItem>
+                          <SelectItem value="custom">{text.customMapPoint}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="rounded-xl border border-dashed border-border/70 bg-muted/25 p-3">
                       <div className="flex items-center gap-2">
-                        <Label>Address</Label>
-                        <HelpTip>Search a full street address for a more accurate site location.</HelpTip>
+                        <Label>{text.address}</Label>
+                        <HelpTip>{text.addressHelp}</HelpTip>
                       </div>
                       <div className="mt-3 flex gap-2">
                         <Input
-                          placeholder="Street, city, country"
+                          placeholder={text.addressPlaceholder}
                           value={searchQuery}
                           onChange={(event) => setSearchQuery(event.target.value)}
                           onKeyDown={(event) => event.key === 'Enter' && handleSearchLocation()}
                         />
                         <Button variant="secondary" onClick={handleSearchLocation} disabled={isSearching}>
-                          {isSearching ? '...' : 'Find'}
+                          {isSearching ? '...' : text.find}
                         </Button>
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-muted-foreground">Selected Address</Label>
+                      <Label className="text-muted-foreground">{text.selectedAddress}</Label>
                       {detectedAddress ? (
                         <Alert className="mt-2 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20">
                           <AlertDescription className="max-h-24 overflow-y-auto break-words text-sm [overflow-wrap:anywhere]">
@@ -1512,7 +1930,7 @@ export default function App() {
                           </AlertDescription>
                         </Alert>
                       ) : (
-                        <p className="mt-2 text-sm text-muted-foreground">No address selected yet.</p>
+                        <p className="mt-2 text-sm text-muted-foreground">{text.noAddress}</p>
                       )}
                     </div>
                   </AccordionContent>
@@ -1525,7 +1943,7 @@ export default function App() {
                         <Settings className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">System Parameters</p>
+                        <p className="text-sm font-semibold">{text.systemParameters}</p>
                         <p className="mt-1 truncate text-xs text-muted-foreground">{systemSummary}</p>
                       </div>
                     </div>
@@ -1533,34 +1951,32 @@ export default function App() {
                   <AccordionContent className="space-y-4 pb-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Forecast Year</Label>
-                        <HelpTip>The year to estimate solar production for.</HelpTip>
+                        <Label>{text.forecastYear}</Label>
+                        <HelpTip>{text.forecastYearHelp}</HelpTip>
                       </div>
                       <Input type="number" value={forecastYear} onChange={(event) => setForecastYear(event.target.value)} />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Panel Area (m²)</Label>
-                        <HelpTip>Total panel surface. Draw on the map to estimate it automatically.</HelpTip>
+                        <Label>{text.panelArea}</Label>
+                        <HelpTip>{text.panelAreaHelp}</HelpTip>
                       </div>
                       <Input type="number" value={panelArea} onChange={(event) => setPanelArea(event.target.value)} />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>AC Capacity (kW)</Label>
-                        <HelpTip>Maximum inverter output delivered as AC power.</HelpTip>
+                        <Label>{text.acCapacity}</Label>
+                        <HelpTip>{text.acCapacityHelp}</HelpTip>
                       </div>
                       <Input type="number" value={acCapacityKw} onChange={(event) => setAcCapacityKw(event.target.value)} />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Approach</Label>
-                        <HelpTip>
-                          Physics uses panel and weather assumptions. History learns from past production patterns.
-                        </HelpTip>
+                        <Label>{text.approach}</Label>
+                        <HelpTip>{text.approachHelp}</HelpTip>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         {(['physical', 'ml'] as const).map((approach) => {
@@ -1581,7 +1997,7 @@ export default function App() {
                             >
                               <div className="space-y-2">
                                 <div className="flex items-start justify-between gap-2">
-                                  <span className="font-medium">{getForecastApproachShortLabel(approach)}</span>
+                                  <span className="font-medium">{getForecastApproachShortLabel(approach, language)}</span>
                                 </div>
                               </div>
                             </button>
@@ -1595,8 +2011,8 @@ export default function App() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="flex items-center gap-2">
-                              <Label>Learning Years</Label>
-                              <HelpTip>More years gives a steadier forecast. Fewer years reacts more to recent patterns.</HelpTip>
+                              <Label>{text.learningYears}</Label>
+                              <HelpTip>{text.learningYearsHelp}</HelpTip>
                             </div>
                           </div>
                           <span className="text-sm text-muted-foreground">{trainingYears}</span>
@@ -1615,15 +2031,15 @@ export default function App() {
                       <AccordionItem value="advanced-system" className="border-none">
                         <AccordionTrigger className="py-3 hover:no-underline">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium">Advanced</p>
+                            <p className="text-sm font-medium">{text.advanced}</p>
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-4 pb-3">
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <div className="flex items-center gap-2">
-                                <Label>Panel Efficiency</Label>
-                                <HelpTip>Percentage of sunlight converted into electricity.</HelpTip>
+                                <Label>{text.panelEfficiency}</Label>
+                                <HelpTip>{text.panelEfficiencyHelp}</HelpTip>
                               </div>
                               <span className="text-sm text-muted-foreground">{panelEfficiency.toFixed(2)}</span>
                             </div>
@@ -1633,8 +2049,8 @@ export default function App() {
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <div className="flex items-center gap-2">
-                                <Label>Tilt (°)</Label>
-                                <HelpTip>Panel angle relative to flat ground.</HelpTip>
+                                <Label>{text.tilt}</Label>
+                                <HelpTip>{text.tiltHelp}</HelpTip>
                               </div>
                               <span className="text-sm text-muted-foreground">{tilt}</span>
                             </div>
@@ -1643,8 +2059,8 @@ export default function App() {
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>Cleanliness</Label>
-                              <HelpTip>Adjusts energy loss from dust, dirt, or snow.</HelpTip>
+                              <Label>{text.cleanliness}</Label>
+                              <HelpTip>{text.cleanlinessHelp}</HelpTip>
                             </div>
                             <Select value={cleanliness} onValueChange={(value) => setCleanliness(value as CleanlinessLevel)}>
                               <SelectTrigger>
@@ -1660,8 +2076,8 @@ export default function App() {
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>Shading</Label>
-                              <HelpTip>Adjusts energy loss from nearby shadows.</HelpTip>
+                              <Label>{text.shading}</Label>
+                              <HelpTip>{text.shadingHelp}</HelpTip>
                             </div>
                             <Select value={shading} onValueChange={(value) => setShading(value as ShadingLevel)}>
                               <SelectTrigger>
@@ -1678,16 +2094,16 @@ export default function App() {
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>Temperature Coefficient</Label>
-                              <HelpTip>How quickly panel efficiency drops as temperature rises.</HelpTip>
+                              <Label>{text.temperatureCoefficient}</Label>
+                              <HelpTip>{text.temperatureCoefficientHelp}</HelpTip>
                             </div>
                             <Input type="number" step="0.0001" value={gamma} onChange={(event) => setGamma(event.target.value)} />
                           </div>
 
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <Label>NOCT (°C)</Label>
-                              <HelpTip>Nominal cell temperature under standard operating conditions.</HelpTip>
+                              <Label>{text.noct}</Label>
+                              <HelpTip>{text.noctHelp}</HelpTip>
                             </div>
                             <Input type="number" step="1" value={noct} onChange={(event) => setNoct(event.target.value)} />
                           </div>
@@ -1704,7 +2120,7 @@ export default function App() {
                         <DollarSign className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">Financial</p>
+                        <p className="text-sm font-semibold">{text.financial}</p>
                         <p className="mt-1 truncate text-xs text-muted-foreground">{financialSummary}</p>
                       </div>
                     </div>
@@ -1712,8 +2128,8 @@ export default function App() {
                   <AccordionContent className="space-y-4 pb-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Tariff</Label>
-                        <HelpTip>Price per kWh used to estimate value and savings.</HelpTip>
+                        <Label>{text.tariff}</Label>
+                        <HelpTip>{text.tariffHelp}</HelpTip>
                       </div>
                       <Input
                         type="number"
@@ -1725,8 +2141,8 @@ export default function App() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>Currency</Label>
-                        <HelpTip>Currency for financial estimates.</HelpTip>
+                        <Label>{text.currency}</Label>
+                        <HelpTip>{text.currencyHelp}</HelpTip>
                       </div>
                       <Select value={currency} onValueChange={(value) => setCurrency(value as CurrencyCode)}>
                         <SelectTrigger>
@@ -1742,8 +2158,8 @@ export default function App() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label>CAPEX</Label>
-                        <HelpTip>System cost used for savings and payback.</HelpTip>
+                        <Label>{text.capex}</Label>
+                        <HelpTip>{text.capexHelp}</HelpTip>
                       </div>
                       <Input type="number" step="100" value={systemCapex} onChange={(event) => setSystemCapex(event.target.value)} />
                     </div>
@@ -1752,7 +2168,7 @@ export default function App() {
               </Accordion>
 
               <Button className="w-full" size="lg" onClick={handleRunForecast} disabled={!position || isLoading}>
-                {isLoading ? 'Running...' : 'Run Solar Production Forecast'}
+                {isLoading ? text.running : text.runForecast}
               </Button>
             </div>
           )}
@@ -1764,8 +2180,8 @@ export default function App() {
               className={`absolute inset-y-0 right-0 z-20 hidden w-4 -translate-x-1/2 cursor-col-resize items-center justify-center md:flex ${
                 isSidebarResizing ? 'bg-primary/10' : 'bg-transparent'
               }`}
-              aria-label="Resize sidebar"
-              title="Resize sidebar"
+              aria-label={text.resizeSidebar}
+              title={text.resizeSidebar}
             >
               <span className="flex h-20 w-2 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-sm">
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -1778,14 +2194,14 @@ export default function App() {
           <div className="flex-1 overflow-y-auto p-6 md:p-8">
             {apiError && (
             <Alert variant="destructive" className="mb-6">
-              <AlertTitle>Backend request issue</AlertTitle>
+              <AlertTitle>{isHebrew ? 'בעיה בבקשת שרת' : 'Backend request issue'}</AlertTitle>
               <AlertDescription>{apiError}</AlertDescription>
             </Alert>
           )}
 
           {!position ? (
             <Alert className="mb-6">
-              <AlertTitle>Choose Location</AlertTitle>
+              <AlertTitle>{text.chooseLocation}</AlertTitle>
             </Alert>
           ) : (
             <div className="relative z-0 mb-6 h-[360px] overflow-hidden rounded-xl border">
@@ -1824,6 +2240,7 @@ export default function App() {
                   clearShapes={clearShapes}
                   isDrawingRef={isDrawingRef}
                   setSelectedLocationId={setSelectedLocationId}
+                  markerLabel={isHebrew ? 'מיקום נבחר' : 'Selected Location'}
                 />
               </MapContainer>
             </div>
@@ -1831,23 +2248,23 @@ export default function App() {
 
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="mb-4 flex h-auto flex-wrap">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="daily">Day</TabsTrigger>
-              <TabsTrigger value="accuracy">Accuracy</TabsTrigger>
-              <TabsTrigger value="benchmark">Methods</TabsTrigger>
-              <TabsTrigger value="scenarios">Options</TabsTrigger>
+              <TabsTrigger value="overview">{text.tabOverview}</TabsTrigger>
+              <TabsTrigger value="daily">{text.tabDay}</TabsTrigger>
+              <TabsTrigger value="accuracy">{text.tabAccuracy}</TabsTrigger>
+              <TabsTrigger value="benchmark">{text.tabMethods}</TabsTrigger>
+              <TabsTrigger value="scenarios">{text.tabOptions}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
               {!forecastData ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Choose a location, then run forecast.
+                  {text.emptyOverview}
                 </div>
               ) : (
                 <>
                   {forecastData.fallback_reason && (
                     <Alert>
-                      <AlertTitle>Backup forecast approach used</AlertTitle>
+                      <AlertTitle>{isHebrew ? 'הופעלה שיטת גיבוי' : 'Backup forecast approach used'}</AlertTitle>
                       <AlertDescription>{forecastData.fallback_reason}</AlertDescription>
                     </Alert>
                   )}
@@ -1856,12 +2273,12 @@ export default function App() {
                     <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-2">
                         <CardTitle className="flex items-center gap-2">
-                          Summary
-                          <HelpTip>Yearly production, savings, and simple payback from the current inputs.</HelpTip>
+                          {text.summary}
+                          <HelpTip>{text.summaryHelp}</HelpTip>
                         </CardTitle>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary">Year {forecastData.forecast_year}</Badge>
-                          <Badge variant="outline">{getForecastApproachLabel(forecastData.model_type_used)}</Badge>
+                          <Badge variant="secondary">{isHebrew ? 'שנה' : 'Year'} {forecastData.forecast_year}</Badge>
+                          <Badge variant="outline">{getForecastApproachLabel(forecastData.model_type_used, language)}</Badge>
                         </div>
                       </div>
                     </CardHeader>
@@ -1871,11 +2288,11 @@ export default function App() {
                   </Card>
 
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold">Key Results</h3>
+                    <h3 className="text-lg font-semibold">{text.keyResults}</h3>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Yearly Energy</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">{text.yearlyEnergy}</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">{formatReadableKwh(forecastData.yearly_kwh)}</div>
@@ -1883,7 +2300,7 @@ export default function App() {
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Annual Savings</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">{text.annualSavings}</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
@@ -1893,10 +2310,10 @@ export default function App() {
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Simple Payback</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">{text.simplePayback}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-2xl font-bold">{formatPaybackYears(forecastData.simple_payback_years)}</div>
+                          <div className="text-2xl font-bold">{formatPaybackYears(forecastData.simple_payback_years, language)}</div>
                         </CardContent>
                       </Card>
                     </div>
@@ -1906,8 +2323,8 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Context
-                          <HelpTip>Inputs and assumptions used for this forecast.</HelpTip>
+                          {text.context}
+                          <HelpTip>{text.contextHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -1927,17 +2344,17 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Performance
-                          <HelpTip>Supporting production metrics for benchmarking.</HelpTip>
+                          {text.performance}
+                          <HelpTip>{text.performanceHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="grid gap-3">
                         <div className="rounded-lg border bg-background/70 p-3">
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Specific Yield</p>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.specificYield}</p>
                           <p className="mt-1 text-lg font-semibold">{formatReadableNumber(forecastData.specific_yield_kwh_per_kwp, 1)} kWh/kWp</p>
                         </div>
                         <div className="rounded-lg border bg-background/70 p-3">
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Average Daily Energy</p>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.averageDailyEnergy}</p>
                           <p className="mt-1 text-lg font-semibold">{formatReadableKwh(forecastData.avg_daily_kwh, 1)}</p>
                         </div>
                       </CardContent>
@@ -1947,7 +2364,7 @@ export default function App() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Monthly Energy Forecast</CardTitle>
+                        <CardTitle>{text.monthlyEnergyForecast}</CardTitle>
                       </CardHeader>
                       <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -1955,7 +2372,7 @@ export default function App() {
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" />
                             <YAxis />
-                            <Tooltip formatter={(value) => [formatReadableKwh(Number(value)), 'Energy']} />
+                            <Tooltip formatter={(value) => [formatReadableKwh(Number(value)), isHebrew ? 'אנרגיה' : 'Energy']} />
                             <Bar dataKey="value" fill="#eab308" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
@@ -1965,8 +2382,8 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Monthly Value
-                          <HelpTip>Estimated money by month using the current tariff.</HelpTip>
+                          {text.monthlyValue}
+                          <HelpTip>{text.monthlyValueHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[300px]">
@@ -1978,7 +2395,7 @@ export default function App() {
                             <Tooltip
                               formatter={(value) => [
                                 formatReadableCurrency(Number(value), forecastData.financial_assumptions.currency),
-                                'Estimated value',
+                                isHebrew ? 'ערך משוער' : 'Estimated value',
                               ]}
                             />
                             <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
@@ -1991,8 +2408,8 @@ export default function App() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        Seasonal Split
-                        <HelpTip>Shows where annual output is concentrated across the year.</HelpTip>
+                        {text.seasonalSplit}
+                        <HelpTip>{text.seasonalSplitHelp}</HelpTip>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="h-[300px]">
@@ -2013,7 +2430,9 @@ export default function App() {
                                 <div className="rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
                                   <p className="font-medium">{label}</p>
                                   <p>{formatReadableKwh(row.kwh)}</p>
-                                  <p className="text-muted-foreground">{formatReadableNumber(row.sharePercent, 1)}% of yearly production</p>
+                                  <p className="text-muted-foreground">
+                                    {formatReadableNumber(row.sharePercent, 1)}% {isHebrew ? 'מהייצור השנתי' : 'of yearly production'}
+                                  </p>
                                 </div>
                               );
                             }}
@@ -2029,8 +2448,8 @@ export default function App() {
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
                           <p className="flex items-center gap-2 font-semibold">
-                            Details
-                            <HelpTip>Method, data source, and financial assumptions.</HelpTip>
+                            {text.details}
+                            <HelpTip>{text.overviewDetailsHelp}</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2038,8 +2457,8 @@ export default function App() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Field</TableHead>
-                              <TableHead>Value</TableHead>
+                              <TableHead>{isHebrew ? 'שדה' : 'Field'}</TableHead>
+                              <TableHead>{isHebrew ? 'ערך' : 'Value'}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2061,7 +2480,7 @@ export default function App() {
             <TabsContent value="daily" className="space-y-6">
               {!dailySimulation ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run forecast to see hourly output.
+                  {text.dayEmpty}
                 </div>
               ) : (
                 <>
@@ -2069,8 +2488,8 @@ export default function App() {
                     <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-2">
                         <CardTitle className="flex items-center gap-2">
-                          Day Summary
-                          <HelpTip>Expected production, value, and peak power for the simulated day.</HelpTip>
+                          {text.daySummary}
+                          <HelpTip>{text.daySummaryHelp}</HelpTip>
                         </CardTitle>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">{dailySimulationDateLabel}</Badge>
@@ -2086,7 +2505,7 @@ export default function App() {
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Daily Energy</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.dailyEnergy}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{formatReadableKwh(dailySimulation.daily_kwh, 1)}</div>
@@ -2094,7 +2513,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Daily Value</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.dailyValue}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">
@@ -2108,7 +2527,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Peak Power</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.peakPower}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{formatReadableNumber(dailyPeakPower, 2)} kW</div>
@@ -2116,7 +2535,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Peak Hour</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.peakHour}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{dailyPeakHourLabel}</div>
@@ -2124,7 +2543,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">System Losses</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.systemLosses}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{formatReadableNumber(dailyLossPercent, 1)}%</div>
@@ -2135,8 +2554,8 @@ export default function App() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        Hourly Power
-                        <HelpTip>Local-time AC output for the simulated day.</HelpTip>
+                        {text.hourlyPower}
+                        <HelpTip>{text.hourlyPowerHelp}</HelpTip>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="h-[400px]">
@@ -2145,13 +2564,13 @@ export default function App() {
                           <CartesianGrid strokeDasharray="3 3" vertical={false} />
                           <XAxis dataKey="time" />
                           <YAxis />
-                          <Tooltip formatter={(value) => [`${formatReadableNumber(Number(value), 2)} kW`, 'AC Power']} />
-                          {dailyPeakHourLabel !== 'Not available' ? (
+                          <Tooltip formatter={(value) => [`${formatReadableNumber(Number(value), 2)} kW`, isHebrew ? 'הספק AC' : 'AC Power']} />
+                          {dailyPeakIndex >= 0 ? (
                             <ReferenceLine
                               x={dailyPeakHourLabel}
                               stroke="#f59e0b"
                               strokeDasharray="4 4"
-                              label={{ value: 'Peak hour', position: 'top', fill: '#a16207', fontSize: 12 }}
+                              label={{ value: text.peakHour, position: 'top', fill: '#a16207', fontSize: 12 }}
                             />
                           ) : null}
                           <Line type="monotone" dataKey="power" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
@@ -2165,8 +2584,8 @@ export default function App() {
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
                           <p className="flex items-center gap-2 font-semibold">
-                            Details
-                            <HelpTip>Raw loss, source, and forecast context fields.</HelpTip>
+                            {text.details}
+                            <HelpTip>{text.dayDetailsHelp}</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2174,8 +2593,8 @@ export default function App() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Field</TableHead>
-                              <TableHead>Value</TableHead>
+                              <TableHead>{isHebrew ? 'שדה' : 'Field'}</TableHead>
+                              <TableHead>{isHebrew ? 'ערך' : 'Value'}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2198,37 +2617,41 @@ export default function App() {
               <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
                   <div>
-                    <h3 className="font-medium">Past-Year Accuracy Check</h3>
+                    <h3 className="flex items-center gap-2 font-medium">
+                      {text.accuracyTitle}
+                      <HelpTip>{text.accuracyTitleHelp}</HelpTip>
+                    </h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">Year {evaluationYear}</Badge>
+                    <Badge variant="secondary">{isHebrew ? 'שנה' : 'Year'} {evaluationYear}</Badge>
                     <Badge variant="outline">{selectedForecastApproachLabel}</Badge>
                   </div>
                 </div>
                 <Button onClick={handleRunAccuracy} disabled={!position || isLoading}>
-                  {isLoading ? 'Running...' : 'Run Accuracy Check'}
+                  {isLoading ? text.running : text.runAccuracy}
                 </Button>
               </div>
 
               {selectedForecastYear > lastCompleteYear && (
                 <Alert>
-                  <AlertTitle>Using last complete archive year</AlertTitle>
+                  <AlertTitle>{isHebrew ? 'משתמשים בשנת הארכיון המלאה האחרונה' : 'Using last complete archive year'}</AlertTitle>
                   <AlertDescription>
-                    You selected {selectedForecastYear}, but archived actual weather is currently complete only through {lastCompleteYear},
-                    so this check runs against {evaluationYear}.
+                    {isHebrew
+                      ? `בחרת ${selectedForecastYear}, אבל הארכיון מלא רק עד ${lastCompleteYear}, לכן הבדיקה תרוץ מול ${evaluationYear}.`
+                      : `You selected ${selectedForecastYear}, but archived actual weather is currently complete only through ${lastCompleteYear}, so this check runs against ${evaluationYear}.`}
                   </AlertDescription>
                 </Alert>
               )}
 
               {!accuracyResult ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run accuracy to compare forecast vs archive.
+                  {text.accuracyEmpty}
                 </div>
               ) : (
                 <>
                   {accuracyResult.fallback_reason && (
                     <Alert>
-                      <AlertTitle>Backup method used</AlertTitle>
+                      <AlertTitle>{isHebrew ? 'הופעלה שיטת גיבוי' : 'Backup method used'}</AlertTitle>
                       <AlertDescription>{accuracyResult.fallback_reason}</AlertDescription>
                     </Alert>
                   )}
@@ -2238,16 +2661,16 @@ export default function App() {
                       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
                           <CardTitle className="flex items-center gap-2">
-                            Takeaway
-                            <HelpTip>Lower error is better. Positive bias means overprediction; negative bias means underprediction.</HelpTip>
+                            {text.takeaway}
+                            <HelpTip>{text.takeawayHelp}</HelpTip>
                           </CardTitle>
                           <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">Checked year {accuracyResult.year}</Badge>
+                            <Badge variant="secondary">{isHebrew ? 'שנת בדיקה' : 'Checked year'} {accuracyResult.year}</Badge>
                             <Badge variant="outline">{accuracyMethodLabel}</Badge>
                           </div>
                         </div>
                         <div className="space-y-1 md:text-right">
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Accuracy rating</p>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.accuracyRating}</p>
                           <p className={`text-2xl font-semibold ${accuracyQualityClassName}`}>{accuracyResult.quality}</p>
                           <HelpTip>{accuracyQualityDescription}</HelpTip>
                         </div>
@@ -2260,17 +2683,17 @@ export default function App() {
 
                         <div className="grid gap-3 sm:grid-cols-3">
                           <div className="rounded-lg border bg-background/70 p-3">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Avg monthly miss</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.avgMonthlyMiss}</p>
                             <p className="mt-1 text-lg font-semibold">{formatSidebarNumber(accuracyResult.monthly_mae_kwh)} kWh</p>
                             <p className="text-xs text-muted-foreground">{formatSidebarNumber(accuracyResult.mape_percent, 2)}% monthly error</p>
                           </div>
                           <div className="rounded-lg border bg-background/70 p-3">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Yearly miss</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.yearlyMiss}</p>
                             <p className="mt-1 text-lg font-semibold">{formatSidebarNumber(accuracyResult.yearly_mae_kwh)} kWh</p>
                             <p className="text-xs text-muted-foreground">{formatSidebarNumber(accuracyResult.yearly_mape_percent, 2)}% yearly error</p>
                           </div>
                           <div className="rounded-lg border bg-background/70 p-3">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Bias</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.bias}</p>
                             <p className="mt-1 text-lg font-semibold">{formatSignedNumber(accuracyResult.bias_kwh)} kWh</p>
                             <p className="text-xs text-muted-foreground">
                               {formatSignedNumber(accuracyResult.bias_percent, 2)}% · {accuracyBiasDirection}
@@ -2284,18 +2707,18 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Actual vs Forecast
-                          <HelpTip>Archive is the reference. Forecast shows what the selected method would have produced.</HelpTip>
+                          {text.actualVsForecast}
+                          <HelpTip>{text.actualVsForecastHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Metric</TableHead>
-                              <TableHead>Archived Actual</TableHead>
-                              <TableHead>Forecast</TableHead>
-                              <TableHead>Difference</TableHead>
+                              <TableHead>{isHebrew ? 'מדד' : 'Metric'}</TableHead>
+                              <TableHead>{isHebrew ? 'בפועל' : 'Archived Actual'}</TableHead>
+                              <TableHead>{isHebrew ? 'תחזית' : 'Forecast'}</TableHead>
+                              <TableHead>{isHebrew ? 'הפרש' : 'Difference'}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2315,7 +2738,7 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Approach</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.methodApproach}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyMethodLabel}</div>
@@ -2323,7 +2746,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Weather Reference</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.weatherReference}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyWeatherBasisLabel}</div>
@@ -2331,7 +2754,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Learning Years</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.learningYears}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyTrainingYearsLabel}</div>
@@ -2339,7 +2762,7 @@ export default function App() {
                     </Card>
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Data Source</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.dataSource}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyResult.data_source}</div>
@@ -2350,7 +2773,7 @@ export default function App() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Monthly Forecast Vs Actual Energy</CardTitle>
+                        <CardTitle>{text.monthlyForecastVsActual}</CardTitle>
                       </CardHeader>
                       <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2360,8 +2783,8 @@ export default function App() {
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="Forecast" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-                            <Bar dataKey="Actual" fill="#10b981" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey={accuracyForecastKey} fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey={accuracyActualKey} fill="#10b981" radius={[2, 2, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -2370,8 +2793,8 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Monthly Error
-                          <HelpTip>Positive means the forecast was too high. Negative means it was too low.</HelpTip>
+                          {text.monthlyError}
+                          <HelpTip>{text.monthlyErrorHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[300px]">
@@ -2383,7 +2806,7 @@ export default function App() {
                             <Tooltip />
                             <Legend />
                             <ReferenceLine y={0} stroke="#94a3b8" />
-                            <Bar dataKey="Forecast error (kWh)" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey={accuracyErrorKey} fill="#f59e0b" radius={[2, 2, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -2395,8 +2818,8 @@ export default function App() {
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
                           <p className="flex items-center gap-2 font-semibold">
-                            Details
-                            <HelpTip>Method metadata, fallback notes, and financial assumptions.</HelpTip>
+                            {text.details}
+                            <HelpTip>{text.accuracyDetailsHelp}</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2404,49 +2827,49 @@ export default function App() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Field</TableHead>
-                              <TableHead>Value</TableHead>
+                              <TableHead>{isHebrew ? 'שדה' : 'Field'}</TableHead>
+                              <TableHead>{isHebrew ? 'ערך' : 'Value'}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             <TableRow>
-                              <TableCell>Requested forecast approach</TableCell>
-                              <TableCell>{getForecastApproachLabel(accuracyResult.model_type_requested)}</TableCell>
+                              <TableCell>{isHebrew ? 'שיטה מבוקשת' : 'Requested forecast approach'}</TableCell>
+                              <TableCell>{getForecastApproachLabel(accuracyResult.model_type_requested, language)}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Forecast approach used</TableCell>
+                              <TableCell>{isHebrew ? 'שיטה בפועל' : 'Forecast approach used'}</TableCell>
                               <TableCell>{accuracyMethodLabel}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Accuracy rating rule</TableCell>
+                              <TableCell>{isHebrew ? 'כלל דירוג דיוק' : 'Accuracy rating rule'}</TableCell>
                               <TableCell>{accuracyQualityDescription}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Weather reference used</TableCell>
+                              <TableCell>{text.weatherReference}</TableCell>
                               <TableCell>{accuracyWeatherBasisLabel}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Past years used for learning</TableCell>
+                              <TableCell>{text.learningYears}</TableCell>
                               <TableCell>{accuracyTrainingYearsLabel}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Backup method note</TableCell>
-                              <TableCell>{accuracyResult.fallback_reason || 'No backup method used'}</TableCell>
+                              <TableCell>{isHebrew ? 'הערת גיבוי' : 'Backup method note'}</TableCell>
+                              <TableCell>{accuracyResult.fallback_reason || (isHebrew ? 'לא הופעלה שיטת גיבוי' : 'No backup method used')}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Data source</TableCell>
+                              <TableCell>{text.dataSource}</TableCell>
                               <TableCell>{accuracyResult.data_source}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Valuation basis</TableCell>
+                              <TableCell>{isHebrew ? 'בסיס הערכה' : 'Valuation basis'}</TableCell>
                               <TableCell>{accuracyResult.financial_assumptions.valuation_basis}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Annual savings basis</TableCell>
+                              <TableCell>{isHebrew ? 'בסיס חיסכון שנתי' : 'Annual savings basis'}</TableCell>
                               <TableCell>{accuracyResult.financial_assumptions.annual_savings_basis}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell>Payback basis</TableCell>
+                              <TableCell>{isHebrew ? 'בסיס החזר' : 'Payback basis'}</TableCell>
                               <TableCell>{accuracyResult.financial_assumptions.payback_basis}</TableCell>
                             </TableRow>
                           </TableBody>
@@ -2454,7 +2877,7 @@ export default function App() {
 
                         {accuracyResult.ml_metadata && (
                           <div>
-                            <p className="mb-2 text-sm font-medium">History-based forecast diagnostics</p>
+                            <p className="mb-2 text-sm font-medium">{isHebrew ? 'אבחון תחזית מבוססת היסטוריה' : 'History-based forecast diagnostics'}</p>
                             <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
                               {JSON.stringify(accuracyResult.ml_metadata, null, 2)}
                             </pre>
@@ -2472,32 +2895,34 @@ export default function App() {
                 <div className="space-y-2">
                   <div>
                     <h3 className="flex items-center gap-2 font-medium">
-                      Compare Methods
-                      <HelpTip>Tests forecasting methods against completed historical years ending in {evaluationYear}.</HelpTip>
+                      {text.compareMethods}
+                      <HelpTip>
+                        {text.compareMethodsHelpPrefix} {evaluationYear}.
+                      </HelpTip>
                     </h3>
                   </div>
                   <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between">
-                      <Label>Comparison Window (years)</Label>
+                      <Label>{text.comparisonWindow}</Label>
                       <span className="text-sm text-muted-foreground">{benchmarkYears}</span>
                     </div>
                     <Slider min={1} max={5} step={1} value={getSliderValue(benchmarkYears, 3)} onValueChange={handleBenchmarkYearsChange} />
                   </div>
                 </div>
                 <Button onClick={handleRunBenchmark} disabled={!position || isLoading}>
-                  {isLoading ? 'Running...' : 'Compare Forecast Methods'}
+                  {isLoading ? text.running : text.compareForecastMethods}
                 </Button>
               </div>
 
               {!benchmarkResult ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Compare methods against past years.
+                  {text.methodsEmpty}
                 </div>
               ) : (
                 <>
                   <Alert>
                     <AlertTitle className="flex items-center gap-2">
-                      Historical Reference
+                      {text.historicalReference}
                       <HelpTip>{benchmarkResult.reference_note}</HelpTip>
                     </AlertTitle>
                   </Alert>
@@ -2507,34 +2932,38 @@ export default function App() {
                       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
                           <CardTitle className="flex items-center gap-2">
-                            Recommended Method
-                            <HelpTip>Best fit across yearly error, monthly error, and bias for {benchmarkWindowLabel}.</HelpTip>
+                            {text.recommendedMethod}
+                            <HelpTip>
+                              {text.recommendedMethodHelp} {benchmarkWindowLabel}.
+                            </HelpTip>
                           </CardTitle>
                           <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">Window {benchmarkWindowLabel}</Badge>
+                            <Badge variant="secondary">{isHebrew ? 'חלון' : 'Window'} {benchmarkWindowLabel}</Badge>
                             <Badge variant="outline">{benchmarkTrainingWindowLabel}</Badge>
                           </div>
                         </div>
-                        {recommendedBenchmark ? <Badge className="w-fit">Best overall</Badge> : null}
+                        {recommendedBenchmark ? <Badge className="w-fit">{text.bestOverall}</Badge> : null}
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div>
-                          <p className="text-3xl font-semibold tracking-tight">{recommendedBenchmark?.label ?? 'No recommendation yet'}</p>
+                          <p className="text-3xl font-semibold tracking-tight">
+                            {recommendedBenchmark?.label ?? (isHebrew ? 'אין המלצה עדיין' : 'No recommendation yet')}
+                          </p>
                         </div>
                         {recommendedBenchmark ? (
                           <div className="grid gap-3 sm:grid-cols-3">
                             <div className="rounded-lg border bg-background/70 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Avg yearly error</p>
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.avgYearlyError}</p>
                               <p className="mt-1 text-lg font-semibold">{formatSidebarNumber(recommendedBenchmark.yearlyMaeKwh)} kWh</p>
                               <p className="text-xs text-muted-foreground">{formatSidebarNumber(recommendedBenchmark.yearlyMape, 2)}% yearly error</p>
                             </div>
                             <div className="rounded-lg border bg-background/70 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Avg monthly error</p>
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.avgMonthlyError}</p>
                               <p className="mt-1 text-lg font-semibold">{formatSidebarNumber(recommendedBenchmark.monthlyMaeKwh)} kWh</p>
                               <p className="text-xs text-muted-foreground">{formatSidebarNumber(recommendedBenchmark.monthlyMape, 2)}% monthly error</p>
                             </div>
                             <div className="rounded-lg border bg-background/70 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Average bias</p>
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.averageBias}</p>
                               <p className="mt-1 text-lg font-semibold">{formatSignedNumber(recommendedBenchmark.biasKwh)} kWh</p>
                               <p className="text-xs text-muted-foreground">{recommendedBenchmark.biasDirection}</p>
                             </div>
@@ -2554,20 +2983,20 @@ export default function App() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <CardTitle className="flex items-center gap-2">
-                                {getBenchmarkApproachLabel(approach.approach, approach.label)}
+                                {getBenchmarkApproachLabel(approach.approach, approach.label, language)}
                                 <HelpTip>{approach.description}</HelpTip>
                               </CardTitle>
                             </div>
-                            {recommendedBenchmark?.id === approach.approach ? <Badge variant="secondary">Best overall</Badge> : null}
+                            {recommendedBenchmark?.id === approach.approach ? <Badge variant="secondary">{text.bestOverall}</Badge> : null}
                           </div>
                         </CardHeader>
                         <CardContent className="grid gap-3 sm:grid-cols-2">
                           <div className="rounded-lg border bg-background/70 p-3">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Avg yearly error</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.avgYearlyError}</p>
                             <p className="mt-1 text-lg font-semibold">{formatSidebarNumber(approach.metrics.yearly_mae_kwh)} kWh</p>
                           </div>
                           <div className="rounded-lg border bg-background/70 p-3">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Average bias</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.averageBias}</p>
                             <p className="mt-1 text-lg font-semibold">{formatSignedNumber(approach.metrics.bias_kwh)} kWh</p>
                           </div>
                         </CardContent>
@@ -2578,20 +3007,20 @@ export default function App() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        Summary
-                        <HelpTip>Lower error is better. Bias close to 0 is better.</HelpTip>
+                        {text.summary}
+                        <HelpTip>{text.methodSummaryHelp}</HelpTip>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Approach</TableHead>
-                            <TableHead>Avg Yearly Error</TableHead>
-                            <TableHead>Avg Monthly Error</TableHead>
-                            <TableHead>Yearly Error (%)</TableHead>
-                            <TableHead>Bias</TableHead>
-                            <TableHead>Backup Logic Used</TableHead>
+                            <TableHead>{text.methodApproach}</TableHead>
+                            <TableHead>{text.avgYearlyError}</TableHead>
+                            <TableHead>{text.avgMonthlyError}</TableHead>
+                            <TableHead>{isHebrew ? 'שגיאה שנתית (%)' : 'Yearly Error (%)'}</TableHead>
+                            <TableHead>{text.bias}</TableHead>
+                            <TableHead>{isHebrew ? 'שימוש בגיבוי' : 'Backup Logic Used'}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -2600,7 +3029,7 @@ export default function App() {
                               <TableCell>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="font-medium">{row.label}</span>
-                                  {recommendedBenchmark?.id === row.id ? <Badge variant="secondary">Best overall</Badge> : null}
+                                  {recommendedBenchmark?.id === row.id ? <Badge variant="secondary">{text.bestOverall}</Badge> : null}
                                 </div>
                               </TableCell>
                               <TableCell>{formatSidebarNumber(row.yearlyMaeKwh)} kWh</TableCell>
@@ -2622,8 +3051,8 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Reference vs Forecasts
-                          <HelpTip>Each method's yearly estimate compared with the shared historical reference.</HelpTip>
+                          {text.referenceVsForecasts}
+                          <HelpTip>{text.referenceVsForecastsHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[360px]">
@@ -2634,12 +3063,12 @@ export default function App() {
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Line type="monotone" dataKey="Historical reference" stroke="#111827" strokeWidth={3} />
+                            <Line type="monotone" dataKey={text.historicalReference} stroke="#111827" strokeWidth={3} />
                             {benchmarkResult.approaches.map((approach, index) => (
                               <Line
                                 key={approach.approach}
                                 type="monotone"
-                                dataKey={getBenchmarkApproachLabel(approach.approach, approach.label)}
+                                dataKey={getBenchmarkApproachLabel(approach.approach, approach.label, language)}
                                 stroke={CHART_COLORS[index % CHART_COLORS.length]}
                                 strokeWidth={2}
                               />
@@ -2652,8 +3081,8 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Error Comparison
-                          <HelpTip>Errors are shown in kWh for easier comparison.</HelpTip>
+                          {text.errorComparison}
+                          <HelpTip>{text.errorComparisonHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="h-[360px]">
@@ -2665,9 +3094,9 @@ export default function App() {
                             <Tooltip />
                             <Legend />
                             <ReferenceLine y={0} stroke="#94a3b8" />
-                            <Bar dataKey="Avg monthly error (kWh)" fill="#2563eb" />
-                            <Bar dataKey="Avg yearly error (kWh)" fill="#10b981" />
-                            <Bar dataKey="Average bias (kWh)" fill="#f59e0b" />
+                            <Bar dataKey={text.avgMonthlyError} fill="#2563eb" />
+                            <Bar dataKey={text.avgYearlyError} fill="#10b981" />
+                            <Bar dataKey={text.averageBias} fill="#f59e0b" />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -2679,8 +3108,8 @@ export default function App() {
                       <AccordionTrigger className="py-4 text-left hover:no-underline">
                         <div>
                           <p className="flex items-center gap-2 font-semibold">
-                            Year Details
-                            <HelpTip>Per-year comparison, detailed bias, and backup notes.</HelpTip>
+                            {text.yearDetails}
+                            <HelpTip>{text.yearDetailsHelp}</HelpTip>
                           </p>
                         </div>
                       </AccordionTrigger>
@@ -2688,28 +3117,28 @@ export default function App() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Approach</TableHead>
-                              <TableHead>Year</TableHead>
-                              <TableHead>Historical Reference</TableHead>
-                              <TableHead>Forecast Estimate</TableHead>
-                              <TableHead>Absolute Error</TableHead>
-                              <TableHead>Yearly Error (%)</TableHead>
-                              <TableHead>Bias (kWh)</TableHead>
-                              <TableHead>Backup Logic Note</TableHead>
+                              <TableHead>{text.methodApproach}</TableHead>
+                              <TableHead>{isHebrew ? 'שנה' : 'Year'}</TableHead>
+                              <TableHead>{text.historicalReference}</TableHead>
+                              <TableHead>{isHebrew ? 'הערכת תחזית' : 'Forecast Estimate'}</TableHead>
+                              <TableHead>{isHebrew ? 'שגיאה מוחלטת' : 'Absolute Error'}</TableHead>
+                              <TableHead>{isHebrew ? 'שגיאה שנתית (%)' : 'Yearly Error (%)'}</TableHead>
+                              <TableHead>{text.bias} (kWh)</TableHead>
+                              <TableHead>{isHebrew ? 'הערת גיבוי' : 'Backup Logic Note'}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {benchmarkResult.approaches.flatMap((approach) =>
                               approach.yearly_results.map((result) => (
                                 <TableRow key={`${approach.approach}-${result.year}`}>
-                                  <TableCell className="font-medium">{getBenchmarkApproachLabel(approach.approach, approach.label)}</TableCell>
+                                  <TableCell className="font-medium">{getBenchmarkApproachLabel(approach.approach, approach.label, language)}</TableCell>
                                   <TableCell>{result.year}</TableCell>
                                   <TableCell>{formatSidebarNumber(result.actual_yearly_kwh)} kWh</TableCell>
                                   <TableCell>{formatSidebarNumber(result.predicted_yearly_kwh)} kWh</TableCell>
                                   <TableCell>{formatSidebarNumber(result.yearly_mae_kwh)} kWh</TableCell>
                                   <TableCell>{formatSidebarNumber(result.yearly_mape_percent, 2)}%</TableCell>
                                   <TableCell>{formatSignedNumber(result.yearly_bias_kwh)} kWh</TableCell>
-                                  <TableCell>{result.fallback_reason || 'No backup logic used'}</TableCell>
+                                  <TableCell>{result.fallback_reason || (isHebrew ? 'לא הופעל גיבוי' : 'No backup logic used')}</TableCell>
                                 </TableRow>
                               )),
                             )}
@@ -2725,7 +3154,7 @@ export default function App() {
             <TabsContent value="scenarios" className="space-y-6">
               {!forecastData ? (
                 <div className="rounded-xl border bg-muted/20 p-12 text-center text-muted-foreground">
-                  Run forecast first to compare options.
+                  {text.optionsEmpty}
                 </div>
               ) : (
                 <>
@@ -2733,12 +3162,12 @@ export default function App() {
                     <div className="space-y-2">
                       <div>
                         <h3 className="flex items-center gap-2 font-medium">
-                          Compare Options
-                          <HelpTip>Same location, forecast, and tariff. Only system design changes.</HelpTip>
+                          {text.compareOptions}
+                          <HelpTip>{text.compareOptionsHelp}</HelpTip>
                         </h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">Base included</Badge>
+                        <Badge variant="secondary">{text.baseIncluded}</Badge>
                         <Badge variant="outline">{comparisonRequestedModelLabel}</Badge>
                       </div>
                     </div>
@@ -2748,16 +3177,16 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Shared Context
-                          <HelpTip>These assumptions stay fixed for every option.</HelpTip>
+                          {text.sharedContext}
+                          <HelpTip>{text.sharedContextHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Shared setting</TableHead>
-                              <TableHead>Value</TableHead>
+                              <TableHead>{isHebrew ? 'הגדרה משותפת' : 'Shared setting'}</TableHead>
+                              <TableHead>{isHebrew ? 'ערך' : 'Value'}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2775,17 +3204,17 @@ export default function App() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          Option Inputs
-                          <HelpTip>Only name, panel area, tilt, AC capacity, and CAPEX change per option.</HelpTip>
+                          {text.optionInputs}
+                          <HelpTip>{text.optionInputsHelp}</HelpTip>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <ul className="space-y-2 text-sm text-muted-foreground">
-                          <li>Name</li>
-                          <li>Panel area change</li>
-                          <li>Tilt</li>
-                          <li>AC capacity</li>
-                          <li>CAPEX</li>
+                          <li>{text.name}</li>
+                          <li>{text.panelAreaChange}</li>
+                          <li>{text.tilt}</li>
+                          <li>{text.acCapacityShort}</li>
+                          <li>{text.capex}</li>
                         </ul>
                       </CardContent>
                     </Card>
@@ -2794,19 +3223,19 @@ export default function App() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        Add Option
-                        <HelpTip>Everything not shown here inherits from Base System.</HelpTip>
+                        {text.addOption}
+                        <HelpTip>{text.addOptionHelp}</HelpTip>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex flex-col items-end gap-4 md:flex-row">
                         <div className="min-w-[150px] flex-1 space-y-2">
-                          <Label>Option Name</Label>
+                          <Label>{text.optionName}</Label>
                           <Input value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} />
                         </div>
                         <div className="min-w-[150px] flex-1 space-y-2">
                           <div className="flex justify-between">
-                            <Label>Panel Area Change (%)</Label>
+                            <Label>{text.panelAreaChange} (%)</Label>
                             <span className="text-sm text-muted-foreground">{getSliderNumber(scenarioPanelAreaDelta, 20)}%</span>
                           </div>
                           <div className="w-full px-2">
@@ -2821,7 +3250,7 @@ export default function App() {
                         </div>
                         <div className="min-w-[150px] flex-1 space-y-2">
                           <div className="flex justify-between">
-                            <Label>Option Tilt (°)</Label>
+                            <Label>{text.optionTilt}</Label>
                             <span className="text-sm text-muted-foreground">{getSliderNumber(scenarioTilt, 30)}</span>
                           </div>
                           <div className="w-full px-2">
@@ -2829,7 +3258,7 @@ export default function App() {
                           </div>
                         </div>
                         <div className="min-w-[150px] flex-1 space-y-2">
-                          <Label>Option AC Capacity (kW)</Label>
+                          <Label>{text.acCapacity} </Label>
                           <Input
                             type="number"
                             value={scenarioAcCapacity}
@@ -2837,10 +3266,10 @@ export default function App() {
                           />
                         </div>
                         <div className="min-w-[150px] flex-1 space-y-2">
-                          <Label>Option CAPEX</Label>
+                          <Label>{text.optionCapex}</Label>
                           <Input type="number" value={scenarioCapex} onChange={(event) => setScenarioCapex(event.target.value)} />
                         </div>
-                        <Button onClick={handleAddScenario}>Add Option</Button>
+                        <Button onClick={handleAddScenario}>{text.addOption}</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -2849,7 +3278,7 @@ export default function App() {
                     <div className="space-y-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                          <h3 className="text-lg font-semibold">Configured Options</h3>
+                          <h3 className="text-lg font-semibold">{text.configuredOptions}</h3>
                         </div>
                         <div className="space-x-2">
                           <Button
@@ -2859,10 +3288,10 @@ export default function App() {
                               setComparisonResult(null);
                             }}
                           >
-                            Clear All
+                            {text.clearAll}
                           </Button>
                           <Button onClick={handleRunComparison} disabled={isLoading}>
-                            {isLoading ? 'Running...' : 'Compare System Options'}
+                            {isLoading ? text.running : text.compareSystemOptions}
                           </Button>
                         </div>
                       </div>
@@ -2870,11 +3299,11 @@ export default function App() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Option</TableHead>
-                            <TableHead>Panel Area (m²)</TableHead>
-                            <TableHead>Tilt (°)</TableHead>
-                            <TableHead>AC Capacity (kW)</TableHead>
-                            <TableHead>CAPEX</TableHead>
+                            <TableHead>{isHebrew ? 'אפשרות' : 'Option'}</TableHead>
+                            <TableHead>{text.panelArea}</TableHead>
+                            <TableHead>{text.tilt}</TableHead>
+                            <TableHead>{text.acCapacity}</TableHead>
+                            <TableHead>{text.capex}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -2894,25 +3323,25 @@ export default function App() {
                               <TableCell>
                                 <div>{formatSidebarNumber(scenario.panelArea)} m²</div>
                                 <div className={`text-xs ${getDeltaToneClass(scenario.panelAreaDelta)}`}>
-                                  {formatSignedNumber(scenario.panelAreaDelta)} m² vs base
+                                  {formatSignedNumber(scenario.panelAreaDelta)} m² {isHebrew ? 'מול בסיס' : 'vs base'}
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div>{formatSidebarNumber(scenario.tilt)}°</div>
                                 <div className={`text-xs ${getDeltaToneClass(scenario.tiltDelta)}`}>
-                                  {formatSignedNumber(scenario.tiltDelta)}° vs base
+                                  {formatSignedNumber(scenario.tiltDelta)}° {isHebrew ? 'מול בסיס' : 'vs base'}
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div>{formatSidebarNumber(scenario.acCapacityKw)} kW</div>
                                 <div className={`text-xs ${getDeltaToneClass(scenario.acCapacityDelta)}`}>
-                                  {formatSignedNumber(scenario.acCapacityDelta)} kW vs base
+                                  {formatSignedNumber(scenario.acCapacityDelta)} kW {isHebrew ? 'מול בסיס' : 'vs base'}
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div>{formatCurrencyAmount(scenario.capex, currency, 0)}</div>
                                 <div className={`text-xs ${getDeltaToneClass(scenario.capexDelta, false)}`}>
-                                  {formatSignedCurrency(scenario.capexDelta, currency, 0)} vs base
+                                  {formatSignedCurrency(scenario.capexDelta, currency, 0)} {isHebrew ? 'מול בסיס' : 'vs base'}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -2922,9 +3351,9 @@ export default function App() {
                     </div>
                   ) : (
                     <Alert>
-                      <AlertTitle>No saved options yet</AlertTitle>
+                      <AlertTitle>{text.noSavedOptions}</AlertTitle>
                       <AlertDescription>
-                        Add one option. Base is included automatically.
+                        {text.noSavedOptionsHelp}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -2933,7 +3362,7 @@ export default function App() {
                     <div className="mt-8 space-y-6">
                       {comparisonResult.fallback_reason && (
                         <Alert>
-                          <AlertTitle>Backup forecast method used</AlertTitle>
+                          <AlertTitle>{isHebrew ? 'הופעלה שיטת גיבוי' : 'Backup forecast method used'}</AlertTitle>
                           <AlertDescription>{comparisonResult.fallback_reason}</AlertDescription>
                         </Alert>
                       )}
@@ -2943,18 +3372,20 @@ export default function App() {
                           <div className="space-y-2">
                             <CardTitle className="flex items-center gap-2">
                               {comparisonRecommendationTitle}
-                              <HelpTip>Recommendation across Base System and configured options.</HelpTip>
+                              <HelpTip>{isHebrew ? 'המלצה בין מערכת הבסיס וכל האפשרויות.' : 'Recommendation across Base System and configured options.'}</HelpTip>
                             </CardTitle>
                             <div className="flex flex-wrap gap-2">
-                              <Badge variant="secondary">Base reference</Badge>
-                              {recommendedScenario ? <Badge variant="outline">Highlighted option: {recommendedScenario.label}</Badge> : null}
+                              <Badge variant="secondary">{text.baseReference}</Badge>
+                              {recommendedScenario ? <Badge variant="outline">{text.highlightedOption}: {recommendedScenario.label}</Badge> : null}
                             </div>
                           </div>
-                          {recommendedScenario ? <Badge className="w-fit">Recommended</Badge> : null}
+                          {recommendedScenario ? <Badge className="w-fit">{text.recommended}</Badge> : null}
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div>
-                            <p className="text-3xl font-semibold tracking-tight">{recommendedScenario?.label ?? 'No recommendation yet'}</p>
+                            <p className="text-3xl font-semibold tracking-tight">
+                              {recommendedScenario?.label ?? (isHebrew ? 'אין המלצה עדיין' : 'No recommendation yet')}
+                            </p>
                             <div className="mt-2">
                               <HelpTip>
                                 {comparisonRecommendationSummary} {comparisonRecommendationDetail}
@@ -2964,21 +3395,21 @@ export default function App() {
                           {recommendedScenario ? (
                             <div className="grid gap-3 sm:grid-cols-4">
                               <div className="rounded-lg border bg-background/70 p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Yearly energy</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.yearlyEnergy}</p>
                                 <p className="mt-1 text-lg font-semibold">{formatSidebarNumber(recommendedScenario.yearlyKwh)} kWh</p>
                               </div>
                               <div className="rounded-lg border bg-background/70 p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Annual savings</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.annualSavings}</p>
                                 <p className="mt-1 text-lg font-semibold">
                                   {formatCurrencyAmount(recommendedScenario.annualSavings, recommendedScenario.currency)}
                                 </p>
                               </div>
                               <div className="rounded-lg border bg-background/70 p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Simple payback</p>
-                                <p className="mt-1 text-lg font-semibold">{formatPaybackYears(recommendedScenario.simplePaybackYears)}</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.simplePayback}</p>
+                                <p className="mt-1 text-lg font-semibold">{formatPaybackYears(recommendedScenario.simplePaybackYears, language)}</p>
                               </div>
                               <div className="rounded-lg border bg-background/70 p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">CAPEX</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">{text.capex}</p>
                                 <p className="mt-1 text-lg font-semibold">
                                   {formatCurrencyAmount(recommendedScenario.capex, recommendedScenario.currency, 0)}
                                 </p>
@@ -2991,36 +3422,40 @@ export default function App() {
                       <div className="grid gap-4 md:grid-cols-3">
                         <Card>
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Best Payback</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">{text.bestPayback}</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-xl font-semibold">{bestPaybackScenario?.label ?? 'No viable payback'}</div>
+                            <div className="text-xl font-semibold">{bestPaybackScenario?.label ?? (isHebrew ? 'אין החזר כדאי' : 'No viable payback')}</div>
                             <p className="text-sm text-muted-foreground">
-                              {bestPaybackScenario ? formatPaybackYears(bestPaybackScenario.simplePaybackYears) : 'All options are not viable under the current CAPEX/tariff assumptions.'}
+                              {bestPaybackScenario
+                                ? formatPaybackYears(bestPaybackScenario.simplePaybackYears, language)
+                                : isHebrew
+                                  ? 'אין אפשרות כדאית לפי העלות והתעריף הנוכחיים.'
+                                  : 'All options are not viable under the current CAPEX/tariff assumptions.'}
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Highest Savings</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">{text.highestSavings}</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-xl font-semibold">{highestSavingsScenario?.label ?? 'No data'}</div>
+                            <div className="text-xl font-semibold">{highestSavingsScenario?.label ?? (isHebrew ? 'אין נתונים' : 'No data')}</div>
                             <p className="text-sm text-muted-foreground">
                               {highestSavingsScenario
                                 ? formatCurrencyAmount(highestSavingsScenario.annualSavings, highestSavingsScenario.currency)
-                                : 'No data'}
+                                : isHebrew ? 'אין נתונים' : 'No data'}
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Most Energy</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">{text.mostEnergy}</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-xl font-semibold">{mostEnergyScenario?.label ?? 'No data'}</div>
+                            <div className="text-xl font-semibold">{mostEnergyScenario?.label ?? (isHebrew ? 'אין נתונים' : 'No data')}</div>
                             <p className="text-sm text-muted-foreground">
-                              {mostEnergyScenario ? `${formatSidebarNumber(mostEnergyScenario.yearlyKwh)} kWh/year` : 'No data'}
+                              {mostEnergyScenario ? `${formatSidebarNumber(mostEnergyScenario.yearlyKwh)} kWh/${isHebrew ? 'שנה' : 'year'}` : isHebrew ? 'אין נתונים' : 'No data'}
                             </p>
                           </CardContent>
                         </Card>
@@ -3042,55 +3477,55 @@ export default function App() {
                               <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
                                 <span>{row.label}</span>
                                 <div className="flex flex-wrap gap-2">
-                                  {row.isBaseline ? <Badge variant="secondary">Base System</Badge> : null}
-                                  {recommendedScenario?.id === row.id ? <Badge variant="outline">Recommended</Badge> : null}
+                                  {row.isBaseline ? <Badge variant="secondary">{isHebrew ? 'מערכת בסיס' : 'Base System'}</Badge> : null}
+                                  {recommendedScenario?.id === row.id ? <Badge variant="outline">{text.recommended}</Badge> : null}
                                 </div>
                               </CardTitle>
                               <HelpTip>
                                 {row.isBaseline
-                                  ? 'Reference option for every change shown below.'
-                                  : 'Compared against Base System under the same forecast and tariff assumptions.'}
+                                  ? isHebrew ? 'אפשרות ייחוס לכל שינוי שמוצג למטה.' : 'Reference option for every change shown below.'
+                                  : isHebrew ? 'מושווה למערכת הבסיס עם אותן הנחות תחזית ותעריף.' : 'Compared against Base System under the same forecast and tariff assumptions.'}
                               </HelpTip>
                             </CardHeader>
                             <CardContent className="space-y-3">
                               <div className="rounded-lg border bg-background/70 p-3">
                                 <div className="flex items-end justify-between">
-                                  <span className="text-sm text-muted-foreground">Yearly energy</span>
+                                  <span className="text-sm text-muted-foreground">{text.yearlyEnergy}</span>
                                   <span className="font-semibold">{formatSidebarNumber(row.yearlyKwh)} kWh</span>
                                 </div>
                                 <p className={`mt-1 text-xs ${row.isBaseline ? 'text-muted-foreground' : getDeltaToneClass(row.energyDeltaPercent)}`}>
                                   {row.isBaseline
-                                    ? 'Reference option'
-                                    : `${formatSignedNumber(row.energyDeltaKwh)} kWh · ${formatSignedPercent(row.energyDeltaPercent)} vs base`}
+                                    ? isHebrew ? 'אפשרות ייחוס' : 'Reference option'
+                                    : `${formatSignedNumber(row.energyDeltaKwh)} kWh · ${formatSignedPercent(row.energyDeltaPercent)} ${isHebrew ? 'מול בסיס' : 'vs base'}`}
                                 </p>
                               </div>
                               <div className="rounded-lg border bg-background/70 p-3">
                                 <div className="flex items-end justify-between">
-                                  <span className="text-sm text-muted-foreground">Annual savings</span>
+                                  <span className="text-sm text-muted-foreground">{text.annualSavings}</span>
                                   <span className="font-semibold">{formatCurrencyAmount(row.annualSavings, row.currency)}</span>
                                 </div>
                                 <p className={`mt-1 text-xs ${row.isBaseline ? 'text-muted-foreground' : getDeltaToneClass(row.savingsDeltaPercent)}`}>
                                   {row.isBaseline
-                                    ? 'Reference option'
-                                    : `${formatSignedCurrency(row.savingsDeltaValue, row.currency)} · ${formatSignedPercent(row.savingsDeltaPercent)} vs base`}
+                                    ? isHebrew ? 'אפשרות ייחוס' : 'Reference option'
+                                    : `${formatSignedCurrency(row.savingsDeltaValue, row.currency)} · ${formatSignedPercent(row.savingsDeltaPercent)} ${isHebrew ? 'מול בסיס' : 'vs base'}`}
                                 </p>
                               </div>
                               <div className="rounded-lg border bg-background/70 p-3">
                                 <div className="flex items-end justify-between">
-                                  <span className="text-sm text-muted-foreground">Simple payback</span>
-                                  <span className="font-semibold">{formatPaybackYears(row.simplePaybackYears)}</span>
+                                  <span className="text-sm text-muted-foreground">{text.simplePayback}</span>
+                                  <span className="font-semibold">{formatPaybackYears(row.simplePaybackYears, language)}</span>
                                 </div>
                                 <p className={`mt-1 text-xs ${row.isBaseline ? 'text-muted-foreground' : getDeltaToneClass(row.paybackDeltaYears, false)}`}>
                                   {row.isBaseline
-                                    ? 'Reference option'
+                                    ? isHebrew ? 'אפשרות ייחוס' : 'Reference option'
                                     : row.paybackDeltaYears == null
-                                      ? 'No comparable payback delta'
-                                      : `${formatSignedNumber(row.paybackDeltaYears, 1)} years vs base`}
+                                      ? isHebrew ? 'אין דלתא החזר להשוואה' : 'No comparable payback delta'
+                                      : `${formatSignedNumber(row.paybackDeltaYears, 1)} ${isHebrew ? 'שנים מול בסיס' : 'years vs base'}`}
                                 </p>
                               </div>
                               <div className="rounded-lg border bg-background/70 p-3">
                                 <div className="flex items-end justify-between">
-                                  <span className="text-sm text-muted-foreground">CAPEX</span>
+                                  <span className="text-sm text-muted-foreground">{text.capex}</span>
                                   <span className="font-semibold">{formatCurrencyAmount(row.capex, row.currency, 0)}</span>
                                 </div>
                               </div>
@@ -3102,8 +3537,8 @@ export default function App() {
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
-                            Monthly Energy
-                            <HelpTip>Base System is the reference line. The recommended option is emphasized.</HelpTip>
+                            {text.monthlyEnergy}
+                            <HelpTip>{text.monthlyEnergyHelp}</HelpTip>
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="h-[400px]">
@@ -3139,22 +3574,22 @@ export default function App() {
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
-                            All Options
-                            <HelpTip>Positive energy and savings changes are better. Lower payback deltas are better.</HelpTip>
+                            {text.allOptions}
+                            <HelpTip>{text.allOptionsHelp}</HelpTip>
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>Option</TableHead>
-                                <TableHead>Yearly Energy</TableHead>
-                                <TableHead>Energy vs Base</TableHead>
-                                <TableHead>Annual Savings</TableHead>
-                                <TableHead>Savings vs Base</TableHead>
-                                <TableHead>Payback</TableHead>
-                                <TableHead>Payback vs Base</TableHead>
-                                <TableHead>CAPEX</TableHead>
+                                <TableHead>{isHebrew ? 'אפשרות' : 'Option'}</TableHead>
+                                <TableHead>{text.yearlyEnergy}</TableHead>
+                                <TableHead>{isHebrew ? 'אנרגיה מול בסיס' : 'Energy vs Base'}</TableHead>
+                                <TableHead>{text.annualSavings}</TableHead>
+                                <TableHead>{isHebrew ? 'חיסכון מול בסיס' : 'Savings vs Base'}</TableHead>
+                                <TableHead>{text.simplePayback}</TableHead>
+                                <TableHead>{isHebrew ? 'החזר מול בסיס' : 'Payback vs Base'}</TableHead>
+                                <TableHead>{text.capex}</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -3163,29 +3598,29 @@ export default function App() {
                                   <TableCell>
                                     <div className="flex flex-wrap items-center gap-2">
                                       <span className="font-medium">{row.label}</span>
-                                      {row.isBaseline ? <Badge variant="secondary">Base System</Badge> : null}
-                                      {recommendedScenario?.id === row.id ? <Badge variant="outline">Recommended</Badge> : null}
+                                      {row.isBaseline ? <Badge variant="secondary">{isHebrew ? 'מערכת בסיס' : 'Base System'}</Badge> : null}
+                                      {recommendedScenario?.id === row.id ? <Badge variant="outline">{text.recommended}</Badge> : null}
                                     </div>
                                   </TableCell>
                                   <TableCell>{formatSidebarNumber(row.yearlyKwh)} kWh</TableCell>
                                   <TableCell className={row.isBaseline ? 'text-muted-foreground' : getDeltaToneClass(row.energyDeltaPercent)}>
                                     {row.isBaseline
-                                      ? 'Reference option'
+                                      ? isHebrew ? 'אפשרות ייחוס' : 'Reference option'
                                       : `${formatSignedNumber(row.energyDeltaKwh)} kWh · ${formatSignedPercent(row.energyDeltaPercent)}`}
                                   </TableCell>
                                   <TableCell>{formatCurrencyAmount(row.annualSavings, row.currency)}</TableCell>
                                   <TableCell className={row.isBaseline ? 'text-muted-foreground' : getDeltaToneClass(row.savingsDeltaPercent)}>
                                     {row.isBaseline
-                                      ? 'Reference option'
+                                      ? isHebrew ? 'אפשרות ייחוס' : 'Reference option'
                                       : `${formatSignedCurrency(row.savingsDeltaValue, row.currency)} · ${formatSignedPercent(row.savingsDeltaPercent)}`}
                                   </TableCell>
-                                  <TableCell>{formatPaybackYears(row.simplePaybackYears)}</TableCell>
+                                  <TableCell>{formatPaybackYears(row.simplePaybackYears, language)}</TableCell>
                                   <TableCell className={row.isBaseline ? 'text-muted-foreground' : getDeltaToneClass(row.paybackDeltaYears, false)}>
                                     {row.isBaseline
-                                      ? 'Reference option'
+                                      ? isHebrew ? 'אפשרות ייחוס' : 'Reference option'
                                       : row.paybackDeltaYears == null
-                                        ? 'Not comparable'
-                                        : `${formatSignedNumber(row.paybackDeltaYears, 1)} years`}
+                                        ? isHebrew ? 'לא ניתן להשוואה' : 'Not comparable'
+                                        : `${formatSignedNumber(row.paybackDeltaYears, 1)} ${isHebrew ? 'שנים' : 'years'}`}
                                   </TableCell>
                                   <TableCell>{formatCurrencyAmount(row.capex, row.currency, 0)}</TableCell>
                                 </TableRow>
@@ -3200,8 +3635,8 @@ export default function App() {
                           <AccordionTrigger className="py-4 text-left hover:no-underline">
                             <div>
                               <p className="flex items-center gap-2 font-semibold">
-                                Details
-                                <HelpTip>Model metadata, weather reference details, and data-source notes.</HelpTip>
+                                {text.details}
+                                <HelpTip>{text.optionsDetailsHelp}</HelpTip>
                               </p>
                             </div>
                           </AccordionTrigger>
@@ -3209,8 +3644,8 @@ export default function App() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead>Field</TableHead>
-                                  <TableHead>Value</TableHead>
+                                  <TableHead>{isHebrew ? 'שדה' : 'Field'}</TableHead>
+                                  <TableHead>{isHebrew ? 'ערך' : 'Value'}</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
