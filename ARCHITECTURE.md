@@ -23,11 +23,14 @@ The system is split into two runtime components:
    - Trains and executes the ML baseline yearly forecast
    - Computes financial summaries, benchmark metrics, and accuracy metrics
 
-2. Streamlit frontend
+2. React frontend (`solar_frontend`)
    - Collects location and system inputs
    - Visualizes yearly, daily, comparison, benchmark, and accuracy outputs
    - Displays model metadata, tariff assumptions, and fallback messages
    - Supports map-based roof area selection
+   - Uses Vite for local development and production builds
+
+The repository also retains `solar_ui`, the previous Streamlit frontend. It is legacy code, is not part of the current runtime architecture, and remains in the repository temporarily for reference.
 
 External dependency:
 - Open-Meteo forecast and archive APIs
@@ -74,16 +77,26 @@ External dependency:
 
 ### Frontend modules
 
-- `solar_ui/app.py`
-  - Main user workflow and visual presentation
-- `solar_ui/utils.py`
-  - Roof area estimation and reverse geocoding helper functions
+- `solar_frontend/src/App.tsx`
+  - Main React user workflow, input controls, map interaction, and result visualization
+- `solar_frontend/src/main.tsx`
+  - React application entry point
+- `solar_frontend/lib/solar-api.ts`
+  - Typed backend API payloads, responses, and request helpers
+- `solar_frontend/src/index.css`
+  - Application styling and theme definitions
+
+### Legacy frontend
+
+- `solar_ui/`
+  - Previous Streamlit UI retained temporarily for reference
+  - Not used by the current application or deployment flow
 
 ## Data Flow
 
 ### Daily simulation flow
 
-1. User selects a location and system configuration in Streamlit.
+1. User selects a location and system configuration in the React frontend.
 2. Frontend sends `POST /simulate`.
 3. Backend pulls hourly forecast weather.
 4. Backend applies:
@@ -113,7 +126,7 @@ External dependency:
 
 ### Benchmark flow
 
-1. User selects a benchmark end year and historical window in Streamlit.
+1. User selects a benchmark end year and historical window in the React frontend.
 2. Frontend sends `POST /evaluation/benchmark`.
 3. Backend builds a reference production proxy for each completed evaluation year by replaying archived actual weather through the shared PV simulation stack.
 4. Backend evaluates three approaches for each year:
