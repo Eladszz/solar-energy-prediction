@@ -291,7 +291,9 @@ def evaluate_forecast_benchmark(
         for evaluation_year in evaluation_years
     }
 
-    actual_summary_builder = lambda evaluation_year: actual_summaries_by_year[evaluation_year]
+    def actual_summary_builder(evaluation_year: int):
+        return actual_summaries_by_year[evaluation_year]
+
     benchmark_results = [
         _evaluate_approach(
             approach=approach,
