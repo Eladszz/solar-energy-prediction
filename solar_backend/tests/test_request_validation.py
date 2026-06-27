@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 import pytest
 from pydantic import ValidationError
 
+from app.defaults import DEFAULT_SYSTEM_CAPEX
 from app.models.requests import (
     AccuracyEvaluationRequest,
     BasePVRequest,
@@ -55,7 +56,7 @@ def build_valid_payload(**overrides):
         "model_type": "physical",
         "electricity_price_per_kwh": 0.48,
         "currency": "ILS",
-        "system_capex": 25000.0,
+        "system_capex": 60000.0,
         "training_years": 3,
     }
     payload.update(overrides)
@@ -111,7 +112,7 @@ def build_valid_comparison_scenario(**overrides):
         "ac_capacity_kw": 15.0,
         "gamma": 0.004,
         "noct": 45.0,
-        "system_capex": 25000.0,
+        "system_capex": 60000.0,
     }
     payload.update(overrides)
     return payload
@@ -133,7 +134,7 @@ def build_financial_assumptions():
     return {
         "electricity_price_per_kwh": 0.48,
         "currency": "ILS",
-        "system_capex": 25000.0,
+        "system_capex": 60000.0,
         "valuation_basis": "Estimated value from forecasted energy.",
         "annual_savings_basis": "Annual savings equal yearly value.",
         "payback_basis": "Simple payback = CAPEX / annual savings.",
@@ -345,7 +346,9 @@ class TestRequestModels:
         simulation_request = SimulationRequest(**payload)
         yearly_request = YearlyForecastRequest(**payload)
         accuracy_request = AccuracyEvaluationRequest(**payload)
-        benchmark_request = BenchmarkEvaluationRequest(**build_valid_benchmark_payload())
+        benchmark_request = BenchmarkEvaluationRequest(
+            **build_valid_benchmark_payload()
+        )
         comparison_request = ScenarioComparisonRequest(**comparison_payload)
 
         assert base_request.model_dump() == simulation_request.model_dump()
@@ -354,6 +357,15 @@ class TestRequestModels:
         assert benchmark_request.benchmark_years == 3
         assert comparison_request.context.model_type == "physical"
         assert comparison_request.scenarios[1].name == "Expanded Array"
+
+    def test_request_models_use_configured_default_capex(self):
+        base_request = BasePVRequest(latitude=32.08, longitude=34.78)
+        benchmark_request = BenchmarkEvaluationRequest(latitude=32.08, longitude=34.78)
+        scenario = ScenarioComparisonScenario(name="Base System")
+
+        assert base_request.system_capex == DEFAULT_SYSTEM_CAPEX
+        assert benchmark_request.system_capex == DEFAULT_SYSTEM_CAPEX
+        assert scenario.system_capex == DEFAULT_SYSTEM_CAPEX
 
     @pytest.mark.parametrize(
         ("field_name", "value"),
@@ -500,17 +512,23 @@ class TestApiValidation:
         return_value=build_accuracy_response(),
     )
     def test_accuracy_accepts_valid_payload(self, _mock_evaluate):
-        response = client.post("/evaluation/accuracy", json=build_valid_payload(year=2025))
+        response = client.post(
+            "/evaluation/accuracy", json=build_valid_payload(year=2025)
+        )
 
         assert response.status_code == 200
         assert response.json()["quality"] == "GOOD"
 
     @patch(
         "app.routers.accuracy_router.evaluate_yearly_accuracy",
-        side_effect=AssertionError("Business logic should not run for future accuracy years"),
+        side_effect=AssertionError(
+            "Business logic should not run for future accuracy years"
+        ),
     )
     def test_accuracy_rejects_future_actual_year(self, _mock_evaluate):
-        response = client.post("/evaluation/accuracy", json=build_valid_payload(year=2100))
+        response = client.post(
+            "/evaluation/accuracy", json=build_valid_payload(year=2100)
+        )
 
         assert response.status_code == 422
         assert "completed year" in response.json()["detail"]
@@ -520,7 +538,9 @@ class TestApiValidation:
         return_value=build_benchmark_response(),
     )
     def test_benchmark_accepts_valid_payload(self, _mock_evaluate):
-        response = client.post("/evaluation/benchmark", json=build_valid_benchmark_payload())
+        response = client.post(
+            "/evaluation/benchmark", json=build_valid_benchmark_payload()
+        )
 
         assert response.status_code == 200
         assert len(response.json()["approaches"]) == 3
@@ -530,7 +550,9 @@ class TestApiValidation:
         return_value=build_scenario_comparison_response(),
     )
     def test_scenario_comparison_accepts_valid_payloads(self, _mock_compare):
-        response = client.post("/scenarios/compare", json=build_valid_comparison_payload())
+        response = client.post(
+            "/scenarios/compare", json=build_valid_comparison_payload()
+        )
 
         assert response.status_code == 200
         assert len(response.json()["results"]) == 1
@@ -542,7 +564,9 @@ class TestApiValidation:
         )
         with patch(
             "app.routers.simulate_router.get_weather_forecast",
-            side_effect=AssertionError("Business logic should not run for invalid payloads"),
+            side_effect=AssertionError(
+                "Business logic should not run for invalid payloads"
+            ),
         ):
             response = client.post(
                 "/simulate",
@@ -615,7 +639,9 @@ class TestApiValidation:
     ):
         with patch(
             patch_target,
-            side_effect=AssertionError("Business logic should not run for invalid payloads"),
+            side_effect=AssertionError(
+                "Business logic should not run for invalid payloads"
+            ),
         ):
             response = client.post(path, json=payload)
 

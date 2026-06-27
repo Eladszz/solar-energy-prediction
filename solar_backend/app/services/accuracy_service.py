@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from app.defaults import (
+    DEFAULT_CURRENCY,
+    DEFAULT_ELECTRICITY_PRICE_PER_KWH,
+    DEFAULT_MODEL_TYPE,
+    DEFAULT_SYSTEM_CAPEX,
+    DEFAULT_TRAINING_YEARS,
+)
 from app.services.finance_service import build_financial_summary
 from app.services.loss_service import compute_system_loss_factor
 from app.services.weather_archive_service import get_year_archive
@@ -88,11 +95,11 @@ def evaluate_yearly_accuracy(
     gamma: float,
     noct: float,
     ac_capacity_kw: float,
-    model_type: str = "physical",
-    training_years: int = 3,
-    electricity_price_per_kwh: float = 0.48,
-    currency: str = "ILS",
-    system_capex: float = 25000.0,
+    model_type: str = DEFAULT_MODEL_TYPE,
+    training_years: int = DEFAULT_TRAINING_YEARS,
+    electricity_price_per_kwh: float = DEFAULT_ELECTRICITY_PRICE_PER_KWH,
+    currency: str = DEFAULT_CURRENCY,
+    system_capex: float = DEFAULT_SYSTEM_CAPEX,
     demo_mode: bool = False,
     demo_scenario_id: str | None = None,
 ) -> dict:

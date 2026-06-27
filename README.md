@@ -129,7 +129,7 @@ curl -X POST http://127.0.0.1:8000/forecast/yearly \
     "training_years": 3,
     "electricity_price_per_kwh": 0.48,
     "currency": "ILS",
-    "system_capex": 25000.0
+    "system_capex": 60000.0
   }'
 ```
 
@@ -146,7 +146,7 @@ curl -X POST http://127.0.0.1:8000/simulate \
     "ac_capacity_kw": 15.0,
     "electricity_price_per_kwh": 0.48,
     "currency": "ILS",
-    "system_capex": 25000.0
+    "system_capex": 60000.0
   }'
 ```
 
@@ -177,7 +177,7 @@ curl -X POST http://127.0.0.1:8000/scenarios/compare \
         "shading": "low",
         "gamma": 0.004,
         "noct": 45.0,
-        "system_capex": 25000.0
+        "system_capex": 60000.0
       },
       {
         "name": "Expanded Array",
@@ -214,7 +214,7 @@ curl -X POST http://127.0.0.1:8000/evaluation/accuracy \
     "training_years": 3,
     "electricity_price_per_kwh": 0.48,
     "currency": "ILS",
-    "system_capex": 25000.0
+    "system_capex": 60000.0
   }'
 ```
 

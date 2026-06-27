@@ -7,6 +7,7 @@ COPY solar_frontend/package.json solar_frontend/package-lock.json ./
 RUN npm ci
 
 COPY solar_frontend ./
+COPY shared /app/shared
 RUN npm run build
 
 
@@ -25,6 +26,7 @@ COPY solar_backend/backend_requirements.txt /app/backend_requirements.txt
 RUN pip install --no-cache-dir -r backend_requirements.txt
 
 COPY solar_backend /app/solar_backend
+COPY shared /app/shared
 COPY --from=frontend-builder /app/solar_frontend/dist /app/solar_frontend/dist
 COPY docker/start.sh /app/start.sh
 

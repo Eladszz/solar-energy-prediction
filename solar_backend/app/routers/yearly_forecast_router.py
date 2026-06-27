@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException
 
+from app.exceptions.domain_exceptions import DomainError
+from app.exceptions.http_exceptions import exception_to_http_exception
 from app.models.requests import YearlyForecastRequest
 from app.models.responses import YearlyForecastResponse
-from app.exceptions.external_service_exceptions import (
-    ExternalServiceError,
-    external_service_to_http_exception,
-)
+from app.exceptions.external_service_exceptions import ExternalServiceError
 from app.services.loss_service import compute_system_loss_factor
 from app.services.yearly_forecast_service import (
     build_forecast_weather_profile,
@@ -47,7 +46,9 @@ def yearly(req: YearlyForecastRequest):
             system_capex=req.system_capex,
         )
     except ExternalServiceError as exc:
-        raise external_service_to_http_exception(exc) from exc
+        raise exception_to_http_exception(exc) from exc
+    except DomainError as exc:
+        raise exception_to_http_exception(exc) from exc
     except HTTPException:
         raise
     except Exception as exc:

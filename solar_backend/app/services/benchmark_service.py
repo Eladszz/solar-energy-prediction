@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from app.defaults import DEFAULT_TRAINING_YEARS
 from app.services.accuracy_service import (
     calculate_bias_percent,
     calculate_mae,
@@ -267,7 +268,7 @@ def evaluate_forecast_benchmark(
     gamma: float,
     noct: float,
     ac_capacity_kw: float,
-    training_years: int = 3,
+    training_years: int = DEFAULT_TRAINING_YEARS,
     demo_mode: bool = False,
     demo_scenario_id: str | None = None,
 ) -> dict:

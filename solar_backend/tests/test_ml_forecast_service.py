@@ -1,7 +1,9 @@
 import math
 
 import pandas as pd
+import pytest
 
+from app.exceptions.domain_exceptions import ForecastTrainingDataUnavailableError
 from app.services.ml_forecast_service import (
     build_ml_metadata,
     build_hourly_time_index,
@@ -36,3 +38,13 @@ def test_train_and_predict_weather_regression_model():
     assert predicted_df["irr"].min() >= 0.0
     assert metadata["training_years"] == [2024]
     assert metadata["feature_count"] > 10
+
+
+def test_train_weather_regression_model_rejects_empty_history():
+    empty_history = pd.DataFrame(columns=["time", "irr", "temp"])
+
+    with pytest.raises(
+        ForecastTrainingDataUnavailableError,
+        match="without historical weather data",
+    ):
+        train_weather_regression_model(empty_history, training_years=[])

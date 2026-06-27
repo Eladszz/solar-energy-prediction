@@ -1,4 +1,3 @@
-from fastapi import HTTPException
 import requests
 
 
@@ -41,7 +40,3 @@ class ExternalServiceResponseError(
     ValueError,
 ):
     http_status_code = 502
-
-
-def external_service_to_http_exception(exc: ExternalServiceError) -> HTTPException:
-    return HTTPException(status_code=exc.http_status_code, detail=exc.user_message)

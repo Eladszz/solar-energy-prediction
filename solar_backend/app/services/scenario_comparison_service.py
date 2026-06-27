@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
+from app.exceptions.domain_exceptions import EmptyScenarioComparisonError
 from app.models.requests import ScenarioComparisonContext, ScenarioComparisonScenario
 from app.services.finance_service import build_financial_summary
 from app.services.loss_service import compute_system_loss_factor
@@ -16,7 +17,7 @@ def compare_yearly_scenarios(
     scenarios: list[ScenarioComparisonScenario],
 ) -> Dict:
     if not scenarios:
-        raise ValueError("At least one scenario is required")
+        raise EmptyScenarioComparisonError()
 
     weather_profile = build_forecast_weather_profile(
         latitude=context.latitude,

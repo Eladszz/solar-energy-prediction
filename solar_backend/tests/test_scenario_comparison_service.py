@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from app.exceptions.domain_exceptions import EmptyScenarioComparisonError
 from app.models.requests import ScenarioComparisonContext, ScenarioComparisonScenario
 from app.services.scenario_comparison_service import compare_yearly_scenarios
 from app.services.yearly_forecast_service import WeatherProfileResult
@@ -51,7 +52,7 @@ def base_scenario():
         ac_capacity_kw=15.0,
         gamma=0.004,
         noct=45.0,
-        system_capex=25000.0,
+        system_capex=60000.0,
     )
 
 
@@ -72,7 +73,7 @@ def larger_scenario():
 
 
 def test_compare_yearly_scenarios_requires_at_least_one_scenario(comparison_context):
-    with pytest.raises(ValueError, match="At least one scenario"):
+    with pytest.raises(EmptyScenarioComparisonError, match="At least one scenario"):
         compare_yearly_scenarios(comparison_context, [])
 
 
@@ -104,7 +105,7 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
     assert result["baseline_yearly_kwh"] == 7200.0
     assert result["baseline_yearly_estimated_value"] == 1296.0
     assert result["baseline_annual_savings"] == 1296.0
-    assert result["baseline_simple_payback_years"] == 19.3
+    assert result["baseline_simple_payback_years"] == 46.3
     assert result["results"][0]["scenario"]["name"] == "Base System"
     assert result["results"][1]["scenario"]["name"] == "Expanded Array"
     assert result["results"][0]["deviation_percent"] == 0.0
@@ -112,7 +113,7 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
     assert result["results"][1]["yearly_estimated_value"] == 1620.0
     assert result["results"][1]["annual_savings"] == 1620.0
     assert result["results"][1]["simple_payback_years"] == 18.5
-    assert result["results"][1]["payback_delta_years"] == -0.8
+    assert result["results"][1]["payback_delta_years"] == -27.8
     assert result["results"][1]["value_deviation_percent"] == 25.0
 
     mock_build_profile.assert_called_once_with(
@@ -170,7 +171,7 @@ def test_compare_yearly_scenarios_uses_shared_context_for_weather_and_finance(
     )
     assert result["results"][0]["financial_assumptions"]["currency"] == "EUR"
     assert result["results"][0]["financial_assumptions"]["electricity_price_per_kwh"] == 0.22
-    assert result["results"][0]["financial_assumptions"]["system_capex"] == 25000.0
+    assert result["results"][0]["financial_assumptions"]["system_capex"] == 60000.0
 
 
 @patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")

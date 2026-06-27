@@ -23,7 +23,7 @@ BASE_PAYLOAD = {
     "model_type": "ml",
     "electricity_price_per_kwh": 0.48,
     "currency": "ILS",
-    "system_capex": 25000.0,
+    "system_capex": 60000.0,
     "training_years": 3,
     "demo_mode": True,
     "demo_scenario_id": "tel_aviv_rooftop",

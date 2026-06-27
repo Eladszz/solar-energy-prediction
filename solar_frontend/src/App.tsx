@@ -40,6 +40,7 @@ import {
   type SimulationResponse,
   type YearlyForecastResponse,
 } from '@/lib/solar-api';
+import { APP_DEFAULTS } from '@/lib/defaults';
 
 if (typeof window !== 'undefined') {
   (window as { type?: string }).type = '';
@@ -55,12 +56,11 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CHART_COLORS = ['#2563eb', '#059669', '#f59e0b', '#dc2626', '#7c3aed'];
-const DEFAULT_FEED_IN_TARIFF_ILS = 0.48;
-const DEFAULT_CURRENCY: CurrencyCode = 'ILS';
 const DEFAULT_SIDEBAR_WIDTH = 368;
 const MIN_SIDEBAR_WIDTH = 304;
 const MAX_SIDEBAR_WIDTH = 560;
 const COLLAPSED_SIDEBAR_WIDTH = 72;
+const LEGACY_SYSTEM_CAPEX_DEFAULT = 25000;
 type Language = 'en' | 'he';
 const FORECAST_APPROACH_COPY: Record<
   Language,
@@ -988,21 +988,21 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
 
   const [forecastYear, setForecastYear] = useState<string | number>(currentYear);
-  const [panelArea, setPanelArea] = useState<string | number>(80);
-  const [acCapacityKw, setAcCapacityKw] = useState<string | number>(15);
-  const [modelType, setModelType] = useState<ModelType>('physical');
-  const [trainingYears, setTrainingYears] = useState(3);
-  const [electricityPrice, setElectricityPrice] = useState<string | number>(DEFAULT_FEED_IN_TARIFF_ILS);
-  const [currency, setCurrency] = useState<CurrencyCode>(DEFAULT_CURRENCY);
-  const [systemCapex, setSystemCapex] = useState<string | number>(25000);
+  const [panelArea, setPanelArea] = useState<string | number>(APP_DEFAULTS.panelAreaSqm);
+  const [acCapacityKw, setAcCapacityKw] = useState<string | number>(APP_DEFAULTS.acCapacityKw);
+  const [modelType, setModelType] = useState<ModelType>(APP_DEFAULTS.modelType);
+  const [trainingYears, setTrainingYears] = useState(APP_DEFAULTS.trainingYears);
+  const [electricityPrice, setElectricityPrice] = useState<string | number>(APP_DEFAULTS.electricityPricePerKwh);
+  const [currency, setCurrency] = useState<CurrencyCode>(APP_DEFAULTS.currency);
+  const [systemCapex, setSystemCapex] = useState<string | number>(APP_DEFAULTS.systemCapex);
 
-  const [panelEfficiency, setPanelEfficiency] = useState(0.2);
-  const [tilt, setTilt] = useState(30);
-  const [cleanliness, setCleanliness] = useState<CleanlinessLevel>('normal');
-  const [shading, setShading] = useState<ShadingLevel>('low');
-  const [gamma, setGamma] = useState<string | number>(0.004);
-  const [noct, setNoct] = useState<string | number>(45);
-  const [benchmarkYears, setBenchmarkYears] = useState(3);
+  const [panelEfficiency, setPanelEfficiency] = useState(APP_DEFAULTS.panelEfficiency);
+  const [tilt, setTilt] = useState(APP_DEFAULTS.tiltDegrees);
+  const [cleanliness, setCleanliness] = useState<CleanlinessLevel>(APP_DEFAULTS.cleanliness);
+  const [shading, setShading] = useState<ShadingLevel>(APP_DEFAULTS.shading);
+  const [gamma, setGamma] = useState<string | number>(APP_DEFAULTS.gamma);
+  const [noct, setNoct] = useState<string | number>(APP_DEFAULTS.noctC);
+  const [benchmarkYears, setBenchmarkYears] = useState(APP_DEFAULTS.benchmarkYears);
 
   const [forecastData, setForecastData] = useState<YearlyForecastResponse | null>(null);
   const [dailySimulation, setDailySimulation] = useState<SimulationResponse | null>(null);
@@ -1011,11 +1011,11 @@ export default function App() {
   const [comparisonResult, setComparisonResult] = useState<ScenarioComparisonResponse | null>(null);
   const [scenarioRequests, setScenarioRequests] = useState<ScenarioRequest[]>([]);
 
-  const [scenarioName, setScenarioName] = useState('Option 1');
-  const [scenarioPanelAreaDelta, setScenarioPanelAreaDelta] = useState(20);
-  const [scenarioTilt, setScenarioTilt] = useState(30);
-  const [scenarioAcCapacity, setScenarioAcCapacity] = useState<string | number>(15);
-  const [scenarioCapex, setScenarioCapex] = useState<string | number>(25000);
+  const [scenarioName, setScenarioName] = useState(`${APP_DEFAULTS.scenarioNamePrefix} 1`);
+  const [scenarioPanelAreaDelta, setScenarioPanelAreaDelta] = useState(APP_DEFAULTS.scenarioPanelAreaDeltaPercent);
+  const [scenarioTilt, setScenarioTilt] = useState(APP_DEFAULTS.tiltDegrees);
+  const [scenarioAcCapacity, setScenarioAcCapacity] = useState<string | number>(APP_DEFAULTS.acCapacityKw);
+  const [scenarioCapex, setScenarioCapex] = useState<string | number>(APP_DEFAULTS.systemCapex);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
@@ -1036,6 +1036,19 @@ export default function App() {
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'he' ? 'rtl' : 'ltr';
   }, [language]);
+
+  useEffect(() => {
+    setSystemCapex((currentValue) => (
+      Number(currentValue) === LEGACY_SYSTEM_CAPEX_DEFAULT
+        ? APP_DEFAULTS.systemCapex
+        : currentValue
+    ));
+    setScenarioCapex((currentValue) => (
+      Number(currentValue) === LEGACY_SYSTEM_CAPEX_DEFAULT
+        ? APP_DEFAULTS.systemCapex
+        : currentValue
+    ));
+  }, []);
 
   useEffect(() => {
     if (!isSidebarResizing) {
@@ -1282,7 +1295,7 @@ export default function App() {
     payload.system_capex = Number(scenarioCapex);
 
     setScenarioRequests((current) => [...current, { name: scenarioName.trim() || `Option ${current.length + 1}`, payload }]);
-    setScenarioName(`Option ${scenarioRequests.length + 2}`);
+    setScenarioName(`${APP_DEFAULTS.scenarioNamePrefix} ${scenarioRequests.length + 2}`);
     setComparisonResult(null);
     setApiError(null);
   };
@@ -2021,7 +2034,7 @@ export default function App() {
                           min={1}
                           max={10}
                           step={1}
-                          value={getSliderValue(trainingYears, 3)}
+                          value={getSliderValue(trainingYears, APP_DEFAULTS.trainingYears)}
                           onValueChange={handleTrainingYearsChange}
                         />
                       </div>
@@ -2043,7 +2056,7 @@ export default function App() {
                               </div>
                               <span className="text-sm text-muted-foreground">{panelEfficiency.toFixed(2)}</span>
                             </div>
-                            <Slider min={0.1} max={0.3} step={0.01} value={getSliderValue(panelEfficiency, 0.2)} onValueChange={handlePanelEfficiencyChange} />
+                            <Slider min={0.1} max={0.3} step={0.01} value={getSliderValue(panelEfficiency, APP_DEFAULTS.panelEfficiency)} onValueChange={handlePanelEfficiencyChange} />
                           </div>
 
                           <div className="space-y-2">
@@ -2054,7 +2067,7 @@ export default function App() {
                               </div>
                               <span className="text-sm text-muted-foreground">{tilt}</span>
                             </div>
-                            <Slider min={0} max={60} step={1} value={getSliderValue(tilt, 30)} onValueChange={handleTiltChange} />
+                            <Slider min={0} max={60} step={1} value={getSliderValue(tilt, APP_DEFAULTS.tiltDegrees)} onValueChange={handleTiltChange} />
                           </div>
 
                           <div className="space-y-1">
@@ -2906,7 +2919,7 @@ export default function App() {
                       <Label>{text.comparisonWindow}</Label>
                       <span className="text-sm text-muted-foreground">{benchmarkYears}</span>
                     </div>
-                    <Slider min={1} max={5} step={1} value={getSliderValue(benchmarkYears, 3)} onValueChange={handleBenchmarkYearsChange} />
+                    <Slider min={1} max={5} step={1} value={getSliderValue(benchmarkYears, APP_DEFAULTS.benchmarkYears)} onValueChange={handleBenchmarkYearsChange} />
                   </div>
                 </div>
                 <Button onClick={handleRunBenchmark} disabled={!position || isLoading}>
@@ -3236,14 +3249,14 @@ export default function App() {
                         <div className="min-w-[150px] flex-1 space-y-2">
                           <div className="flex justify-between">
                             <Label>{text.panelAreaChange} (%)</Label>
-                            <span className="text-sm text-muted-foreground">{getSliderNumber(scenarioPanelAreaDelta, 20)}%</span>
+                            <span className="text-sm text-muted-foreground">{getSliderNumber(scenarioPanelAreaDelta, APP_DEFAULTS.scenarioPanelAreaDeltaPercent)}%</span>
                           </div>
                           <div className="w-full px-2">
                             <Slider
                               min={-50}
                               max={200}
                               step={5}
-                              value={getSliderValue(scenarioPanelAreaDelta, 20)}
+                              value={getSliderValue(scenarioPanelAreaDelta, APP_DEFAULTS.scenarioPanelAreaDeltaPercent)}
                               onValueChange={handleScenarioPanelAreaDeltaChange}
                             />
                           </div>
@@ -3251,10 +3264,10 @@ export default function App() {
                         <div className="min-w-[150px] flex-1 space-y-2">
                           <div className="flex justify-between">
                             <Label>{text.optionTilt}</Label>
-                            <span className="text-sm text-muted-foreground">{getSliderNumber(scenarioTilt, 30)}</span>
+                            <span className="text-sm text-muted-foreground">{getSliderNumber(scenarioTilt, APP_DEFAULTS.tiltDegrees)}</span>
                           </div>
                           <div className="w-full px-2">
-                            <Slider min={0} max={60} step={1} value={getSliderValue(scenarioTilt, 30)} onValueChange={handleScenarioTiltChange} />
+                            <Slider min={0} max={60} step={1} value={getSliderValue(scenarioTilt, APP_DEFAULTS.tiltDegrees)} onValueChange={handleScenarioTiltChange} />
                           </div>
                         </div>
                         <div className="min-w-[150px] flex-1 space-y-2">

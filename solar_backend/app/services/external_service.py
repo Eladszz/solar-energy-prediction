@@ -7,7 +7,6 @@ import requests
 
 from app.exceptions.external_service_exceptions import (
     ExternalServiceError,  # noqa: F401
-    external_service_to_http_exception,  # noqa: F401
     ExternalServiceResponseError,
     ExternalServiceTimeoutError,
     ExternalServiceRateLimitError,

@@ -6,10 +6,8 @@ from app.services.finance_service import (
 )
 from app.models.requests import SimulationRequest
 from app.models.responses import SimulationResponse
-from app.exceptions.external_service_exceptions import (
-    ExternalServiceError,
-    external_service_to_http_exception,
-)
+from app.exceptions.external_service_exceptions import ExternalServiceError
+from app.exceptions.http_exceptions import exception_to_http_exception
 from app.services.loss_service import compute_system_loss_factor
 from app.services.simulation_service import simulate_production_enhanced
 from app.services.weather_service import get_weather_forecast
@@ -32,7 +30,7 @@ def simulate(req: SimulationRequest):
             demo_scenario_id=req.demo_scenario_id,
         )
     except ExternalServiceError as exc:
-        raise external_service_to_http_exception(exc) from exc
+        raise exception_to_http_exception(exc) from exc
     except HTTPException:
         raise
     except Exception as exc:

@@ -5,6 +5,15 @@ import logging
 
 import pandas as pd
 
+from app.defaults import (
+    DEFAULT_AC_CAPACITY_KW,
+    DEFAULT_MODEL_TYPE,
+    DEFAULT_TRAINING_YEARS,
+)
+from app.exceptions.domain_exceptions import (
+    BenchmarkTrainingDataUnavailableError,
+    ForecastTrainingDataUnavailableError,
+)
 from app.services.finance_service import build_financial_summary
 from app.services.demo_mode_service import (
     build_demo_response_metadata,
@@ -164,7 +173,7 @@ def compute_yearly_from_real_data(
     gamma,
     noct,
     system_loss_factor=0.87,
-    ac_capacity_kw=15.0,
+    ac_capacity_kw=DEFAULT_AC_CAPACITY_KW,
 ):
     working_df = df
     irr_list = working_df["irr"].fillna(0.0).tolist()
@@ -284,7 +293,9 @@ def prepare_ml_weather_profile(
     )
 
     if not history_frames:
-        raise ValueError("No historical weather data was available for ML training")
+        raise ForecastTrainingDataUnavailableError(
+            "No historical weather data was available for ML training"
+        )
 
     history_df = pd.concat(history_frames, ignore_index=True)
     model = train_weather_regression_model(history_df, years_used)
@@ -324,9 +335,7 @@ def prepare_naive_weather_profile(
     )
 
     if not history_frames:
-        raise ValueError(
-            "No historical weather data was available for naive benchmark training"
-        )
+        raise BenchmarkTrainingDataUnavailableError()
 
     aligned_history = [
         align_profile_to_year(frame, forecast_year) for frame in history_frames
@@ -387,8 +396,8 @@ def build_forecast_weather_profile(
     latitude: float,
     longitude: float,
     forecast_year: int | None,
-    model_type: str = "physical",
-    training_years: int = 3,
+    model_type: str = DEFAULT_MODEL_TYPE,
+    training_years: int = DEFAULT_TRAINING_YEARS,
     backtest_mode: bool = False,
     demo_mode: bool = False,
     demo_scenario_id: str | None = None,

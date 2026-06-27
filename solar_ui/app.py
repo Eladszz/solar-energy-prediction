@@ -7,12 +7,17 @@ from typing import Any, Mapping
 import folium  # type: ignore
 from folium.plugins import Draw  # type: ignore
 from loguru import logger
+from solar_backend.app.defaults import DEFAULT_SYSTEM_CAPEX
 import streamlit as st  # type: ignore
 from streamlit_folium import st_folium  # type: ignore
 
 try:
     from solar_ui.api_client import api_post
-    from solar_ui.config import get_default_demo_scenario_id, get_demo_scenario_by_id, get_demo_scenarios
+    from solar_ui.config import (
+        get_default_demo_scenario_id,
+        get_demo_scenario_by_id,
+        get_demo_scenarios,
+    )
     from solar_ui.payloads import (
         BenchmarkEvaluationPayload,
         PVRequestPayload,
@@ -43,10 +48,18 @@ try:
         seed_scenario_form,
         upsert_scenario_request,
     )
-    from solar_ui.utils import estimate_area_m2_from_bounds, geocode_address, reverse_geocode
+    from solar_ui.utils import (
+        estimate_area_m2_from_bounds,
+        geocode_address,
+        reverse_geocode,
+    )
 except ModuleNotFoundError:
     from api_client import api_post
-    from config import get_default_demo_scenario_id, get_demo_scenario_by_id, get_demo_scenarios
+    from config import (
+        get_default_demo_scenario_id,
+        get_demo_scenario_by_id,
+        get_demo_scenarios,
+    )
     from payloads import (
         BenchmarkEvaluationPayload,
         PVRequestPayload,
@@ -144,7 +157,9 @@ def render_location_map(
     selected_demo_scenario_id: str | None,
 ) -> None:
     if st.session_state.lat is None or st.session_state.lon is None:
-        st.info("Resolve an address first to unlock the site map and optional roof-area selection.")
+        st.info(
+            "Resolve an address first to unlock the site map and optional roof-area selection."
+        )
         return
 
     map_object = folium.Map(
@@ -177,7 +192,9 @@ def render_location_map(
         return
 
     if not map_data or not map_data.get("all_drawings"):
-        st.caption("Draw a roof rectangle to estimate usable panel area from the selected site.")
+        st.caption(
+            "Draw a roof rectangle to estimate usable panel area from the selected site."
+        )
         return
 
     last_shape = map_data["all_drawings"][-1]
@@ -212,7 +229,9 @@ def render_location_map(
         st.session_state.location_notice = reverse_lookup.error_message
 
     st.session_state.auto_run_forecast = True
-    st.success(f"Roof area detected: {roof_area:.1f} m². Location and panel area were updated.")
+    st.success(
+        f"Roof area detected: {roof_area:.1f} m². Location and panel area were updated."
+    )
     st.rerun()
 
 
@@ -220,7 +239,9 @@ def build_scenario_preview_payload(base_payload: PVRequestPayload) -> dict[str, 
     scenario_payload = dict(base_payload)
     scenario_payload["panel_area"] = float(st.session_state.scenario_form_panel_area)
     scenario_payload["tilt"] = int(st.session_state.scenario_form_tilt)
-    scenario_payload["ac_capacity_kw"] = float(st.session_state.scenario_form_ac_capacity)
+    scenario_payload["ac_capacity_kw"] = float(
+        st.session_state.scenario_form_ac_capacity
+    )
     scenario_payload["system_capex"] = float(st.session_state.scenario_form_capex)
     scenario_payload["cleanliness"] = str(st.session_state.scenario_form_cleanliness)
     scenario_payload["shading"] = str(st.session_state.scenario_form_shading)
@@ -237,7 +258,8 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
     )
 
     if st.session_state.editing_scenario_index is not None and (
-        st.session_state.editing_scenario_index >= len(st.session_state.scenario_requests)
+        st.session_state.editing_scenario_index
+        >= len(st.session_state.scenario_requests)
     ):
         clear_scenario_editor(base_payload)
 
@@ -251,13 +273,19 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
     base_columns = st.columns(4)
     base_columns[0].metric("Baseline Area", f"{base_payload['panel_area']} m²")
     base_columns[1].metric("Baseline Tilt", f"{base_payload['tilt']}°")
-    base_columns[2].metric("Baseline AC Capacity", f"{base_payload['ac_capacity_kw']} kW")
-    base_columns[3].metric("Baseline CAPEX", f"{base_payload['system_capex']} {base_payload['currency']}")
+    base_columns[2].metric(
+        "Baseline AC Capacity", f"{base_payload['ac_capacity_kw']} kW"
+    )
+    base_columns[3].metric(
+        "Baseline CAPEX", f"{base_payload['system_capex']} {base_payload['currency']}"
+    )
 
     if st.session_state.scenario_requests:
         selected_index = st.session_state.selected_scenario_index
         if selected_index >= len(st.session_state.scenario_requests):
-            st.session_state.selected_scenario_index = len(st.session_state.scenario_requests) - 1
+            st.session_state.selected_scenario_index = (
+                len(st.session_state.scenario_requests) - 1
+            )
 
         manager_columns = st.columns([2.4, 1, 1, 1])
         selected_index = manager_columns[0].selectbox(
@@ -279,7 +307,9 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
                 st.session_state.scenario_requests,
                 selected_index,
             )
-            st.session_state.selected_scenario_index = len(st.session_state.scenario_requests) - 1
+            st.session_state.selected_scenario_index = (
+                len(st.session_state.scenario_requests) - 1
+            )
             clear_comparison_results()
         if manager_columns[3].button("Remove", use_container_width=True):
             st.session_state.scenario_requests = remove_scenario_request(
@@ -342,13 +372,17 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
     cleanliness = quality_columns[0].selectbox(
         "Panel Cleanliness",
         options=["clean", "normal", "dusty"],
-        index=["clean", "normal", "dusty"].index(st.session_state.scenario_form_cleanliness),
+        index=["clean", "normal", "dusty"].index(
+            st.session_state.scenario_form_cleanliness
+        ),
         key="scenario_form_cleanliness",
     )
     shading = quality_columns[1].selectbox(
         "Shading Level",
         options=["none", "low", "medium", "high"],
-        index=["none", "low", "medium", "high"].index(st.session_state.scenario_form_shading),
+        index=["none", "low", "medium", "high"].index(
+            st.session_state.scenario_form_shading
+        ),
         key="scenario_form_shading",
     )
 
@@ -375,7 +409,9 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
     )
 
     button_label = (
-        "Update Scenario" if st.session_state.editing_scenario_index is not None else "Add Scenario"
+        "Update Scenario"
+        if st.session_state.editing_scenario_index is not None
+        else "Add Scenario"
     )
     if st.button(button_label, type="primary"):
         if not name.strip():
@@ -444,14 +480,20 @@ if demo_mode_active:
     selected_demo_scenario_id = st.sidebar.selectbox(
         "Demo Scenario",
         options=list(DEMO_SCENARIO_OPTIONS),
-        format_func=lambda scenario_id: build_demo_option_label(DEMO_SCENARIO_OPTIONS[scenario_id]),
+        format_func=lambda scenario_id: build_demo_option_label(
+            DEMO_SCENARIO_OPTIONS[scenario_id]
+        ),
         key="demo_scenario_id",
     )
     demo_scenario_reset_requested = (
         st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
     )
     selected_demo_scenario = get_demo_scenario_by_id(selected_demo_scenario_id)
-    if demo_scenario_reset_requested or st.session_state.lat is None or st.session_state.lon is None:
+    if (
+        demo_scenario_reset_requested
+        or st.session_state.lat is None
+        or st.session_state.lon is None
+    ):
         selected_demo_scenario = apply_demo_scenario(selected_demo_scenario)
         st.session_state.scenario_requests = []
         st.session_state.selected_scenario_index = 0
@@ -477,7 +519,9 @@ country = st.sidebar.selectbox(
     index=countries.index(country_value),
     key="country_select",
 )
-city = st.sidebar.text_input("City", value=st.session_state.get("city_input", "Tel Aviv"), key="city_input")
+city = st.sidebar.text_input(
+    "City", value=st.session_state.get("city_input", "Tel Aviv"), key="city_input"
+)
 street = st.sidebar.text_input(
     "Street",
     value=st.session_state.get("street_input", "Dizengoff"),
@@ -503,7 +547,9 @@ if st.sidebar.button("Locate Address", type="primary"):
         st.session_state.location_notice = (
             "Using bundled geocoding for demo mode." if demo_mode_active else None
         )
-        st.success(f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}")
+        st.success(
+            f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}"
+        )
     else:
         st.session_state.location_notice = location_lookup.error_message
         st.error(location_lookup.error_message or "Address lookup failed.")
@@ -545,8 +591,12 @@ ac_capacity_kw = st.sidebar.number_input(
 model_type = st.sidebar.selectbox(
     "Forecast Model",
     options=["physical", "ml"],
-    format_func=lambda value: "Physical baseline" if value == "physical" else "ML baseline",
-    index=["physical", "ml"].index(st.session_state.get("model_type_select", "physical")),
+    format_func=lambda value: (
+        "Physical baseline" if value == "physical" else "ML baseline"
+    ),
+    index=["physical", "ml"].index(
+        st.session_state.get("model_type_select", "physical")
+    ),
     key="model_type_select",
 )
 training_years = st.sidebar.slider(
@@ -572,10 +622,12 @@ currency = st.sidebar.selectbox(
     index=currency_options.index(st.session_state.get("currency_select", "ILS")),
     key="currency_select",
 )
+current_system_capex = float(st.session_state.get("system_capex_input", DEFAULT_SYSTEM_CAPEX))
+
 system_capex = st.sidebar.number_input(
     "System CAPEX",
     min_value=0.0,
-    value=float(st.session_state.get("system_capex_input", 25000.0)),
+    value=DEFAULT_SYSTEM_CAPEX if current_system_capex <= 0 else current_system_capex,
     step=500.0,
     key="system_capex_input",
 )
@@ -707,10 +759,14 @@ with tab_overview:
         "Re-run the baseline forecast whenever the location or system assumptions change.",
     )
     if st.session_state.forecast_data is None:
-        st.info("Run the baseline forecast to see yearly energy, finance, and model diagnostics.")
+        st.info(
+            "Run the baseline forecast to see yearly energy, finance, and model diagnostics."
+        )
     else:
         if payload_changed(base_payload, st.session_state.last_run_payload):
-            st.warning("Inputs changed after the last forecast run. Refresh the baseline forecast.")
+            st.warning(
+                "Inputs changed after the last forecast run. Refresh the baseline forecast."
+            )
             render_last_run_summary(st.session_state.last_run_payload)
         render_overview_tab(st.session_state.forecast_data)
 
@@ -721,10 +777,14 @@ with tab_daily:
         "This uses the same assumptions as the last baseline forecast run.",
     )
     if st.session_state.daily_simulation is None:
-        st.info("Run the baseline forecast to generate the daily production simulation.")
+        st.info(
+            "Run the baseline forecast to generate the daily production simulation."
+        )
     else:
         if payload_changed(base_payload, st.session_state.last_run_payload):
-            st.warning("Inputs changed after the last forecast run. Refresh the daily simulation.")
+            st.warning(
+                "Inputs changed after the last forecast run. Refresh the daily simulation."
+            )
             render_last_run_summary(st.session_state.last_run_payload)
         render_daily_tab(st.session_state.daily_simulation)
 
@@ -763,8 +823,12 @@ with tab_accuracy:
         if st.session_state.accuracy_result is None:
             st.info("Run the backtest to compare predicted and archived yearly output.")
         else:
-            if payload_changed(accuracy_payload, st.session_state.last_accuracy_payload):
-                st.warning("Inputs changed after the last backtest run. Re-run the backtest to refresh the evaluation.")
+            if payload_changed(
+                accuracy_payload, st.session_state.last_accuracy_payload
+            ):
+                st.warning(
+                    "Inputs changed after the last backtest run. Re-run the backtest to refresh the evaluation."
+                )
                 if st.session_state.last_accuracy_payload is not None:
                     render_last_run_summary(st.session_state.last_accuracy_payload)
             render_accuracy_tab(st.session_state.accuracy_result)
@@ -796,18 +860,28 @@ with tab_benchmark:
         st.info("Select a location and system configuration first.")
     else:
         if st.button("Run Benchmark Study", type="primary"):
-            with st.spinner("Evaluating physical, ML, and naive benchmark baselines..."):
-                benchmark_response = api_post("/evaluation/benchmark", benchmark_payload)
+            with st.spinner(
+                "Evaluating physical, ML, and naive benchmark baselines..."
+            ):
+                benchmark_response = api_post(
+                    "/evaluation/benchmark", benchmark_payload
+                )
             if benchmark_response is not None:
                 st.session_state.benchmark_result = benchmark_response
                 st.session_state.last_benchmark_payload = dict(benchmark_payload)
                 st.success("Benchmark study completed.")
 
         if st.session_state.benchmark_result is None:
-            st.info("Run the benchmark to compare the physical, ML, and naive approaches.")
+            st.info(
+                "Run the benchmark to compare the physical, ML, and naive approaches."
+            )
         else:
-            if payload_changed(benchmark_payload, st.session_state.last_benchmark_payload):
-                st.warning("Inputs changed after the last benchmark run. Re-run the study to refresh the comparison.")
+            if payload_changed(
+                benchmark_payload, st.session_state.last_benchmark_payload
+            ):
+                st.warning(
+                    "Inputs changed after the last benchmark run. Re-run the study to refresh the comparison."
+                )
                 render_last_benchmark_summary(st.session_state.last_benchmark_payload)
             render_benchmark_tab(st.session_state.benchmark_result)
 
@@ -824,15 +898,21 @@ with tab_scenarios:
 
         if demo_mode_active and selected_demo_scenario is not None:
             if st.button("Load Demo Variants", use_container_width=True):
-                variants = build_demo_variant_requests(base_payload, selected_demo_scenario)
+                variants = build_demo_variant_requests(
+                    base_payload, selected_demo_scenario
+                )
                 if variants:
                     st.session_state.scenario_requests = variants
                     st.session_state.selected_scenario_index = 0
                     clear_scenario_editor(base_payload)
                     clear_comparison_results()
-                    st.success("Loaded the bundled comparison variants for this demo scenario.")
+                    st.success(
+                        "Loaded the bundled comparison variants for this demo scenario."
+                    )
                 else:
-                    st.warning("This demo scenario does not define bundled comparison variants.")
+                    st.warning(
+                        "This demo scenario does not define bundled comparison variants."
+                    )
 
         if st.session_state.scenario_requests:
             st.markdown("**Saved scenarios**")
@@ -842,7 +922,9 @@ with tab_scenarios:
                 hide_index=True,
             )
         else:
-            st.info("No alternative scenarios yet. Add one above or load the bundled demo variants.")
+            st.info(
+                "No alternative scenarios yet. Add one above or load the bundled demo variants."
+            )
 
         comparison_payload = (
             build_scenario_comparison_payload(
@@ -854,7 +936,9 @@ with tab_scenarios:
         )
 
         compare_disabled = comparison_payload is None
-        if st.button("Run Scenario Comparison", type="primary", disabled=compare_disabled):
+        if st.button(
+            "Run Scenario Comparison", type="primary", disabled=compare_disabled
+        ):
             with st.spinner("Comparing yearly scenarios..."):
                 comparison_response = api_post("/scenarios/compare", comparison_payload)
             if comparison_response is not None:
@@ -863,8 +947,14 @@ with tab_scenarios:
                 st.success("Scenario comparison completed.")
 
         if st.session_state.comparison_result is None:
-            st.info("Save at least one scenario, then run the comparison to see energy and financial tradeoffs.")
+            st.info(
+                "Save at least one scenario, then run the comparison to see energy and financial tradeoffs."
+            )
         else:
-            if payload_changed(comparison_payload, st.session_state.last_comparison_payload):
-                st.warning("Scenario inputs changed after the last comparison run. Re-run the comparison to refresh the results.")
+            if payload_changed(
+                comparison_payload, st.session_state.last_comparison_payload
+            ):
+                st.warning(
+                    "Scenario inputs changed after the last comparison run. Re-run the comparison to refresh the results."
+                )
             render_comparison_tab(st.session_state.comparison_result)

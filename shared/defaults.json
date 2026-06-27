@@ -1,0 +1,23 @@
+{
+  "tilt_degrees": 30.0,
+  "panel_area_sqm": 80.0,
+  "panel_efficiency": 0.2,
+  "cleanliness": "normal",
+  "shading": "low",
+  "ac_capacity_kw": 15.0,
+  "temperature_coefficient": 0.004,
+  "noct_c": 45.0,
+  "model_type": "physical",
+  "electricity_price_per_kwh": 0.48,
+  "currency": "ILS",
+  "system_capex": 60000.0,
+  "training_years": 3,
+  "benchmark_years": 3,
+  "scenario_panel_area_delta_percent": 20,
+  "scenario_name_prefix": "Option",
+  "max_panel_area_sqm": 100000.0,
+  "max_ac_capacity_kw": 50000.0,
+  "max_electricity_price_per_kwh": 100.0,
+  "max_system_capex": 1000000000.0,
+  "max_scenario_comparison_scenarios": 20
+}

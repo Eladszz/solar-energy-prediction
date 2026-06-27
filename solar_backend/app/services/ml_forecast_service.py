@@ -8,6 +8,8 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
+from app.exceptions.domain_exceptions import ForecastTrainingDataUnavailableError
+
 
 logger = logging.getLogger(__name__)
 
@@ -118,9 +120,7 @@ def train_weather_regression_model(
     alpha: float = 1.0,
 ) -> WeatherRegressionModel:
     if history_df.empty:
-        raise ValueError(
-            "Cannot train ML forecast model without historical weather data"
-        )
+        raise ForecastTrainingDataUnavailableError()
 
     design_matrix, feature_names = build_time_features(history_df["time"])
 

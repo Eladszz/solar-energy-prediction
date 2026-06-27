@@ -5,6 +5,11 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.exceptions.domain_exceptions import (
+    BenchmarkTrainingDataUnavailableError,
+    EmptyScenarioComparisonError,
+    ForecastTrainingDataUnavailableError,
+)
 from app.models.responses import RootResponse
 from app.routers import (
     accuracy_router,
@@ -37,7 +42,7 @@ def build_valid_payload(**overrides):
         "model_type": "physical",
         "electricity_price_per_kwh": 0.48,
         "currency": "ILS",
-        "system_capex": 25000.0,
+        "system_capex": 60000.0,
         "training_years": 3,
     }
     payload.update(overrides)
@@ -93,7 +98,7 @@ def build_valid_comparison_scenario(**overrides):
         "ac_capacity_kw": 15.0,
         "gamma": 0.004,
         "noct": 45.0,
-        "system_capex": 25000.0,
+        "system_capex": 60000.0,
     }
     payload.update(overrides)
     return payload
@@ -119,7 +124,7 @@ def build_financial_assumptions():
     return {
         "electricity_price_per_kwh": 0.48,
         "currency": "ILS",
-        "system_capex": 25000.0,
+        "system_capex": 60000.0,
         "valuation_basis": "Estimated value from forecasted energy.",
         "annual_savings_basis": "Annual savings equal yearly value.",
         "payback_basis": "Simple payback = CAPEX / annual savings.",
@@ -529,6 +534,19 @@ def test_yearly_returns_service_unavailable_for_rate_limit(_mock_profile):
 
 
 @patch(
+    "app.routers.yearly_forecast_router.build_forecast_weather_profile",
+    side_effect=ForecastTrainingDataUnavailableError(
+        "No historical weather data was available for ML training"
+    ),
+)
+def test_yearly_returns_bad_gateway_for_training_data_gap(_mock_profile):
+    response = client.post("/forecast/yearly", json=build_valid_payload())
+
+    assert response.status_code == 502
+    assert "historical weather data" in response.json()["detail"]
+
+
+@patch(
     "app.routers.accuracy_router.evaluate_yearly_accuracy",
     side_effect=ExternalServiceUnavailableError(
         provider="Historical weather provider",
@@ -554,3 +572,30 @@ def test_benchmark_returns_service_unavailable_for_upstream_outage(_mock_evaluat
 
     assert response.status_code == 503
     assert "temporarily unavailable" in response.json()["detail"]
+
+
+@patch(
+    "app.routers.benchmark_router.evaluate_forecast_benchmark",
+    side_effect=BenchmarkTrainingDataUnavailableError(
+        "No historical weather data was available for naive benchmark training"
+    ),
+)
+def test_benchmark_returns_bad_gateway_for_training_data_gap(_mock_evaluate):
+    response = client.post("/evaluation/benchmark", json=build_valid_benchmark_payload())
+
+    assert response.status_code == 502
+    assert "naive benchmark training" in response.json()["detail"]
+
+
+@patch(
+    "app.routers.scenario_comparison_router.compare_yearly_scenarios",
+    side_effect=EmptyScenarioComparisonError("At least one scenario is required"),
+)
+def test_scenario_compare_returns_bad_request_for_domain_error(_mock_compare):
+    response = client.post(
+        "/scenarios/compare",
+        json=build_valid_comparison_payload(),
+    )
+
+    assert response.status_code == 400
+    assert "At least one scenario" in response.json()["detail"]

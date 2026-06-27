@@ -1,13 +1,12 @@
 from fastapi import APIRouter, HTTPException
 import pandas as pd
 
+from app.exceptions.domain_exceptions import DomainError
+from app.exceptions.http_exceptions import exception_to_http_exception
 from app.models.requests import BenchmarkEvaluationRequest
 from app.models.responses import BenchmarkEvaluationResponse
 from app.services.benchmark_service import evaluate_forecast_benchmark
-from app.exceptions.external_service_exceptions import (
-    ExternalServiceError,
-    external_service_to_http_exception,
-)
+from app.exceptions.external_service_exceptions import ExternalServiceError
 
 
 router = APIRouter()
@@ -36,7 +35,9 @@ def evaluate_benchmark(req: BenchmarkEvaluationRequest):
             demo_scenario_id=req.demo_scenario_id,
         )
     except ExternalServiceError as exc:
-        raise external_service_to_http_exception(exc) from exc
+        raise exception_to_http_exception(exc) from exc
+    except DomainError as exc:
+        raise exception_to_http_exception(exc) from exc
     except HTTPException:
         raise
     except Exception as exc:
