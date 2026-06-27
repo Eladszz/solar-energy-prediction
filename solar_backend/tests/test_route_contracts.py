@@ -58,8 +58,6 @@ def build_valid_comparison_context(**overrides):
         "training_years": 3,
         "electricity_price_per_kwh": 0.48,
         "currency": "ILS",
-        "demo_mode": False,
-        "demo_scenario_id": None,
     }
     payload.update(overrides)
     return payload
@@ -80,8 +78,6 @@ def build_valid_benchmark_payload(**overrides):
         "gamma": 0.004,
         "noct": 45.0,
         "training_years": 3,
-        "demo_mode": False,
-        "demo_scenario_id": None,
     }
     payload.update(overrides)
     return payload
@@ -331,9 +327,6 @@ def build_benchmark_response():
                 "fallback_years": [],
             },
         ],
-        "data_source": "live",
-        "demo_scenario_id": None,
-        "demo_scenario_name": None,
     }
 
 

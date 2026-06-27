@@ -25,8 +25,6 @@ def compare_yearly_scenarios(
         forecast_year=context.year,
         model_type=context.model_type,
         training_years=context.training_years,
-        demo_mode=context.demo_mode,
-        demo_scenario_id=context.demo_scenario_id,
     )
 
     results = []
@@ -112,7 +110,4 @@ def compare_yearly_scenarios(
         "baseline_annual_savings": baseline_annual_savings,
         "baseline_simple_payback_years": baseline_simple_payback,
         "results": results,
-        "data_source": weather_profile.data_source,
-        "demo_scenario_id": weather_profile.demo_scenario_id,
-        "demo_scenario_name": weather_profile.demo_scenario_name,
     }

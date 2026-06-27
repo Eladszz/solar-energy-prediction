@@ -87,9 +87,6 @@ export interface SimulationResponse {
   financial_assumptions: FinancialAssumptions;
   timezone: string;
   hourly_time: string[];
-  data_source: 'live' | 'demo';
-  demo_scenario_id?: string | null;
-  demo_scenario_name?: string | null;
 }
 
 export interface YearlyForecastResponse {
@@ -111,9 +108,6 @@ export interface YearlyForecastResponse {
   financial_assumptions: FinancialAssumptions;
   fallback_reason?: string | null;
   ml_metadata?: Record<string, unknown> | null;
-  data_source: 'live' | 'demo';
-  demo_scenario_id?: string | null;
-  demo_scenario_name?: string | null;
 }
 
 export interface AccuracyEvaluationResponse {
@@ -144,9 +138,6 @@ export interface AccuracyEvaluationResponse {
   quality: 'EXCELLENT' | 'GOOD' | 'POOR';
   financial_assumptions: FinancialAssumptions;
   ml_metadata?: Record<string, unknown> | null;
-  data_source: 'live' | 'demo';
-  demo_scenario_id?: string | null;
-  demo_scenario_name?: string | null;
 }
 
 export interface BenchmarkMetrics {
@@ -188,9 +179,6 @@ export interface BenchmarkEvaluationResponse {
   training_window_years: number;
   reference_note: string;
   approaches: BenchmarkApproachResult[];
-  data_source: 'live' | 'demo';
-  demo_scenario_id?: string | null;
-  demo_scenario_name?: string | null;
 }
 
 export interface ScenarioComparisonResult {
@@ -219,9 +207,6 @@ export interface ScenarioComparisonResponse {
   baseline_annual_savings: number;
   baseline_simple_payback_years?: number | null;
   results: ScenarioComparisonResult[];
-  data_source: 'live' | 'demo';
-  demo_scenario_id?: string | null;
-  demo_scenario_name?: string | null;
 }
 
 function normalizeBaseUrl(value: string): string {

@@ -16,7 +16,6 @@ from app.services.weather_archive_service import get_year_archive
 from app.services.yearly_forecast_service import (
     WeatherProfileResult,
     build_forecast_weather_profile,
-    build_weather_profile_metadata,
     compute_yearly_from_real_data,
     get_last_complete_year,
     prepare_naive_weather_profile,
@@ -73,15 +72,11 @@ def _build_actual_summary(
     noct: float,
     system_loss_factor: float,
     ac_capacity_kw: float,
-    demo_mode: bool,
-    demo_scenario_id: str | None,
 ) -> dict:
     actual_df = get_year_archive(
         latitude,
         longitude,
         year,
-        demo_mode=demo_mode,
-        demo_scenario_id=demo_scenario_id,
     )
     return compute_yearly_from_real_data(
         df=actual_df.copy(),
@@ -103,8 +98,6 @@ def _build_predicted_profile(
     longitude: float,
     year: int,
     training_years: int,
-    demo_mode: bool,
-    demo_scenario_id: str | None,
 ) -> WeatherProfileResult:
     if approach == "naive":
         return prepare_naive_weather_profile(
@@ -112,8 +105,6 @@ def _build_predicted_profile(
             longitude=longitude,
             forecast_year=year,
             training_years=training_years,
-            demo_mode=demo_mode,
-            demo_scenario_id=demo_scenario_id,
         )
 
     return build_forecast_weather_profile(
@@ -123,8 +114,6 @@ def _build_predicted_profile(
         model_type=approach,
         training_years=training_years,
         backtest_mode=True,
-        demo_mode=demo_mode,
-        demo_scenario_id=demo_scenario_id,
     )
 
 
@@ -186,8 +175,6 @@ def _evaluate_approach(
     system_loss_factor: float,
     ac_capacity_kw: float,
     training_years: int,
-    demo_mode: bool,
-    demo_scenario_id: str | None,
     actual_summary_builder: Callable[[int], dict],
 ) -> dict:
     yearly_results: list[dict] = []
@@ -201,8 +188,6 @@ def _evaluate_approach(
             longitude=longitude,
             year=year,
             training_years=training_years,
-            demo_mode=demo_mode,
-            demo_scenario_id=demo_scenario_id,
         )
         predicted_summary = compute_yearly_from_real_data(
             df=predicted_profile.df.copy(),
@@ -269,8 +254,6 @@ def evaluate_forecast_benchmark(
     noct: float,
     ac_capacity_kw: float,
     training_years: int = DEFAULT_TRAINING_YEARS,
-    demo_mode: bool = False,
-    demo_scenario_id: str | None = None,
 ) -> dict:
     evaluation_years = _resolve_evaluation_years(year, benchmark_years)
     system_loss_factor = compute_system_loss_factor(
@@ -290,8 +273,6 @@ def evaluate_forecast_benchmark(
             noct=noct,
             system_loss_factor=system_loss_factor,
             ac_capacity_kw=ac_capacity_kw,
-            demo_mode=demo_mode,
-            demo_scenario_id=demo_scenario_id,
         )
         for evaluation_year in evaluation_years
     }
@@ -313,24 +294,15 @@ def evaluate_forecast_benchmark(
             system_loss_factor=system_loss_factor,
             ac_capacity_kw=ac_capacity_kw,
             training_years=training_years,
-            demo_mode=demo_mode,
-            demo_scenario_id=demo_scenario_id,
             actual_summary_builder=actual_summary_builder,
         )
         for approach in ("physical", "ml", "naive")
     ]
 
-    metadata = build_weather_profile_metadata(
-        latitude=latitude,
-        longitude=longitude,
-        demo_mode=demo_mode,
-        demo_scenario_id=demo_scenario_id,
-    )
     return {
         "evaluation_years": evaluation_years,
         "benchmark_years_requested": benchmark_years,
         "training_window_years": training_years,
         "reference_note": BENCHMARK_REFERENCE_NOTE,
         "approaches": benchmark_results,
-        **metadata,
     }

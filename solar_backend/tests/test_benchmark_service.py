@@ -35,14 +35,6 @@ def build_profile(
     )
 
 
-@patch(
-    "app.services.benchmark_service.build_weather_profile_metadata",
-    return_value={
-        "data_source": "live",
-        "demo_scenario_id": None,
-        "demo_scenario_name": None,
-    },
-)
 @patch("app.services.benchmark_service.compute_yearly_from_real_data")
 @patch("app.services.benchmark_service._build_predicted_profile")
 @patch("app.services.benchmark_service._build_actual_summary")
@@ -52,7 +44,6 @@ def test_evaluate_forecast_benchmark_returns_comparison_metrics(
     mock_actual_summary,
     mock_build_profile,
     mock_compute_yearly,
-    _mock_metadata,
 ):
     mock_actual_summary.side_effect = [
         {"yearly_kwh": 1200.0, "monthly_kwh": [100.0] * 12},
@@ -128,61 +119,3 @@ def test_evaluate_forecast_benchmark_returns_comparison_metrics(
     assert result["approaches"][2]["approach"] == "naive"
     assert result["approaches"][2]["metrics"]["monthly_mape_percent"] == 9.55
     assert result["approaches"][2]["metrics"]["bias_kwh"] == -120.0
-
-
-@patch(
-    "app.services.benchmark_service.build_weather_profile_metadata",
-    return_value={
-        "data_source": "demo",
-        "demo_scenario_id": "tel_aviv_office_roof",
-        "demo_scenario_name": "Tel Aviv Office Roof",
-    },
-)
-@patch("app.services.benchmark_service.compute_yearly_from_real_data")
-@patch("app.services.benchmark_service._build_predicted_profile")
-@patch("app.services.benchmark_service._build_actual_summary")
-@patch("app.services.benchmark_service.compute_system_loss_factor", return_value=0.86)
-def test_evaluate_forecast_benchmark_preserves_demo_metadata(
-    _mock_loss_factor,
-    mock_actual_summary,
-    mock_build_profile,
-    mock_compute_yearly,
-    _mock_metadata,
-):
-    mock_actual_summary.return_value = {
-        "yearly_kwh": 1200.0,
-        "monthly_kwh": [100.0] * 12,
-    }
-    mock_build_profile.side_effect = [
-        build_profile(year=2025, requested="physical", used="physical", weather_reference_year=2024),
-        build_profile(year=2025, requested="ml", used="ml", training_years=[2022, 2023, 2024]),
-        build_profile(year=2025, requested="naive", used="naive", training_years=[2022, 2023, 2024]),
-    ]
-    mock_compute_yearly.side_effect = [
-        {"yearly_kwh": 1188.0, "monthly_kwh": [99.0] * 12},
-        {"yearly_kwh": 1212.0, "monthly_kwh": [101.0] * 12},
-        {"yearly_kwh": 1176.0, "monthly_kwh": [98.0] * 12},
-    ]
-
-    result = evaluate_forecast_benchmark(
-        latitude=32.08,
-        longitude=34.78,
-        year=2025,
-        benchmark_years=1,
-        tilt=30.0,
-        panel_area=80.0,
-        efficiency=0.20,
-        cleanliness="normal",
-        shading="low",
-        gamma=0.004,
-        noct=45.0,
-        ac_capacity_kw=15.0,
-        training_years=3,
-        demo_mode=True,
-        demo_scenario_id="tel_aviv_office_roof",
-    )
-
-    assert result["data_source"] == "demo"
-    assert result["demo_scenario_id"] == "tel_aviv_office_roof"
-    assert result["demo_scenario_name"] == "Tel Aviv Office Roof"
-    assert len(result["approaches"]) == 3

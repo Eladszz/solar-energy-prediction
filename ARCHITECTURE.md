@@ -250,7 +250,7 @@ The tariff and CAPEX assumptions are returned in the backend response under `fin
 ## Current Alpha Scope
 
 Included in Alpha:
-- end-to-end demo flow
+- end-to-end live forecast flow
 - physical and ML yearly forecasts
 - benchmark study comparing physical, ML, and naive baselines
 - daily simulation

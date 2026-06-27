@@ -122,8 +122,6 @@ def test_compare_yearly_scenarios_returns_energy_and_value_deltas(
         forecast_year=2026,
         model_type="physical",
         training_years=3,
-        demo_mode=False,
-        demo_scenario_id=None,
     )
 
 
@@ -145,8 +143,6 @@ def test_compare_yearly_scenarios_uses_shared_context_for_weather_and_finance(
         training_years=4,
         electricity_price_per_kwh=0.22,
         currency="EUR",
-        demo_mode=True,
-        demo_scenario_id="tel_aviv_rooftop",
     )
     mock_build_profile.return_value = sample_weather_profile
     mock_loss_factor.return_value = 0.87
@@ -166,46 +162,7 @@ def test_compare_yearly_scenarios_uses_shared_context_for_weather_and_finance(
         forecast_year=2027,
         model_type="ml",
         training_years=4,
-        demo_mode=True,
-        demo_scenario_id="tel_aviv_rooftop",
     )
     assert result["results"][0]["financial_assumptions"]["currency"] == "EUR"
     assert result["results"][0]["financial_assumptions"]["electricity_price_per_kwh"] == 0.22
     assert result["results"][0]["financial_assumptions"]["system_capex"] == 60000.0
-
-
-@patch("app.services.scenario_comparison_service.compute_yearly_from_real_data")
-@patch("app.services.scenario_comparison_service.compute_system_loss_factor")
-@patch("app.services.scenario_comparison_service.build_forecast_weather_profile")
-def test_compare_yearly_scenarios_preserves_demo_metadata(
-    mock_build_profile,
-    mock_loss_factor,
-    mock_compute_yearly,
-    sample_weather_profile,
-    comparison_context,
-    base_scenario,
-):
-    mock_build_profile.return_value = WeatherProfileResult(
-        df=sample_weather_profile.df,
-        forecast_year=2026,
-        model_type_requested="physical",
-        model_type_used="physical",
-        weather_reference_year=2025,
-        data_source="demo",
-        demo_scenario_id="tel_aviv_rooftop",
-        demo_scenario_name="Tel Aviv Rooftop",
-    )
-    mock_loss_factor.return_value = 0.86
-    mock_compute_yearly.return_value = {
-        "yearly_kwh": 7200.0,
-        "monthly_kwh": [600.0] * 12,
-    }
-
-    result = compare_yearly_scenarios(
-        context=comparison_context,
-        scenarios=[base_scenario],
-    )
-
-    assert result["data_source"] == "demo"
-    assert result["demo_scenario_id"] == "tel_aviv_rooftop"
-    assert result["demo_scenario_name"] == "Tel Aviv Rooftop"

@@ -72,8 +72,6 @@ def build_valid_comparison_context(**overrides):
         "training_years": 3,
         "electricity_price_per_kwh": 0.48,
         "currency": "ILS",
-        "demo_mode": False,
-        "demo_scenario_id": None,
     }
     payload.update(overrides)
     return payload
@@ -94,8 +92,6 @@ def build_valid_benchmark_payload(**overrides):
         "gamma": 0.004,
         "noct": 45.0,
         "training_years": 3,
-        "demo_mode": False,
-        "demo_scenario_id": None,
     }
     payload.update(overrides)
     return payload
@@ -324,9 +320,6 @@ def build_benchmark_response():
                 "fallback_years": [],
             },
         ],
-        "data_source": "live",
-        "demo_scenario_id": None,
-        "demo_scenario_name": None,
     }
 
 
@@ -575,17 +568,6 @@ class TestApiValidation:
             )
 
         assert_validation_error(response, "panel_area")
-
-    def test_demo_mode_returns_controlled_error_when_catalog_is_absent(self):
-        response = client.post(
-            "/simulate",
-            json=build_valid_payload(demo_mode=True),
-        )
-
-        assert response.status_code == 503
-        assert response.json()["detail"] == (
-            "Demo mode is not available in this build. Run the system with live inputs instead."
-        )
 
     @pytest.mark.parametrize(
         ("path", "payload", "field_name", "patch_target"),
