@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.requests import ScenarioComparisonRequest
 from app.models.responses import ScenarioComparisonResponse
-from app.services.external_service import (
+from app.exceptions.external_service_exceptions import (
     ExternalServiceError,
     external_service_to_http_exception,
 )

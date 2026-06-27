@@ -37,7 +37,9 @@ def build_hourly_time_index(year: int) -> pd.DatetimeIndex:
     )
 
 
-def build_time_features(timestamps: Sequence[pd.Timestamp]) -> tuple[np.ndarray, list[str]]:
+def build_time_features(
+    timestamps: Sequence[pd.Timestamp],
+) -> tuple[np.ndarray, list[str]]:
     time_series = pd.Series(pd.to_datetime(list(timestamps)))
     hour = time_series.dt.hour.to_numpy(dtype=float)
     day_of_year = time_series.dt.dayofyear.to_numpy(dtype=float)
@@ -116,7 +118,9 @@ def train_weather_regression_model(
     alpha: float = 1.0,
 ) -> WeatherRegressionModel:
     if history_df.empty:
-        raise ValueError("Cannot train ML forecast model without historical weather data")
+        raise ValueError(
+            "Cannot train ML forecast model without historical weather data"
+        )
 
     design_matrix, feature_names = build_time_features(history_df["time"])
 

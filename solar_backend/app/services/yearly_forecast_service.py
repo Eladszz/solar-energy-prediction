@@ -195,7 +195,9 @@ def compute_yearly_from_real_data(
 
     dc_capacity_kwp = panel_area * efficiency
     specific_yield = 0.0 if dc_capacity_kwp <= 0 else yearly / dc_capacity_kwp
-    days_in_profile = max(pd.to_datetime(working_df["time"]).dt.normalize().nunique(), 1)
+    days_in_profile = max(
+        pd.to_datetime(working_df["time"]).dt.normalize().nunique(), 1
+    )
     avg_daily_kwh = yearly / days_in_profile
 
     logger.info(
@@ -322,11 +324,12 @@ def prepare_naive_weather_profile(
     )
 
     if not history_frames:
-        raise ValueError("No historical weather data was available for naive benchmark training")
+        raise ValueError(
+            "No historical weather data was available for naive benchmark training"
+        )
 
     aligned_history = [
-        align_profile_to_year(frame, forecast_year)
-        for frame in history_frames
+        align_profile_to_year(frame, forecast_year) for frame in history_frames
     ]
     combined = pd.concat(aligned_history, ignore_index=True)
     combined["month"] = pd.to_datetime(combined["time"]).dt.month
@@ -334,9 +337,7 @@ def prepare_naive_weather_profile(
     combined["hour"] = pd.to_datetime(combined["time"]).dt.hour
 
     climatology = (
-        combined.groupby(["month", "day", "hour"])[["irr", "temp"]]
-        .mean()
-        .reset_index()
+        combined.groupby(["month", "day", "hour"])[["irr", "temp"]].mean().reset_index()
     )
 
     target_times = build_hourly_time_index(forecast_year)
@@ -415,7 +416,9 @@ def build_forecast_weather_profile(
             demo_scenario_id=demo_scenario_id,
         )
     except Exception as exc:
-        logger.warning("ML forecast unavailable, falling back to physical baseline: %s", exc)
+        logger.warning(
+            "ML forecast unavailable, falling back to physical baseline: %s", exc
+        )
         fallback_profile = prepare_physical_weather_profile(
             latitude=latitude,
             longitude=longitude,
@@ -527,6 +530,8 @@ def build_actual_year_summary(
     actual_summary["yearly_estimated_value"] = finance["yearly_estimated_value"]
     actual_summary["annual_savings"] = finance["annual_savings"]
     actual_summary["simple_payback_years"] = finance["simple_payback_years"]
-    actual_summary["avg_monthly_estimated_value"] = finance["avg_monthly_estimated_value"]
+    actual_summary["avg_monthly_estimated_value"] = finance[
+        "avg_monthly_estimated_value"
+    ]
     actual_summary["financial_assumptions"] = finance["financial_assumptions"]
     return actual_summary

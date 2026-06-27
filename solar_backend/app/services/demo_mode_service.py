@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 
 from app.config import config
-from app.services.external_service import ExternalServiceUnavailableError
+from app.exceptions.external_service_exceptions import ExternalServiceUnavailableError
 
 
 DEMO_FORECAST_START = pd.Timestamp("2026-06-21 00:00:00")
@@ -80,7 +80,11 @@ def resolve_demo_scenario(
     demo_scenario_id: str | None = None,
 ) -> DemoScenario:
     scenarios = load_demo_catalog()
-    scenario_id = demo_scenario_id or config.DEMO_DEFAULT_SCENARIO_ID or get_default_demo_scenario_id()
+    scenario_id = (
+        demo_scenario_id
+        or config.DEMO_DEFAULT_SCENARIO_ID
+        or get_default_demo_scenario_id()
+    )
     if scenario_id in scenarios:
         return scenarios[scenario_id]
 
@@ -106,7 +110,9 @@ def build_demo_response_metadata(scenario: DemoScenario) -> dict[str, str]:
 def _build_irradiance(timestamp: pd.Timestamp, profile: dict[str, float]) -> float:
     day_of_year = float(timestamp.dayofyear)
     hour = timestamp.hour + (timestamp.minute / 60.0)
-    daylight_hours = 12.0 + 4.0 * math.sin(2.0 * math.pi * (day_of_year - 80.0) / 365.25)
+    daylight_hours = 12.0 + 4.0 * math.sin(
+        2.0 * math.pi * (day_of_year - 80.0) / 365.25
+    )
     sunrise_shift = profile.get("sunrise_shift_hours", 0.0)
     sunrise_hour = 12.0 - (daylight_hours / 2.0) + sunrise_shift
     sunset_hour = 12.0 + (daylight_hours / 2.0) + sunrise_shift
@@ -157,8 +163,14 @@ def _build_hourly_payload(
     scenario: DemoScenario,
     timestamps: pd.DatetimeIndex,
 ) -> dict[str, Any]:
-    irradiance = [_build_irradiance(timestamp, scenario.weather_profile) for timestamp in timestamps]
-    temperature = [_build_temperature(timestamp, scenario.weather_profile) for timestamp in timestamps]
+    irradiance = [
+        _build_irradiance(timestamp, scenario.weather_profile)
+        for timestamp in timestamps
+    ]
+    temperature = [
+        _build_temperature(timestamp, scenario.weather_profile)
+        for timestamp in timestamps
+    ]
     return {
         "latitude": scenario.latitude,
         "longitude": scenario.longitude,

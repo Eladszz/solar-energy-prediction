@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, Mock
 import requests
-from app.services.external_service import (
+from app.exceptions.external_service_exceptions import (
     ExternalServiceRateLimitError,
     ExternalServiceResponseError,
     ExternalServiceTimeoutError,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 import pandas as pd
 from app.models.requests import AccuracyEvaluationRequest
 from app.models.responses import AccuracyEvaluationResponse
-from app.services.external_service import (
+from app.exceptions.external_service_exceptions import (
     ExternalServiceError,
     external_service_to_http_exception,
 )

@@ -51,7 +51,9 @@ APPROACH_LABELS = {
 }
 
 
-def _resolve_evaluation_years(requested_year: int | None, benchmark_years: int) -> list[int]:
+def _resolve_evaluation_years(
+    requested_year: int | None, benchmark_years: int
+) -> list[int]:
     last_complete_year = get_last_complete_year()
     evaluation_end_year = min(requested_year or last_complete_year, last_complete_year)
     evaluation_start_year = max(2000, evaluation_end_year - benchmark_years + 1)
@@ -137,7 +139,9 @@ def _aggregate_metrics(yearly_results: list[dict]) -> dict:
         for month_value in result["predicted_monthly_kwh"]
     ]
     actual_yearly_values = [result["actual_yearly_kwh"] for result in yearly_results]
-    predicted_yearly_values = [result["predicted_yearly_kwh"] for result in yearly_results]
+    predicted_yearly_values = [
+        result["predicted_yearly_kwh"] for result in yearly_results
+    ]
 
     return {
         "monthly_mape_percent": round(

@@ -3,9 +3,12 @@ import requests
 
 from app.services.external_service import (
     DEFAULT_EXTERNAL_TIMEOUT_SECONDS,
-    ExternalServiceResponseError,
     fetch_json_from_provider,
     require_list_fields,
+)
+
+from app.exceptions.external_service_exceptions import (
+    ExternalServiceResponseError,
 )
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ import pandas as pd
 from app.models.requests import BenchmarkEvaluationRequest
 from app.models.responses import BenchmarkEvaluationResponse
 from app.services.benchmark_service import evaluate_forecast_benchmark
-from app.services.external_service import (
+from app.exceptions.external_service_exceptions import (
     ExternalServiceError,
     external_service_to_http_exception,
 )

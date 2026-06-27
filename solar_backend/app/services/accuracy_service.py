@@ -17,7 +17,9 @@ def calculate_mape(actual: float, predicted: float) -> float:
     return abs((actual - predicted) / actual) * 100
 
 
-def calculate_series_mape(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+def calculate_series_mape(
+    actual_values: Iterable[float], predicted_values: Iterable[float]
+) -> float:
     errors = [
         calculate_mape(float(actual), float(predicted))
         for actual, predicted in zip(actual_values, predicted_values)
@@ -32,7 +34,9 @@ def calculate_mae(actual: float, predicted: float) -> float:
     return abs(actual - predicted)
 
 
-def calculate_series_mae(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+def calculate_series_mae(
+    actual_values: Iterable[float], predicted_values: Iterable[float]
+) -> float:
     errors = [
         calculate_mae(float(actual), float(predicted))
         for actual, predicted in zip(actual_values, predicted_values)
@@ -42,7 +46,9 @@ def calculate_series_mae(actual_values: Iterable[float], predicted_values: Itera
     return sum(errors) / len(errors)
 
 
-def calculate_bias_percent(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+def calculate_bias_percent(
+    actual_values: Iterable[float], predicted_values: Iterable[float]
+) -> float:
     actual_total = sum(float(actual) for actual in actual_values)
     predicted_total = sum(float(predicted) for predicted in predicted_values)
     if actual_total == 0.0:
@@ -50,7 +56,9 @@ def calculate_bias_percent(actual_values: Iterable[float], predicted_values: Ite
     return ((predicted_total - actual_total) / actual_total) * 100
 
 
-def calculate_mean_bias_kwh(actual_values: Iterable[float], predicted_values: Iterable[float]) -> float:
+def calculate_mean_bias_kwh(
+    actual_values: Iterable[float], predicted_values: Iterable[float]
+) -> float:
     differences = [
         float(predicted) - float(actual)
         for actual, predicted in zip(actual_values, predicted_values)
@@ -190,7 +198,9 @@ def evaluate_yearly_accuracy(
         "actual_monthly_kwh": actual_summary["monthly_kwh"],
         "predicted_monthly_kwh": predicted_summary["monthly_kwh"],
         "actual_monthly_estimated_value": actual_finance["monthly_estimated_value"],
-        "predicted_monthly_estimated_value": predicted_finance["monthly_estimated_value"],
+        "predicted_monthly_estimated_value": predicted_finance[
+            "monthly_estimated_value"
+        ],
         "monthly_mae_kwh": round(monthly_mae, 1),
         "mape_percent": round(monthly_mape, 2),
         "yearly_mae_kwh": round(yearly_mae, 1),

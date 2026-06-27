@@ -85,7 +85,8 @@ def compare_yearly_scenarios(
             result["value_deviation_percent"] = 0.0
         else:
             result["value_deviation_percent"] = round(
-                100 * (result["yearly_estimated_value"] - baseline_value)
+                100
+                * (result["yearly_estimated_value"] - baseline_value)
                 / baseline_value,
                 2,
             )

@@ -4,11 +4,11 @@ import requests
 
 from app.services.external_service import (
     DEFAULT_EXTERNAL_TIMEOUT_SECONDS,
-    ExternalServiceResponseError,
     fetch_json_from_provider,
     require_list_fields,
 )
 from app.services.demo_mode_service import build_demo_archive, is_demo_mode_enabled
+from app.exceptions.external_service_exceptions import ExternalServiceResponseError
 
 logger = logging.getLogger(__name__)
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
