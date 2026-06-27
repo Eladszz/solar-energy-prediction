@@ -7,17 +7,6 @@ import pandas as pd
 import streamlit as st  # type: ignore
 from loguru import logger
 
-try:
-    from solar_ui.config import (
-        DEMO_MODE_DEFAULT,
-        get_default_demo_scenario_id,
-    )
-except ModuleNotFoundError:
-    from config import (
-        DEMO_MODE_DEFAULT,
-        get_default_demo_scenario_id,
-    )
-
 
 FALLBACK_COUNTRIES = (
     "Australia",
@@ -73,9 +62,6 @@ def initialize_session_state() -> None:
         "last_accuracy_payload": None,
         "last_benchmark_payload": None,
         "last_comparison_payload": None,
-        "demo_mode": DEMO_MODE_DEFAULT,
-        "demo_scenario_id": get_default_demo_scenario_id(),
-        "last_applied_demo_scenario_id": None,
         "selected_scenario_index": 0,
         "editing_scenario_index": None,
         "scenario_form_name": "",
@@ -89,37 +75,6 @@ def initialize_session_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
-
-
-def apply_demo_scenario(scenario: Mapping[str, Any]) -> Mapping[str, Any]:
-    defaults = scenario["system_defaults"]
-    st.session_state.lat = float(scenario["latitude"])
-    st.session_state.lon = float(scenario["longitude"])
-    st.session_state.address = scenario["address"]
-    st.session_state.location_notice = (
-        f"Demo scenario loaded: {scenario['name']}. Geocoding and weather now use bundled fixtures."
-    )
-    st.session_state.country_select = scenario["country"]
-    st.session_state.city_input = scenario["city"]
-    st.session_state.street_input = scenario["street"]
-    st.session_state.house_number_input = scenario["number"]
-    st.session_state.panel_area = float(defaults["panel_area"])
-    st.session_state.ac_capacity_kw_input = float(defaults["ac_capacity_kw"])
-    st.session_state.forecast_year_input = int(defaults["year"])
-    st.session_state.model_type_select = defaults["model_type"]
-    st.session_state.training_years_slider = int(defaults["training_years"])
-    st.session_state.tariff_input = float(defaults["electricity_price_per_kwh"])
-    st.session_state.currency_select = defaults["currency"]
-    st.session_state.system_capex_input = float(defaults["system_capex"])
-    st.session_state.panel_efficiency_slider = float(defaults["panel_efficiency"])
-    st.session_state.tilt_slider = int(defaults["tilt"])
-    st.session_state.cleanliness_select = defaults["cleanliness"]
-    st.session_state.shading_select = defaults["shading"]
-    st.session_state.gamma_input = float(defaults["gamma"])
-    st.session_state.noct_input = float(defaults["noct"])
-    st.session_state.last_applied_demo_scenario_id = scenario["id"]
-    return scenario
-
 
 def seed_scenario_form(
     base_payload: Mapping[str, Any],

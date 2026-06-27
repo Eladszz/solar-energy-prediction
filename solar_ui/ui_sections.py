@@ -35,13 +35,6 @@ def render_section_intro(title: str, description: str, tip: str | None = None) -
         st.info(tip)
 
 
-def render_data_source_notice(payload: Mapping[str, Any]) -> None:
-    if payload.get("data_source") != "demo":
-        return
-    scenario_name = payload.get("demo_scenario_name") or "bundled demo scenario"
-    st.info(f"Demo mode active. Results are coming from the bundled '{scenario_name}' dataset.")
-
-
 def render_metadata_table(rows: list[dict[str, Any]]) -> None:
     metadata_df = pd.DataFrame(rows)
     for column in metadata_df.columns:
@@ -95,7 +88,6 @@ def render_summary_cards(forecast_data: dict[str, Any]) -> None:
 
 
 def render_overview_tab(forecast_data: dict[str, Any]) -> None:
-    render_data_source_notice(forecast_data)
     render_summary_cards(forecast_data)
 
     if forecast_data.get("fallback_reason"):
@@ -178,7 +170,6 @@ def render_overview_tab(forecast_data: dict[str, Any]) -> None:
 
 
 def render_daily_tab(daily_data: dict[str, Any]) -> None:
-    render_data_source_notice(daily_data)
     assumptions = daily_data["financial_assumptions"]
 
     metric_columns = st.columns(4)
@@ -255,7 +246,6 @@ def render_last_benchmark_summary(last_benchmark_payload: Mapping[str, Any]) -> 
 
 
 def render_accuracy_tab(accuracy_data: dict[str, Any]) -> None:
-    render_data_source_notice(accuracy_data)
     assumptions = accuracy_data["financial_assumptions"]
     delta_percent = 0.0
     if accuracy_data["actual_yearly_kwh"] != 0:
@@ -366,7 +356,6 @@ def render_accuracy_tab(accuracy_data: dict[str, Any]) -> None:
 
 
 def render_benchmark_tab(benchmark_data: dict[str, Any]) -> None:
-    render_data_source_notice(benchmark_data)
     st.info(benchmark_data["reference_note"])
 
     explanation_columns = st.columns(len(benchmark_data["approaches"]))
@@ -497,7 +486,6 @@ def render_benchmark_tab(benchmark_data: dict[str, Any]) -> None:
 
 
 def render_comparison_tab(comparison_data: dict[str, Any]) -> None:
-    render_data_source_notice(comparison_data)
     if comparison_data.get("fallback_reason"):
         st.warning(comparison_data["fallback_reason"])
 

@@ -31,8 +31,6 @@ def evaluate_benchmark(req: BenchmarkEvaluationRequest):
             noct=req.noct,
             ac_capacity_kw=req.ac_capacity_kw,
             training_years=req.training_years,
-            demo_mode=req.demo_mode,
-            demo_scenario_id=req.demo_scenario_id,
         )
     except ExternalServiceError as exc:
         raise exception_to_http_exception(exc) from exc

@@ -95,7 +95,7 @@ Response model: `ScenarioComparisonResponse`
 Notes:
 
 - at least two scenarios are required
-- `context` carries the shared location, model, tariff, and demo settings
+- `context` carries the shared location, model, and tariff settings
 - each item in `scenarios` carries only scenario-specific system fields, including `system_capex`
 
 ### `POST /evaluation/benchmark`

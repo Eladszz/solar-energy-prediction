@@ -194,7 +194,6 @@ const UI_COPY: Record<Language, Record<string, string>> = {
     actualVsForecastHelp: 'Archive is the reference. Forecast shows what the selected method would have produced.',
     methodApproach: 'Approach',
     weatherReference: 'Weather Reference',
-    dataSource: 'Data Source',
     monthlyForecastVsActual: 'Monthly Forecast vs Actual Energy',
     monthlyError: 'Monthly Error',
     monthlyErrorHelp: 'Positive means the forecast was too high. Negative means it was too low.',
@@ -354,7 +353,6 @@ const UI_COPY: Record<Language, Record<string, string>> = {
     actualVsForecastHelp: 'הארכיון הוא הייחוס. התחזית מראה מה השיטה הייתה מפיקה.',
     methodApproach: 'שיטה',
     weatherReference: 'ייחוס מזג אוויר',
-    dataSource: 'מקור נתונים',
     monthlyForecastVsActual: 'תחזית מול בפועל לפי חודש',
     monthlyError: 'שגיאה חודשית',
     monthlyErrorHelp: 'חיובי אומר שהתחזית הייתה גבוהה מדי. שלילי אומר נמוכה מדי.',
@@ -1647,7 +1645,6 @@ export default function App() {
           field: isHebrew ? 'הערת גיבוי' : 'Backup forecast note',
           value: comparisonResult.fallback_reason || (isHebrew ? 'לא הופעלה שיטת גיבוי' : 'No backup forecast method used'),
         },
-        { field: text.dataSource, value: comparisonResult.data_source },
       ]
     : [];
   const locationSummary = position
@@ -1729,7 +1726,6 @@ export default function App() {
         { field: isHebrew ? 'שיטה מבוקשת' : 'Requested forecast approach', value: getForecastApproachLabel(forecastData.model_type_requested, language) },
         { field: isHebrew ? 'שיטה בפועל' : 'Forecast approach used', value: getForecastApproachLabel(forecastData.model_type_used, language) },
         { field: text.weatherReference, value: formatWeatherReferenceLabel(forecastData.weather_reference_year, language) },
-        { field: text.dataSource, value: forecastData.data_source },
         { field: isHebrew ? 'בסיס הערכה' : 'Valuation basis', value: forecastData.financial_assumptions.valuation_basis },
         { field: isHebrew ? 'בסיס חיסכון שנתי' : 'Annual savings basis', value: forecastData.financial_assumptions.annual_savings_basis },
         { field: isHebrew ? 'בסיס החזר' : 'Payback basis', value: forecastData.financial_assumptions.payback_basis },
@@ -1781,7 +1777,6 @@ export default function App() {
           value: `${formatReadableNumber(dailySimulation.location[0], 4)}, ${formatReadableNumber(dailySimulation.location[1], 4)}`,
         },
         { field: isHebrew ? 'אזור זמן' : 'Timezone', value: dailySimulation.timezone },
-        { field: text.dataSource, value: dailySimulation.data_source },
         { field: isHebrew ? 'בסיס הערכה' : 'Valuation basis', value: dailySimulation.financial_assumptions.valuation_basis },
       ]
     : [];
@@ -2734,7 +2729,7 @@ export default function App() {
                       </CardContent>
                     </Card>
 
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">{text.methodApproach}</CardTitle>
@@ -2757,14 +2752,6 @@ export default function App() {
                       </CardHeader>
                       <CardContent>
                         <div className="text-lg font-semibold">{accuracyTrainingYearsLabel}</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">{text.dataSource}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-lg font-semibold">{accuracyResult.data_source}</div>
                       </CardContent>
                     </Card>
                   </div>
@@ -2854,10 +2841,6 @@ export default function App() {
                             <TableRow>
                               <TableCell>{isHebrew ? 'הערת גיבוי' : 'Backup method note'}</TableCell>
                               <TableCell>{accuracyResult.fallback_reason || (isHebrew ? 'לא הופעלה שיטת גיבוי' : 'No backup method used')}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>{text.dataSource}</TableCell>
-                              <TableCell>{accuracyResult.data_source}</TableCell>
                             </TableRow>
                             <TableRow>
                               <TableCell>{isHebrew ? 'בסיס הערכה' : 'Valuation basis'}</TableCell>
