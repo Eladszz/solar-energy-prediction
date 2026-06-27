@@ -13,19 +13,6 @@ from geopy.exc import (  # type: ignore
 )
 from geopy.geocoders import Nominatim  # type: ignore
 
-try:
-    from solar_ui.config import (
-        get_default_demo_scenario_id,
-        get_demo_scenario_by_id,
-        get_demo_scenarios,
-    )
-except ModuleNotFoundError:
-    from config import (
-        get_default_demo_scenario_id,
-        get_demo_scenario_by_id,
-        get_demo_scenarios,
-    )
-
 
 logger = logging.getLogger(__name__)
 
@@ -65,60 +52,7 @@ def build_geolocator(user_agent: str = GEOCODER_USER_AGENT) -> Nominatim:
     return Nominatim(user_agent=user_agent, timeout=GEOCODER_TIMEOUT_SECONDS)
 
 
-def normalize_address(value: str) -> str:
-    return " ".join(value.lower().replace(",", " ").split())
-
-
-def find_demo_scenario_by_address(address: str) -> dict | None:
-    normalized_address = normalize_address(address)
-    for scenario in get_demo_scenarios():
-        searchable_parts = [
-            scenario["address"],
-            f"{scenario['street']} {scenario['number']}, {scenario['city']}, {scenario['country']}",
-            scenario["name"],
-        ]
-        if any(normalize_address(part) == normalized_address for part in searchable_parts):
-            return scenario
-        scenario_address = normalize_address(str(scenario["address"]))
-        if normalized_address and all(token in scenario_address for token in normalized_address.split()):
-            return scenario
-    return None
-
-
-def find_demo_scenario_by_coordinates(lat: float, lon: float) -> dict:
-    return min(
-        get_demo_scenarios(),
-        key=lambda scenario: (
-            (float(scenario["latitude"]) - lat) ** 2
-            + (float(scenario["longitude"]) - lon) ** 2
-        ),
-    )
-
-
-def build_demo_lookup_result(scenario: dict) -> GeocodingLookupResult:
-    return GeocodingLookupResult(
-        latitude=float(scenario["latitude"]),
-        longitude=float(scenario["longitude"]),
-        address=str(scenario["address"]),
-    )
-
-
-def geocode_address(
-    address: str,
-    *,
-    demo_mode: bool = False,
-    demo_scenario_id: str | None = None,
-) -> GeocodingLookupResult:
-    if demo_mode:
-        scenario = (
-            get_demo_scenario_by_id(demo_scenario_id)
-            if demo_scenario_id
-            else find_demo_scenario_by_address(address)
-        )
-        if scenario is None:
-            scenario = get_demo_scenario_by_id(get_default_demo_scenario_id())
-        return build_demo_lookup_result(scenario)
-
+def geocode_address(address: str) -> GeocodingLookupResult:
     try:
         geolocator = build_geolocator()
         location = geolocator.geocode(address)
@@ -151,21 +85,7 @@ def geocode_address(
         )
 
 
-def reverse_geocode(
-    lat: float,
-    lon: float,
-    *,
-    demo_mode: bool = False,
-    demo_scenario_id: str | None = None,
-) -> GeocodingLookupResult:
-    if demo_mode:
-        scenario = (
-            get_demo_scenario_by_id(demo_scenario_id)
-            if demo_scenario_id
-            else find_demo_scenario_by_coordinates(lat, lon)
-        )
-        return build_demo_lookup_result(scenario)
-
+def reverse_geocode(lat: float, lon: float) -> GeocodingLookupResult:
     try:
         geolocator = build_geolocator()
         location = geolocator.reverse((lat, lon), language="en")

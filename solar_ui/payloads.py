@@ -22,8 +22,6 @@ class PVRequestPayload(TypedDict):
     currency: str
     system_capex: float
     training_years: int
-    demo_mode: bool
-    demo_scenario_id: str | None
 
 
 class ScenarioComparisonContextPayload(TypedDict):
@@ -34,8 +32,6 @@ class ScenarioComparisonContextPayload(TypedDict):
     training_years: int
     electricity_price_per_kwh: float
     currency: str
-    demo_mode: bool
-    demo_scenario_id: str | None
 
 
 class ScenarioComparisonScenarioPayload(TypedDict):
@@ -70,8 +66,6 @@ class BenchmarkEvaluationPayload(TypedDict):
     gamma: float
     noct: float
     training_years: int
-    demo_mode: bool
-    demo_scenario_id: str | None
 
 
 ApiPayload: TypeAlias = (
@@ -82,33 +76,6 @@ ApiPayload: TypeAlias = (
     | list[PVRequestPayload]
     | list[dict[str, Any]]
 )
-
-
-def build_demo_option_label(scenario: Mapping[str, Any]) -> str:
-    return f"{scenario['name']} ({scenario['city']})"
-
-
-def build_demo_variant_requests(
-    base_payload: PVRequestPayload,
-    scenario: Mapping[str, Any],
-) -> list[dict[str, Any]]:
-    variants = []
-    for variant in scenario.get("comparison_variants", []):
-        variant_payload = dict(base_payload)
-        variant_payload.update(
-            {
-                "panel_area": float(variant["panel_area"]),
-                "tilt": int(variant["tilt"]),
-                "ac_capacity_kw": float(variant["ac_capacity_kw"]),
-                "cleanliness": str(variant["cleanliness"]),
-                "shading": str(variant["shading"]),
-                "system_capex": float(
-                    variant.get("system_capex", base_payload["system_capex"])
-                ),
-            }
-        )
-        variants.append({"name": str(variant["name"]), "payload": variant_payload})
-    return variants
 
 
 def build_common_payload(
@@ -128,8 +95,6 @@ def build_common_payload(
     currency: str,
     system_capex: float,
     training_years: int,
-    demo_mode: bool,
-    demo_scenario_id: str | None,
 ) -> PVRequestPayload:
     return {
         "latitude": latitude,
@@ -148,8 +113,6 @@ def build_common_payload(
         "currency": currency,
         "system_capex": system_capex,
         "training_years": training_years,
-        "demo_mode": demo_mode,
-        "demo_scenario_id": demo_scenario_id,
     }
 
 
@@ -164,8 +127,6 @@ def build_scenario_comparison_context(
         "training_years": base_payload["training_years"],
         "electricity_price_per_kwh": base_payload["electricity_price_per_kwh"],
         "currency": base_payload["currency"],
-        "demo_mode": base_payload["demo_mode"],
-        "demo_scenario_id": base_payload["demo_scenario_id"],
     }
 
 
@@ -223,8 +184,6 @@ def build_benchmark_payload(
         "gamma": base_payload["gamma"],
         "noct": base_payload["noct"],
         "training_years": base_payload["training_years"],
-        "demo_mode": base_payload["demo_mode"],
-        "demo_scenario_id": base_payload["demo_scenario_id"],
     }
 
 

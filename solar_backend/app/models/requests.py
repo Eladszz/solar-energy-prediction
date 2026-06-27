@@ -62,8 +62,6 @@ class BasePVRequest(BaseModel):
         default=DEFAULT_SYSTEM_CAPEX, ge=0.0, le=MAX_SYSTEM_CAPEX
     )
     training_years: int = Field(default=DEFAULT_TRAINING_YEARS, ge=1, le=10)
-    demo_mode: bool = False
-    demo_scenario_id: str | None = None
 
 
 class SimulationRequest(BasePVRequest):
@@ -105,8 +103,6 @@ class BenchmarkEvaluationRequest(BaseModel):
         default=DEFAULT_SYSTEM_CAPEX, ge=0.0, le=MAX_SYSTEM_CAPEX
     )
     training_years: int = Field(default=DEFAULT_TRAINING_YEARS, ge=1, le=10)
-    demo_mode: bool = False
-    demo_scenario_id: str | None = None
 
 
 class ScenarioComparisonContext(BaseModel):
@@ -127,8 +123,6 @@ class ScenarioComparisonContext(BaseModel):
         le=MAX_ELECTRICITY_PRICE_PER_KWH,
     )
     currency: CurrencyCode = DEFAULT_CURRENCY
-    demo_mode: bool = False
-    demo_scenario_id: str | None = None
 
 
 class ScenarioComparisonScenario(BaseModel):

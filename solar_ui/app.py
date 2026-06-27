@@ -13,18 +13,11 @@ from streamlit_folium import st_folium  # type: ignore
 
 try:
     from solar_ui.api_client import api_post
-    from solar_ui.config import (
-        get_default_demo_scenario_id,
-        get_demo_scenario_by_id,
-        get_demo_scenarios,
-    )
     from solar_ui.payloads import (
         BenchmarkEvaluationPayload,
         PVRequestPayload,
         build_benchmark_payload,
         build_common_payload,
-        build_demo_option_label,
-        build_demo_variant_requests,
         build_scenario_comparison_payload,
     )
     from solar_ui.ui_sections import (
@@ -38,7 +31,6 @@ try:
         render_section_intro,
     )
     from solar_ui.ui_state import (
-        apply_demo_scenario,
         build_scenario_table,
         clear_scenario_editor,
         duplicate_scenario_request,
@@ -55,18 +47,11 @@ try:
     )
 except ModuleNotFoundError:
     from api_client import api_post
-    from config import (
-        get_default_demo_scenario_id,
-        get_demo_scenario_by_id,
-        get_demo_scenarios,
-    )
     from payloads import (
         BenchmarkEvaluationPayload,
         PVRequestPayload,
         build_benchmark_payload,
         build_common_payload,
-        build_demo_option_label,
-        build_demo_variant_requests,
         build_scenario_comparison_payload,
     )
     from ui_sections import (
@@ -80,7 +65,6 @@ except ModuleNotFoundError:
         render_section_intro,
     )
     from ui_state import (
-        apply_demo_scenario,
         build_scenario_table,
         clear_scenario_editor,
         duplicate_scenario_request,
@@ -112,18 +96,13 @@ logger.add(
 st.set_page_config(page_title="Solar Energy Forecast", layout="wide")
 st.title("Solar Energy Prediction System")
 st.caption(
-    "Demo-ready solar forecasting with physical and ML yearly forecasts, benchmark evaluation, "
+    "Solar forecasting with physical and ML yearly forecasts, benchmark evaluation, "
     "backtest accuracy analysis, and scenario comparison."
 )
 st.info(
     "Recommended flow: locate a site, confirm the baseline system, run the forecast, then use "
     "comparison, backtest, and benchmark tabs to explore alternatives."
 )
-
-
-DEMO_SCENARIOS = get_demo_scenarios()
-DEMO_SCENARIO_OPTIONS = {scenario["id"]: scenario for scenario in DEMO_SCENARIOS}
-
 
 def payload_changed(
     current_payload: Mapping[str, Any] | None,
@@ -151,11 +130,7 @@ def clear_comparison_results() -> None:
     st.session_state.last_comparison_payload = None
 
 
-def render_location_map(
-    *,
-    demo_mode_active: bool,
-    selected_demo_scenario_id: str | None,
-) -> None:
+def render_location_map() -> None:
     if st.session_state.lat is None or st.session_state.lon is None:
         st.info(
             "Resolve an address first to unlock the site map and optional roof-area selection."
@@ -171,25 +146,18 @@ def render_location_map(
         popup=st.session_state.address,
         icon=folium.Icon(icon="home"),
     ).add_to(map_object)
-    if not demo_mode_active:
-        Draw(
-            draw_options={
-                "polyline": False,
-                "polygon": False,
-                "circle": False,
-                "circlemarker": False,
-                "marker": False,
-                "rectangle": True,
-            },
-            edit_options={"edit": True},
-        ).add_to(map_object)
+    Draw(
+        draw_options={
+            "polyline": False,
+            "polygon": False,
+            "circle": False,
+            "circlemarker": False,
+            "marker": False,
+            "rectangle": True,
+        },
+        edit_options={"edit": True},
+    ).add_to(map_object)
     map_data = st_folium(map_object, height=360, use_container_width=True)
-
-    if demo_mode_active:
-        st.caption(
-            "Map editing is disabled in demo mode so the bundled scenario stays deterministic."
-        )
-        return
 
     if not map_data or not map_data.get("all_drawings"):
         st.caption(
@@ -218,8 +186,6 @@ def render_location_map(
     reverse_lookup = reverse_geocode(
         center_lat,
         center_lon,
-        demo_mode=demo_mode_active,
-        demo_scenario_id=selected_demo_scenario_id,
     )
     if reverse_lookup.address:
         st.session_state.address = reverse_lookup.address
@@ -252,7 +218,7 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
     render_section_intro(
         "Scenario Comparison",
         "Create alternative system designs against the current baseline. Scenarios inherit the "
-        "baseline location, year, model choice, tariff, currency, and demo settings.",
+        "baseline location, year, model choice, tariff, and currency.",
         "Use the editor below to tune one scenario at a time, then run the comparison when the "
         "saved list looks right.",
     )
@@ -442,7 +408,7 @@ def render_scenario_editor(base_payload: PVRequestPayload) -> None:
 
     st.caption(
         "Scenario-specific fields are limited to system design assumptions. Location, forecast year, "
-        "tariff, currency, model selection, and demo settings remain shared baseline context."
+        "tariff, currency, and model selection remain shared baseline context."
     )
 
 
@@ -461,53 +427,6 @@ if "street_input" not in st.session_state:
     st.session_state.street_input = "Dizengoff"
 if "house_number_input" not in st.session_state:
     st.session_state.house_number_input = "100"
-
-demo_scenario_reset_requested = False
-selected_demo_scenario: Mapping[str, Any] | None = None
-
-st.sidebar.header("Demo Controls")
-demo_mode_active = st.sidebar.checkbox(
-    "Enable Demo Mode",
-    key="demo_mode",
-    help="Uses bundled geocoding and deterministic weather fixtures instead of live third-party services.",
-)
-selected_demo_scenario_id = st.session_state.demo_scenario_id
-if demo_mode_active:
-    if selected_demo_scenario_id not in DEMO_SCENARIO_OPTIONS:
-        selected_demo_scenario_id = get_default_demo_scenario_id()
-        st.session_state.demo_scenario_id = selected_demo_scenario_id
-
-    selected_demo_scenario_id = st.sidebar.selectbox(
-        "Demo Scenario",
-        options=list(DEMO_SCENARIO_OPTIONS),
-        format_func=lambda scenario_id: build_demo_option_label(
-            DEMO_SCENARIO_OPTIONS[scenario_id]
-        ),
-        key="demo_scenario_id",
-    )
-    demo_scenario_reset_requested = (
-        st.session_state.last_applied_demo_scenario_id != selected_demo_scenario_id
-    )
-    selected_demo_scenario = get_demo_scenario_by_id(selected_demo_scenario_id)
-    if (
-        demo_scenario_reset_requested
-        or st.session_state.lat is None
-        or st.session_state.lon is None
-    ):
-        selected_demo_scenario = apply_demo_scenario(selected_demo_scenario)
-        st.session_state.scenario_requests = []
-        st.session_state.selected_scenario_index = 0
-        clear_analysis_results()
-    st.sidebar.caption(selected_demo_scenario["description"])
-else:
-    st.session_state.demo_scenario_id = None
-    st.session_state.last_applied_demo_scenario_id = None
-
-if demo_mode_active and selected_demo_scenario is not None:
-    st.warning(
-        "Demo mode is active. Geocoding, forecast weather, scenario comparison, benchmark, and "
-        f"backtest flows are using the bundled '{selected_demo_scenario['name']}' dataset."
-    )
 
 st.sidebar.header("Location")
 country_value = st.session_state.country_select
@@ -535,18 +454,12 @@ number = st.sidebar.text_input(
 
 address = f"{street} {number}, {city}, {country}".strip()
 if st.sidebar.button("Locate Address", type="primary"):
-    location_lookup = geocode_address(
-        address,
-        demo_mode=demo_mode_active,
-        demo_scenario_id=selected_demo_scenario_id,
-    )
+    location_lookup = geocode_address(address)
     if location_lookup.is_success:
         st.session_state.lat = location_lookup.latitude
         st.session_state.lon = location_lookup.longitude
         st.session_state.address = location_lookup.address or address
-        st.session_state.location_notice = (
-            "Using bundled geocoding for demo mode." if demo_mode_active else None
-        )
+        st.session_state.location_notice = None
         st.success(
             f"Location resolved to {st.session_state.lat:.4f}, {st.session_state.lon:.4f}"
         )
@@ -688,10 +601,7 @@ run_forecast = st.sidebar.button(
     help="Runs the yearly baseline forecast and the daily simulation for the current site and system.",
 )
 
-render_location_map(
-    demo_mode_active=demo_mode_active,
-    selected_demo_scenario_id=selected_demo_scenario_id,
-)
+render_location_map()
 
 base_payload: PVRequestPayload | None = None
 if st.session_state.lat is not None and st.session_state.lon is not None:
@@ -712,12 +622,7 @@ if st.session_state.lat is not None and st.session_state.lon is not None:
         currency=currency,
         system_capex=float(system_capex),
         training_years=int(training_years),
-        demo_mode=demo_mode_active,
-        demo_scenario_id=selected_demo_scenario_id if demo_mode_active else None,
     )
-
-if base_payload is not None and demo_scenario_reset_requested:
-    clear_scenario_editor(base_payload)
 
 if run_forecast or st.session_state.auto_run_forecast:
     st.session_state.auto_run_forecast = False
@@ -793,12 +698,9 @@ with tab_accuracy:
     render_section_intro(
         "Accuracy Backtest",
         "Compare the selected forecast configuration against archived weather for a completed year.",
-        (
-            "Demo mode keeps this deterministic. Live mode uses the latest archived weather that is "
-            f"fully available through {last_complete_year}."
-        ),
+        f"Uses archived weather that is fully available through {last_complete_year}.",
     )
-    if forecast_year > last_complete_year and not demo_mode_active:
+    if forecast_year > last_complete_year:
         st.info(
             f"Archived actual weather is only complete through {last_complete_year}, so the backtest "
             f"uses {evaluation_year}."
@@ -896,24 +798,6 @@ with tab_scenarios:
     else:
         render_scenario_editor(base_payload)
 
-        if demo_mode_active and selected_demo_scenario is not None:
-            if st.button("Load Demo Variants", use_container_width=True):
-                variants = build_demo_variant_requests(
-                    base_payload, selected_demo_scenario
-                )
-                if variants:
-                    st.session_state.scenario_requests = variants
-                    st.session_state.selected_scenario_index = 0
-                    clear_scenario_editor(base_payload)
-                    clear_comparison_results()
-                    st.success(
-                        "Loaded the bundled comparison variants for this demo scenario."
-                    )
-                else:
-                    st.warning(
-                        "This demo scenario does not define bundled comparison variants."
-                    )
-
         if st.session_state.scenario_requests:
             st.markdown("**Saved scenarios**")
             st.dataframe(
@@ -923,7 +807,7 @@ with tab_scenarios:
             )
         else:
             st.info(
-                "No alternative scenarios yet. Add one above or load the bundled demo variants."
+                "No alternative scenarios yet. Add one above to compare system designs."
             )
 
         comparison_payload = (

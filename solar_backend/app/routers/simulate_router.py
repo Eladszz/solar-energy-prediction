@@ -26,8 +26,6 @@ def simulate(req: SimulationRequest):
             req.latitude,
             req.longitude,
             days=1,
-            demo_mode=req.demo_mode,
-            demo_scenario_id=req.demo_scenario_id,
         )
     except ExternalServiceError as exc:
         raise exception_to_http_exception(exc) from exc
@@ -84,7 +82,4 @@ def simulate(req: SimulationRequest):
         ),
         "timezone": timezone,
         "hourly_time": hourly_time,
-        "data_source": weather.get("data_source", "live"),
-        "demo_scenario_id": weather.get("demo_scenario_id"),
-        "demo_scenario_name": weather.get("demo_scenario_name"),
     }

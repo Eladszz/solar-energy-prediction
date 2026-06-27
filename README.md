@@ -4,7 +4,7 @@ Solar energy forecasting project prepared for academic engineering submission.
 
 The system combines:
 - A FastAPI backend for weather retrieval, PV simulation, yearly forecasting, scenario comparison, benchmark evaluation, and backtest accuracy analysis.
-- A React frontend for location selection, system configuration, forecast visualization, monetary estimation, benchmark review, and demo-ready what-if flows.
+- A React frontend for location selection, system configuration, forecast visualization, monetary estimation, benchmark review, and live what-if analysis.
 
 ## Alpha Scope
 
@@ -39,8 +39,6 @@ OpenAPI JSON is available at `http://127.0.0.1:8000/openapi.json`.
 ```text
 solar-energy-prediction/
 ├── .env.example
-├── demo/
-│   └── catalog.json
 ├── solar_backend/
 │   ├── app/
 │   │   ├── main.py
@@ -60,14 +58,13 @@ solar-energy-prediction/
 │   └── utils.py
 ├── architecture/
 ├── ARCHITECTURE.md
-├── DEMO.md
 ├── Dockerfile
 └── README.md
 ```
 
 ## Quick Start
 
-Optional: copy `.env.example` to `.env` and adjust values if you want to change demo mode or frontend/backend URLs.
+Optional: copy `.env.example` to `.env` and adjust values if you want to change frontend/backend URLs.
 
 ### 1. Backend setup
 
@@ -247,9 +244,9 @@ curl -X POST http://127.0.0.1:8000/evaluation/benchmark \
   }'
 ```
 
-## Demo Flow
+## Presentation Flow
 
-Recommended Alpha demo:
+Recommended Alpha presentation:
 1. Open the React UI.
 2. Resolve an address and optionally draw a roof rectangle to auto-fill panel area.
 3. Run a yearly forecast with `physical` mode.
@@ -272,7 +269,6 @@ The automated suite covers request validation, route contracts, scenario compari
 ## Submission Documents
 
 - `ARCHITECTURE.md`
-- `DEMO.md`
 - `architecture/*.puml`
 
 ## Notes
