@@ -60,7 +60,6 @@ const DEFAULT_SIDEBAR_WIDTH = 368;
 const MIN_SIDEBAR_WIDTH = 304;
 const MAX_SIDEBAR_WIDTH = 560;
 const COLLAPSED_SIDEBAR_WIDTH = 72;
-const LEGACY_SYSTEM_CAPEX_DEFAULT = 25000;
 type Language = 'en' | 'he';
 const FORECAST_APPROACH_COPY: Record<
   Language,
@@ -1036,19 +1035,6 @@ export default function App() {
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'he' ? 'rtl' : 'ltr';
   }, [language]);
-
-  useEffect(() => {
-    setSystemCapex((currentValue) => (
-      Number(currentValue) === LEGACY_SYSTEM_CAPEX_DEFAULT
-        ? APP_DEFAULTS.systemCapex
-        : currentValue
-    ));
-    setScenarioCapex((currentValue) => (
-      Number(currentValue) === LEGACY_SYSTEM_CAPEX_DEFAULT
-        ? APP_DEFAULTS.systemCapex
-        : currentValue
-    ));
-  }, []);
 
   useEffect(() => {
     if (!isSidebarResizing) {
