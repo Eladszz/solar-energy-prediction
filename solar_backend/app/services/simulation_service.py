@@ -5,26 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def calculate_power_kw(irradiance, t_cell, panel_area, efficiency, gamma):
-    """
-    Realistic power calculation including thermal derating.
-    """
-    logger.debug(
-        f"Calculating power with irradiance={irradiance}, t_cell={t_cell}, panel_area={panel_area}, efficiency={efficiency}, gamma={gamma}"
-    )
-    stc_temp = 25
-    thermal_factor = 1 - gamma * (t_cell - stc_temp)
-    logger.debug(f"Thermal factor calculated as {thermal_factor}")
-    thermal_factor = max(thermal_factor, 0)  # avoid negative
-    logger.debug(f"Thermal factor after max check: {thermal_factor}")
-    power_watts = irradiance * panel_area * efficiency * thermal_factor
-    logger.debug(f"Power in watts calculated as {power_watts}")
-    return power_watts / 1000  # kW
-
-
 def calculate_poa(ghi: float, latitude: float, tilt: float) -> float:
     """
-    Approximates Plane-Of-Array irradiance using a simple incidence angle model.
+    Approximate plane-of-array irradiance in W/m² from GHI in W/m².
     This is a first-order POA correction, not a full solar-geometry model.
     """
     # difference between tilt and latitude gives rough incidence correction
@@ -51,7 +34,7 @@ def calculate_dc_power_kw(
     poa: float, t_cell: float, panel_area: float, efficiency_stc: float, gamma: float
 ) -> float:
     """
-    Compute DC power output in kW.
+    Compute DC power in kW from irradiance (W/m²) and panel area (m²).
     """
     logger.debug(
         f"Calculating DC power with POA={poa}, t_cell={t_cell}, panel_area={panel_area}, efficiency_stc={efficiency_stc}, gamma={gamma}"
@@ -104,7 +87,7 @@ def simulate_production_enhanced(
     """
     Full PV simulation:
     GHI → POA → T_cell → DC → Losses → AC_clipping
-    Returns list of hourly AC power production in kW.
+    AC capacity and returned power are kW; each hourly sample represents kWh.
     """
     results_ac_kw = []
     logger.info("Starting enhanced PV production simulation...")

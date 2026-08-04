@@ -7,12 +7,10 @@ from fastapi.responses import FileResponse
 from app.config import config
 from app.models.responses import RootResponse
 from app.routers import (
-    benchmark_router,
     health_router,
     simulate_router,
     yearly_forecast_router,
     scenario_comparison_router,
-    accuracy_router,
 )
 from loguru import logger
 from app.logging_conf import configure_logging
@@ -22,7 +20,6 @@ FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "solar_frontend" / "di
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
 API_PREFIXES = (
     "api",
-    "evaluation",
     "forecast",
     "health",
     "openapi.json",
@@ -80,12 +77,6 @@ app.include_router(
 )
 app.include_router(
     scenario_comparison_router.router, prefix="/scenarios", tags=["Scenario Comparison"]
-)
-app.include_router(
-    accuracy_router.router, prefix="/evaluation", tags=["Accuracy Evaluation"]
-)
-app.include_router(
-    benchmark_router.router, prefix="/evaluation", tags=["Benchmark Evaluation"]
 )
 
 

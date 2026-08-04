@@ -13,8 +13,6 @@ class BaseConfig(BaseSettings):
 
 
 class GlobalConfig(BaseConfig):
-    DATABASE_URL: Optional[str] = None
-    DB_FORCE_ROLL_BACK: bool = False
     CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
 
@@ -31,9 +29,6 @@ class ProdConfig(GlobalConfig):
 
 
 class TestConfig(GlobalConfig):
-    DATABASE_URL: Optional[str] = "sqlite:///test.db"
-    DB_FORCE_ROLL_BACK: bool = True
-
     model_config = SettingsConfigDict(
         env_prefix="TEST_", env_file=".env", extra="ignore"
     )

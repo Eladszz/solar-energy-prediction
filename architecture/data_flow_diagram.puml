@@ -1,34 +1,17 @@
-@startuml solar_energy_data_flow_layered
-title Data Flow Diagram – Solar Energy Prediction System (Layered View)
-
-skinparam componentStyle rectangle
-skinparam style strictuml
-
-rectangle "Presentation Layer" #E3F2FD {
-  component "User Input\n(Location & System Parameters)" as input
-  component "Forecast Visualization\n(Charts & Reports)" as output
-}
-
-rectangle "Application Logic Layer" #E8F5E9 {
-  component "Forecast Management"
-  component "Prediction Models\n(Physical / ML-based)"
-}
-
-rectangle "Data & Integration Layer" #FFFDE7 {
-  component "Geolocation Data"
-  component "Weather Data"
-  component "Historical Production Data"
-}
-
-input --> "Forecast Management" : Location & Configuration Data
-
-"Forecast Management" --> "Geolocation Data" : Resolve location
-"Forecast Management" --> "Weather Data" : Retrieve climate information
-"Forecast Management" --> "Historical Production Data" : Retrieve past production
-
-"Forecast Management" --> "Prediction Models\n(Physical / ML-based)" : Prepared input features
-"Prediction Models\n(Physical / ML-based)" --> "Forecast Management" : Forecast results
-
-"Forecast Management" --> output : Energy production forecast
-
+@startuml
+rectangle "Location + PV + Finance Inputs" as Input
+rectangle "FastAPI Validation" as API
+rectangle "Open-Meteo Weather" as Weather
+rectangle "Hourly Weather Validation" as Validation
+rectangle "Simplified Physical PV Model" as Physics
+rectangle "Monthly / Yearly Aggregation" as Aggregation
+rectangle "Financial Calculation" as Finance
+rectangle "React Charts and Values" as UI
+Input --> API
+API --> Weather
+Weather --> Validation
+Validation --> Physics
+Physics --> Aggregation
+Aggregation --> Finance
+Finance --> UI
 @enduml

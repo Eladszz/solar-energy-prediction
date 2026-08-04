@@ -1,6 +1,4 @@
-import logging
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.exceptions.domain_exceptions import DomainError
 from app.exceptions.http_exceptions import exception_to_http_exception
@@ -9,7 +7,6 @@ from app.models.responses import ScenarioComparisonResponse
 from app.exceptions.external_service_exceptions import ExternalServiceError
 from app.services.scenario_comparison_service import compare_yearly_scenarios
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -31,8 +28,3 @@ def compare_scenarios(
         raise exception_to_http_exception(exc) from exc
     except DomainError as exc:
         raise exception_to_http_exception(exc) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as e:
-        logger.exception("Scenario comparison error")
-        raise HTTPException(status_code=500, detail=str(e))

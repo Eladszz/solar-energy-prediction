@@ -1,3 +1,5 @@
+import math
+
 from fastapi import APIRouter, HTTPException
 
 from app.services.finance_service import (
@@ -11,6 +13,7 @@ from app.exceptions.http_exceptions import exception_to_http_exception
 from app.services.loss_service import compute_system_loss_factor
 from app.services.simulation_service import simulate_production_enhanced
 from app.services.weather_service import get_weather_forecast
+from app.services.yearly_forecast_service import PRODUCTION_MODEL
 
 router = APIRouter()
 
@@ -29,17 +32,46 @@ def simulate(req: SimulationRequest):
         )
     except ExternalServiceError as exc:
         raise exception_to_http_exception(exc) from exc
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Daily simulation failed: {exc}",
-        ) from exc
 
     hourly = weather["hourly"]
-    irradiance = hourly["shortwave_radiation"]
-    temps = hourly["temperature_2m"]
+    irradiance = []
+    for value in hourly["shortwave_radiation"]:
+        if value is None:
+            irradiance.append(0.0)
+            continue
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
+            raise HTTPException(
+                status_code=502,
+                detail="Weather forecast contains invalid irradiance values.",
+            )
+        irradiance.append(float(value))
+
+    temps = []
+    last_temperature: float | None = None
+    for value in hourly["temperature_2m"]:
+        if value is None:
+            if last_temperature is None:
+                raise HTTPException(
+                    status_code=502,
+                    detail="Weather forecast contains unusable temperature values.",
+                )
+            temps.append(last_temperature)
+            continue
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
+            raise HTTPException(
+                status_code=502,
+                detail="Weather forecast contains invalid temperature values.",
+            )
+        last_temperature = float(value)
+        temps.append(last_temperature)
 
     if not irradiance or not temps:
         raise HTTPException(
@@ -66,6 +98,8 @@ def simulate(req: SimulationRequest):
 
     return {
         "location": [req.latitude, req.longitude],
+        "production_model": PRODUCTION_MODEL,
+        "weather_source": "Open-Meteo forecast",
         "system_loss_factor": system_loss_factor,
         "hourly_ac_kw": ac_power_kw,
         "avg_kw": round(sum(ac_power_kw) / len(ac_power_kw), 2),

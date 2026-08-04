@@ -1,13 +1,14 @@
-@startuml prediction_pipeline
-title Solar Energy Prediction Pipeline
-
+@startuml
 start
-:User Inputs\n(Location, Dates);
-:Fetch Weather Data;
-:Data Cleaning\n& Feature Engineering;
-:Run AI Prediction Model;
-:Generate Energy Forecast;
-:Visualize Results\n(Graphs & Tables);
+:Receive validated PV inputs;
+:Retrieve Open-Meteo hourly weather;
+:Sort and validate hourly timestamps;
+:Calculate approximate POA irradiance (W/m²);
+:Estimate cell temperature with NOCT;
+:Calculate DC power (W -> kW);
+:Apply system losses and AC clipping (kW);
+:Treat each one-hour sample as kWh;
+:Aggregate monthly and yearly kWh;
+:Calculate flat-tariff value and payback;
 stop
-
 @enduml

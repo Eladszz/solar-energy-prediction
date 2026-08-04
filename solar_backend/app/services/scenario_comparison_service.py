@@ -7,8 +7,10 @@ from app.models.requests import ScenarioComparisonContext, ScenarioComparisonSce
 from app.services.finance_service import build_financial_summary
 from app.services.loss_service import compute_system_loss_factor
 from app.services.yearly_forecast_service import (
-    build_forecast_weather_profile,
-    compute_yearly_from_real_data,
+    PRODUCTION_MODEL,
+    WEATHER_SOURCE,
+    build_physical_weather_profile,
+    compute_yearly_from_hourly_weather,
 )
 
 
@@ -19,12 +21,10 @@ def compare_yearly_scenarios(
     if not scenarios:
         raise EmptyScenarioComparisonError()
 
-    weather_profile = build_forecast_weather_profile(
+    weather_profile = build_physical_weather_profile(
         latitude=context.latitude,
         longitude=context.longitude,
         forecast_year=context.year,
-        model_type=context.model_type,
-        training_years=context.training_years,
     )
 
     results = []
@@ -35,7 +35,7 @@ def compare_yearly_scenarios(
             shading=scenario.shading,
         )
 
-        forecast = compute_yearly_from_real_data(
+        forecast = compute_yearly_from_hourly_weather(
             df=weather_profile.df.copy(),
             latitude=context.latitude,
             tilt=scenario.tilt,
@@ -99,11 +99,10 @@ def compare_yearly_scenarios(
             )
 
     return {
-        "year": weather_profile.forecast_year,
-        "model_type_requested": weather_profile.model_type_requested,
-        "model_type_used": weather_profile.model_type_used,
+        "requested_forecast_year": weather_profile.requested_forecast_year,
+        "production_model": PRODUCTION_MODEL,
+        "weather_source": WEATHER_SOURCE,
         "weather_reference_year": weather_profile.weather_reference_year,
-        "training_years_used": weather_profile.training_years,
         "fallback_reason": weather_profile.fallback_reason,
         "baseline_yearly_kwh": baseline,
         "baseline_yearly_estimated_value": baseline_value,

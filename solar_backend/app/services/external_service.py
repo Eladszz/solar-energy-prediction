@@ -47,13 +47,6 @@ def fetch_json_from_provider(
             user_message=f"{provider} could not be reached. Please try again shortly.",
             detail=str(exc),
         ) from exc
-    except Exception as exc:
-        raise ExternalServiceUnavailableError(
-            provider=provider,
-            user_message=f"{provider} could not be reached. Please try again shortly.",
-            detail=str(exc),
-        ) from exc
-
     response_text = getattr(response, "text", "")
     response_snippet = response_text[:200] if isinstance(response_text, str) else ""
 

@@ -16,21 +16,10 @@ class EmptyScenarioComparisonError(DomainError, ValueError):
         super().__init__(user_message=user_message, detail=detail)
 
 
-class ForecastTrainingDataUnavailableError(DomainError, ValueError):
+class InvalidWeatherProfileError(DomainError, ValueError):
     http_status_code = 502
 
     def __init__(
-        self,
-        user_message: str = "Cannot train ML forecast model without historical weather data",
-        detail: str | None = None,
+        self, user_message: str = "Weather data is not a valid hourly profile."
     ) -> None:
-        super().__init__(user_message=user_message, detail=detail)
-
-
-class BenchmarkTrainingDataUnavailableError(ForecastTrainingDataUnavailableError):
-    def __init__(
-        self,
-        user_message: str = "No historical weather data was available for naive benchmark training",
-        detail: str | None = None,
-    ) -> None:
-        super().__init__(user_message=user_message, detail=detail)
+        super().__init__(user_message=user_message)

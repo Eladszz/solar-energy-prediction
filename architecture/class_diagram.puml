@@ -1,106 +1,20 @@
-@startuml class_diagram
-title Solar Energy Prediction System - Class Diagram
-
-class BasePVRequest {
-  +latitude: float
-  +longitude: float
-  +tilt: float
-  +panel_area: float
-  +panel_efficiency: float
-  +cleanliness: str
-  +shading: str
-  +ac_capacity_kw: float
-  +gamma: float
-  +noct: float
-}
-
-class SimulationRequest {
-}
-
-class YearlyForecastRequest {
-  +year: int
-}
-
-class SimulateResponse {
-  +location: list[float]
-  +system_loss_factor: float
-  +hourly_ac_kw: list[float]
-  +avg_kw: float
-  +timezone: str
-  +hourly_time: list[str]
-}
-
-class YearlyForecastResponse {
-  +location: tuple
-  +monthly_kwh: list[float]
-  +yearly_kwh: float
-  +specific_yield_kwh_per_kwp: float
-  +avg_daily_kwh: float
-}
-
-enum Cleanliness {
-  clean
-  normal
-  dusty
-}
-
-enum Shading {
-  none
-  low
-  medium
-  high
-}
-
-class SimulationService {
-  +simulate_production_enhanced()
-}
-
-class WeatherService {
-  +get_weather_forecast()
-}
-
-class LossService {
-  +get_cleanliness_loss()
-  +get_shading_loss()
-  +compute_system_loss_factor()
-}
-
-class ClimateService {
-  +get_climate_daily()
-}
-
-class WeatherArchiveService {
-  +get_year_archive()
-}
-
-class YearlyForecastService {
-  +compute_yearly_from_real_data()
-}
-
-class SimulateRouter {
-  +simulate()
-}
-
-class YearlyForecastRouter {
-  +yearly()
-}
-
-SimulationRequest --|> BasePVRequest
-YearlyForecastRequest --|> BasePVRequest
-
-BasePVRequest ..> Cleanliness
-BasePVRequest ..> Shading
-
-SimulateRouter ..> SimulateResponse : returns
-SimulateRouter --> SimulationService : uses
-SimulateRouter --> WeatherService : uses
-SimulateRouter --> LossService : uses
-
-YearlyForecastRouter ..> YearlyForecastResponse : returns
-YearlyForecastRouter --> YearlyForecastService : uses
-YearlyForecastRouter --> WeatherArchiveService : uses
-YearlyForecastRouter --> LossService : uses
-
-YearlyForecastService --> SimulationService : uses
-
+@startuml
+class BasePVRequest
+class YearlyForecastResponse
+class ScenarioComparisonRequest
+class WeatherArchiveService
+class WeatherForecastService
+class YearlyForecastService
+class SimulationService
+class LossService
+class FinanceService
+BasePVRequest --> WeatherArchiveService
+BasePVRequest --> WeatherForecastService
+ScenarioComparisonRequest --> YearlyForecastService
+WeatherArchiveService --> YearlyForecastService
+WeatherForecastService --> SimulationService
+YearlyForecastService --> SimulationService
+LossService --> SimulationService
+SimulationService --> FinanceService
+FinanceService --> YearlyForecastResponse
 @enduml

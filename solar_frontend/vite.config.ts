@@ -9,9 +9,6 @@ export default defineConfig(({mode}) => {
 
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -30,7 +27,6 @@ export default defineConfig(({mode}) => {
         '/simulate': backendTarget,
         '/forecast': backendTarget,
         '/scenarios': backendTarget,
-        '/evaluation': backendTarget,
         '/swagger': backendTarget,
         '/redoc': backendTarget,
         '/openapi.json': backendTarget,

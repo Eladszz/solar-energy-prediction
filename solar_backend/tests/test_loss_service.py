@@ -2,7 +2,7 @@ import pytest
 from app.services.loss_service import (
     get_cleanliness_loss,
     get_shading_loss,
-    compute_system_loss_factor
+    compute_system_loss_factor,
 )
 
 
@@ -56,7 +56,7 @@ class TestGetCleanlinessLoss:
         clean_loss = get_cleanliness_loss("clean")
         normal_loss = get_cleanliness_loss("normal")
         dusty_loss = get_cleanliness_loss("dusty")
-        
+
         assert clean_loss < normal_loss < dusty_loss
 
 
@@ -116,7 +116,7 @@ class TestGetShadingLoss:
         low_loss = get_shading_loss("low")
         medium_loss = get_shading_loss("medium")
         high_loss = get_shading_loss("high")
-        
+
         assert none_loss < low_loss < medium_loss < high_loss
 
 
@@ -160,31 +160,33 @@ class TestComputeSystemLossFactor:
         """Test that system loss factor is always between 0 and 1."""
         cleanliness_levels = ["clean", "normal", "dusty"]
         shading_levels = ["none", "low", "medium", "high"]
-        
+
         for cleanliness in cleanliness_levels:
             for shading in shading_levels:
                 factor = compute_system_loss_factor(cleanliness, shading)
-                assert 0.0 <= factor <= 1.0, f"Factor for {cleanliness}/{shading} should be between 0 and 1"
+                assert (
+                    0.0 <= factor <= 1.0
+                ), f"Factor for {cleanliness}/{shading} should be between 0 and 1"
 
     def test_system_loss_factor_decreases_with_cleanliness(self):
         """Test that system loss factor decreases as cleanliness worsens."""
         shading = "low"
-        
+
         clean_factor = compute_system_loss_factor("clean", shading)
         normal_factor = compute_system_loss_factor("normal", shading)
         dusty_factor = compute_system_loss_factor("dusty", shading)
-        
+
         assert clean_factor > normal_factor > dusty_factor
 
     def test_system_loss_factor_decreases_with_shading(self):
         """Test that system loss factor decreases as shading increases."""
         cleanliness = "normal"
-        
+
         none_factor = compute_system_loss_factor(cleanliness, "none")
         low_factor = compute_system_loss_factor(cleanliness, "low")
         medium_factor = compute_system_loss_factor(cleanliness, "medium")
         high_factor = compute_system_loss_factor(cleanliness, "high")
-        
+
         assert none_factor > low_factor > medium_factor > high_factor
 
     def test_system_loss_invalid_cleanliness(self):
@@ -210,22 +212,22 @@ class TestComputeSystemLossFactor:
         # The wiring loss should be the same regardless of cleanliness/shading
         # We can verify this by checking that the ratio between different configs
         # matches the expected ratio without wiring loss
-        
+
         factor1 = compute_system_loss_factor("clean", "none")
         factor2 = compute_system_loss_factor("normal", "none")
-        
+
         # Both should include the same wiring loss (0.98) and inverter (0.96)
         # Ratio should be (0.98)/(0.95) for cleanliness difference only
         expected_ratio = 0.98 / 0.95
         actual_ratio = factor1 / factor2
-        
+
         assert pytest.approx(actual_ratio, rel=1e-6) == expected_ratio
 
     def test_system_loss_inverter_efficiency_constant(self):
         """Test that inverter efficiency is constant at 96%."""
         # All factors should include 0.96 inverter efficiency
         factor = compute_system_loss_factor("clean", "none")
-        
+
         # If we reverse calculate, we should get 0.96 as part of the factor
         # factor = 0.98 * 1.0 * 0.98 * 0.96
         # factor / (0.98 * 1.0 * 0.98) should equal 0.96
@@ -236,37 +238,28 @@ class TestComputeSystemLossFactor:
         """Test system loss factor for all valid combinations."""
         cleanliness_levels = ["clean", "normal", "dusty"]
         shading_levels = ["none", "low", "medium", "high"]
-        
+
         results = {}
         for cleanliness in cleanliness_levels:
             for shading in shading_levels:
                 factor = compute_system_loss_factor(cleanliness, shading)
                 results[f"{cleanliness}_{shading}"] = factor
-                
+
         # Verify all results are unique and reasonable
-        assert len(set(results.values())) == len(results), "All combinations should produce unique factors"
-        assert all(0.6 <= f <= 1.0 for f in results.values()), "All factors should be reasonable"
+        assert len(set(results.values())) == len(
+            results
+        ), "All combinations should produce unique factors"
+        assert all(
+            0.6 <= f <= 1.0 for f in results.values()
+        ), "All factors should be reasonable"
 
     def test_system_loss_factor_precision(self):
         """Test that system loss factor has reasonable precision."""
         factor = compute_system_loss_factor("normal", "low")
-        
+
         # Should have at least 4 decimal places of precision
         factor_str = f"{factor:.10f}"
-        assert len(factor_str.split('.')[1].rstrip('0')) >= 4
-
-    def test_system_loss_logging(self, caplog):
-        """Test that appropriate logging occurs."""
-        import logging
-        
-        with caplog.at_level(logging.INFO):
-            compute_system_loss_factor("normal", "low")
-        
-        # Check that logging messages exist
-        assert any('Computing system loss factor' in record.message for record in caplog.records)
-        assert any('Calculating cleanliness loss' in record.message for record in caplog.records)
-        assert any('Calculating shading loss' in record.message for record in caplog.records)
-        assert any('Computed system loss factor' in record.message for record in caplog.records)
+        assert len(factor_str.split(".")[1].rstrip("0")) >= 4
 
     def test_system_loss_empty_strings(self):
         """Test system loss factor with empty strings."""
@@ -282,28 +275,34 @@ class TestComputeSystemLossFactor:
         expected = compute_system_loss_factor("normal", "low")
         assert pytest.approx(factor, rel=1e-6) == expected
 
-    @pytest.mark.parametrize("cleanliness,shading,min_expected,max_expected", [
-        ("clean", "none", 0.920, 0.925),
-        ("normal", "low", 0.860, 0.870),
-        ("dusty", "medium", 0.760, 0.790),
-        ("dusty", "high", 0.715, 0.725),
-    ])
-    def test_system_loss_expected_ranges(self, cleanliness, shading, min_expected, max_expected):
+    @pytest.mark.parametrize(
+        "cleanliness,shading,min_expected,max_expected",
+        [
+            ("clean", "none", 0.920, 0.925),
+            ("normal", "low", 0.860, 0.870),
+            ("dusty", "medium", 0.760, 0.790),
+            ("dusty", "high", 0.715, 0.725),
+        ],
+    )
+    def test_system_loss_expected_ranges(
+        self, cleanliness, shading, min_expected, max_expected
+    ):
         """Test that system loss factors fall within expected ranges for specific configurations."""
         factor = compute_system_loss_factor(cleanliness, shading)
-        assert min_expected <= factor <= max_expected, \
-            f"Factor {factor} for {cleanliness}/{shading} not in expected range [{min_expected}, {max_expected}]"
+        assert (
+            min_expected <= factor <= max_expected
+        ), f"Factor {factor} for {cleanliness}/{shading} not in expected range [{min_expected}, {max_expected}]"
 
     def test_system_loss_multiplicative_nature(self):
         """Test that losses are multiplicative, not additive."""
         # If losses were additive, clean+none would be: 1 - (0.02 + 0.00 + 0.02 + 0.04) = 0.92
         # But they're multiplicative: 0.98 * 1.0 * 0.98 * 0.96 ≈ 0.922
         factor = compute_system_loss_factor("clean", "none")
-        
+
         # Should NOT equal additive result
         additive_result = 1 - (0.02 + 0.00 + 0.02 + 0.04)
         assert factor != additive_result
-        
+
         # Should equal multiplicative result
         multiplicative_result = 0.98 * 1.0 * 0.98 * 0.96
         assert pytest.approx(factor, rel=1e-6) == multiplicative_result

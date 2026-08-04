@@ -1,36 +1,15 @@
-@startuml sequence_diagram_logical
-autonumber
-skinparam style strictuml
-title Energy Forecast Simulation – Logical Sequence Diagram
-
-actor "User" as user
-participant "User Interface" as ui
-participant "Forecast Controller" as controller
-participant "Loss Calculation" as loss
-participant "Weather Data Provider" as weather
-participant "Forecast Engine" as engine
-
-user -> ui : Initiate forecast request
-activate ui
-
-ui -> controller : Request energy forecast
-activate controller
-
-controller -> loss : Calculate system loss factors
-loss --> controller : Loss parameters
-
-controller -> weather : Retrieve weather data
-weather --> controller : Weather information
-
-controller -> engine : Compute energy forecast
-note right of engine
-  Forecast Engine supports:
-  - Physical models (implemented)
-  - ML-based models (planned)
-end note
-engine --> controller : Forecast results
-
-controller --> ui : Forecast results
-ui --> user : Display forecast results
-
+@startuml
+actor User
+participant React
+participant FastAPI
+participant "Open-Meteo" as Weather
+participant "Physical Services" as Physics
+User -> React : choose location and system
+React -> FastAPI : POST yearly / daily / scenarios
+FastAPI -> Weather : request hourly weather
+Weather --> FastAPI : radiation, temperature, timestamps
+FastAPI -> Physics : validate, losses, simulate, aggregate, finance
+Physics --> FastAPI : energy and financial result
+FastAPI --> React : typed JSON response
+React --> User : charts and values
 @enduml
