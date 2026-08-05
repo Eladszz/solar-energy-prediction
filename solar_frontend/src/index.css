@@ -125,11 +125,44 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply min-w-80 bg-background text-foreground antialiased;
     }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
     }
+  button,
+  input,
+  [role="tab"],
+  [role="button"] {
+    font: inherit;
+  }
+}
+
+html[dir="rtl"] body {
+  font-feature-settings: "kern" 1;
+}
+
+.leaflet-container {
+  background: var(--muted);
+  font-family: inherit;
+  z-index: 0;
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.recharts-default-legend {
+  direction: inherit;
+}
+
+@media (max-width: 640px) {
+  .recharts-cartesian-axis-tick-value {
+    font-size: 10px;
+  }
 }
 
 .dark .leaflet-layer,
