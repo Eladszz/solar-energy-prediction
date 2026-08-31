@@ -1,0 +1,4 @@
+# Freeze the dependency/tool versions that drifted from the final-defense baseline.
+fastapi==0.128.0
+ruff==0.14.10
+black==25.12.0
